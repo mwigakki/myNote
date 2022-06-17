@@ -1,8 +1,9 @@
 `Git is a version control system.`
 `Git is free software.`
-> 在vs中文件后面:
- U 应该是表示这个文件Unattached
- M 表示Modified
+> 在vs中文件后面: 
+ M 表示 Modified.
+ U 表示 Untracked。
+ D 表示 Deleted
 >                
 就好比玩RPG游戏一样，每通过一关(完成一次的工作)都要保存一下游戏(add 和commit一下)。如果某一关没过去(某一次编辑出现了问题)，我们可以选择读取前一关的状态(回退上一个版本)。并且在你随时想暂停的时候都可以暂停(add,commit保存一个版本)。
 
@@ -91,3 +92,22 @@ Git的版本回退速度非常快，因为Git在内部有个指向当前版本�
 但如果之前的命令行关掉了，不记得之前的版本号了，也没有关系
 使用命令：`git reflog` 查看所有版本历史
 
+## 工作区和暂存区
+- **工作区（Working Directory）**: 就是你在电脑里能看到的目录
+- **版本库（Repository）**: 工作区有一个隐藏目录.git，这个不算工作区，而是Git的版本库。
+
+Git的版本库里存了很多东西，其中最重要的就是称为stage（或者叫index）的暂存区，还有Git为我们自动创建的第一个分支master，以及指向master的一个指针叫HEAD。
+![工作区与版本库示例图](https://cdn.liaoxuefeng.com/files/attachments/919020037470528/0)
+
+当修改、删除或添加一些文件进去时(使用了`add或rm`)，工作区里的更改会记录到`stage`中
+现在，暂存区的状态就变成这样了：
+![工作区与版本库示例图](https://cdn.liaoxuefeng.com/files/attachments/919020074026336/0)
+
+一旦提交(`commit`)后，如果你又没有对工作区做任何修改，那么工作区就是“干净”的：
+```
+git status
+On branch master
+nothing to commit, working tree clean
+```
+现在版本库变成了这样，暂存区就没有任何内容了：
+![工作区与版本库示例图](https://cdn.liaoxuefeng.com/files/attachments/919020100829536/0)
