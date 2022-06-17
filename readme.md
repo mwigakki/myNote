@@ -27,8 +27,10 @@
 ### 查看当前仓库的状态
 使用命令`git status` 查看当前仓库的状态，
 
-### 从仓库中删除文件
-使用命令：`git rm <file>`
+### 从仓库中删除和恢复文件
+使用命令：`git rm <file>`删除
+使用命令：`git restore <file>` 恢复
+
 
 ### 查看上次的修改
-使用命令：`git diff`
+使用命令：`git diff`，只有在文件修改后还没有add 的情况才能看的difference
