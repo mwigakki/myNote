@@ -124,3 +124,7 @@ nothing to commit, working tree clean
 ```
 现在版本库变成了这样，暂存区就没有任何内容了：
 ![工作区与版本库示例图3](https://cdn.liaoxuefeng.com/files/attachments/919020100829536/0)
+
+
+
+dsfsdsdf
