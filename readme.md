@@ -200,9 +200,9 @@ Git会输出一个警告，告诉你已经把GitHub的Key添加到本机的一�
 如果你实在担心有人冒充GitHub服务器，输入yes前可以对照GitHub的RSA Key的指纹信息是否与SSH连接给出的一致。
 
 ### 删除远程库
-如果添加的时候地址写错了，或者就是想删除远程库，可以用git remote rm <name>命令。使用前，建议先用git remote -v查看远程库信息：
+如果添加的时候地址写错了，或者就是想删除远程库，可以用git remote rm <name>命令。使用前，建议先用git remote -v查看远程库信息
+> git remote -v：
 ```
-$ git remote -v
 origin  git@github.com:michaelliao/learn-git.git (fetch)
 origin  git@github.com:michaelliao/learn-git.git (push)
 ```
