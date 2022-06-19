@@ -4,9 +4,10 @@
  cmd 进入git怎么退出: 按q 回车
 
 > 在vs中文件后面: 
+ A 表示 Added。
+ D 表示 Deleted
  M 表示 Modified.
  U 表示 Untracked。
- D 表示 Deleted
 
 >                就好比玩RPG游戏一样，每通过一关(完成一次的工作)都要保存一下游戏(add 和commit一下)。如果某一关没过去(某一次编辑出现了问题)，我们可以选择读取前一关的状态(回退上一个版本)。并且在你随时想暂停的时候都可以暂停(add,commit保存一个版本)。
 
@@ -37,17 +38,10 @@
 ### 查看当前仓库的状态
 使用命令`git status` 查看当前仓库的状态，(是否有修改没有add或commit)
 
-### 从仓库中删除和恢复文件
-使用命令：`git rm <file>`删除
-使用命令：`git restore <file>` 恢复
-
-
 ### 查看上次的修改
 `git diff`查看工作区和暂存区差异，
 `git diff --cached`查看暂存区和仓库差异，
 `git diff HEAD `查看工作区和仓库的差异，
-
-
 
 # 版本回退
 
@@ -126,5 +120,19 @@ nothing to commit, working tree clean
 ![工作区与版本库示例图3](https://cdn.liaoxuefeng.com/files/attachments/919020100829536/0)
 
 
+# 管理修改
+- Git比其他版本控制系统设计得优秀，因为Git跟踪并管理的是修改，而非文件。每次修改，如果不用`git add`到暂存区，那就不会加入到`commit`中。
+### 丢弃工作区的修改
+新版命令`git restore file` 更容易记忆，记住这个就好
+命令`git checkout -- file`也可立马丢弃 **工作区** 的修改：
+   - `git checkout -- file`命令中的`--`很重要，没有`--`，就变成了“切换到另一个分支”的命令，我们在后面的分支管理中会再次遇到`git checkout`命令。
+### 丢弃暂存区的修改
+新版命令`git restore --staged <file>` 更容易理解，记住这个就好
+命令`git reset HEAD <file>`可以把暂存区的修改撤销掉（unstage），重新放回工作区：
+`git reset`命令既可以回退版本，也可以把暂存区的修改回退到工作区。当我们用HEAD时，表示最新的版本。
 
-dsfsdsdf
+### 删除和恢复文件
+使用命令：`git rm <file>`，相当于是删除工作目录中的test.txt文件,并把此次删除操作提交到了暂存区
+
+使用命令：`git restore <file>` 恢复
+
