@@ -203,3 +203,15 @@ origin  git@github.com:michaelliao/learn-git.git (push)
 > git remote rm origin
 
 此处的“删除”其实是解除了本地和远程的绑定关系，并不是物理上删除了远程库。远程库本身并没有任何改动。要真正删除远程库，需要登录到GitHub，在后台页面找到删除按钮再删除。
+
+“删除”后再次使用
+
+> git remote add origin git@github.com:mwigakki/learnGit.git
+
+可以重新将本地和远程绑定。
+
+### 从远程库克隆
+在github项目右上角`CODE`里找到 SSH地址，然后在本地合适的位置打开CMD或git bash，使用命令：
+> git clone <ssh地址>
+
+即可将项目克隆下来了
