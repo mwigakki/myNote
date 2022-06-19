@@ -134,5 +134,8 @@ nothing to commit, working tree clean
 ### 删除和恢复文件
 使用命令：`git rm <file>`，相当于是删除工作目录中的test.txt文件,并把此次删除操作提交到了暂存区
 
-使用命令：`git restore <file>` 恢复
+**误删文件后的恢复**
+1. 手动将文件删除：此时相当与将工作区删除了文件，直接使用使用命令：`git restore <file>` 恢复
+2. 使用命令：`git rm <file>`删除了文件，此时删除的操作已经被提交到暂存区staged了。此时需要先使用命令`git restore --staged <file>` 将暂存区的删除恢复到工作区，再使用命令：`git restore <file>` 恢复文件
+
 
