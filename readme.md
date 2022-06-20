@@ -51,7 +51,7 @@
 `git log`命令显示从最近到最远的提交日志 
 如果嫌输出信息太多，看得眼花缭乱的，可以试试加上`--pretty=oneline`参数：即 `git log --pretty=oneline`
 该命令最主要是用来看版本号的，下面是一些示例：
-``` 
+```  bash
 76c1fafea484761fc13ad96062e5baa5751863f8 (HEAD -> master) add log
 f680593ab67427a0ecc9feb2e06296dd39d09bde add some analogy rhetoric
 4e14ce03b86b0418967b0aff285e6005d8ad21d4 commmmmmit
@@ -72,7 +72,7 @@ d9677798cd9c97b0ba6a3ba6d695c3e06cb78c3a first time commit
 也可使用命令：`git reset --hard <版本号>` , 版本号不必输全，输入前几个能够唯一分辨就行
 
 Git的版本回退速度非常快，因为Git在内部有个指向当前版本的HEAD指针，当你回退版本的时候，Git仅仅是把HEAD从指向了指定的版本
-```
+``` bash
 ┌────┐
 │HEAD│
 └────┘
@@ -186,7 +186,7 @@ nothing to commit, working tree clean
 #### SSH警告
 当你第一次使用Git的clone或者push命令连接GitHub时，会得到一个警告：
 
-```
+``` bash
 The authenticity of host 'github.com (xx.xx.xx.xx)' can't be established.
 RSA key fingerprint is xx.xx.xx.xx.xx.
 Are you sure you want to continue connecting (yes/no)?
@@ -202,7 +202,7 @@ Git会输出一个警告，告诉你已经把GitHub的Key添加到本机的一�
 ### 删除远程库
 如果添加的时候地址写错了，或者就是想删除远程库，可以用git remote rm <name>命令。使用前，建议先用git remote -v查看远程库信息
 > git remote -v：
-```
+``` bash
 origin  git@github.com:michaelliao/learn-git.git (fetch)
 origin  git@github.com:michaelliao/learn-git.git (push)
 ```
@@ -250,7 +250,7 @@ Git创建一个分支很快，因为除了增加一个dev指针，改改HEAD的�
 ![master和dev分支3](https://www.liaoxuefeng.com/files/attachments/919022412005504/0)
 
 当我们把`dev`分支的工作成果合并到`master`分支上：
-```
+``` bash
 $ git merge dev
 Updating d46f35e..b17d20e
 Fast-forward
@@ -295,12 +295,121 @@ Fast-forward
 ![分支冲突](https://www.liaoxuefeng.com/files/attachments/919023000423040/0)
 
 这种情况下，Git无法执行“快速合并”，只能试图把各自的修改合并起来，但这种合并就可能会有冲突，我们试试看：
+``` bash
+git merge feature1
+Auto-merging readme.txt
+CONFLICT (content): Merge conflict in readme.txt
+Automatic merge failed; fix conflicts and then commit the result.
+```
+果然冲突了！Git告诉我们，readme.txt文件存在冲突，必须手动解决冲突后再提交。git status也可以告诉我们冲突的文件
 
+``` bash
+git status
+On branch master
+Your branch is ahead of 'origin/master' by 2 commits.
+  (use "git push" to publish your local commits)
 
+You have unmerged paths.
+  (fix conflicts and run "git commit")
+  (use "git merge --abort" to abort the merge)
 
-这里是master2
-<<<<<<< HEAD
-mastermastermaster
+Unmerged paths:
+  (use "git add <file>..." to mark resolution)
+
+	both modified:   readme.txt
+
+no changes added to commit (use "git add" and/or "git commit -a")
+``` 
+
+我们可以直接查看readme.txt的内容：
+``` bash
+Git has a mutable index called stage.
+Git tracks changes of files.
+<<<<<< HEAD
+Creating a new branch is quick & simple.
 =======
-这里是f3
->>>>>>> f3
+Creating a new branch is quick AND simple.
+>>>>>>> feature1
+```
+git已经帮我们做了标记,用`<<<<<<<`，`=======`，`>>>>>>>`标记出不同分支的内容，方便我们对冲突的地方查询修改，
+
+接下来我们就在此基础上修改文件并重新`add`, `commit`，再次`merge`合并即可。
+
+现在，`master`分支和`feature1`分支变成了下图所示：
+![冲突分支合并](https://www.liaoxuefeng.com/files/attachments/919023031831104/0)
+
+用带参数的`git log`也可以看到分支的合并情况：
+``` bash
+git log --graph --pretty=oneline --abbrev-commit
+*   cf810e4 (HEAD -> master) conflict fixed
+|\  
+| * 14096d0 (feature1) AND simple
+* | 5dc6824 & simple
+|/  
+* b17d20e branch test
+* d46f35e (origin/master) remove test.txt
+* b84166e add test.txt
+``` 
+
+最后，删除feature1分支
+
+### 分支管理策略
+通常，合并分支时，如果可能，Git会用`Fast forward`模式，但这种模式下，删除分支后，会丢掉分支信息。
+
+如果要强制禁用`Fast forward`模式，Git就会在`merge`时生成一个新的`commit`，这样，从分支历史上就可以看出分支信息。
+下面我们实战一下`--no-ff`方式的g`it merge`：
+首先，仍然创建并切换dev分支：
+> git switch -c dev
+> Switched to a new branch 'dev'
+
+修改readme.txt文件，并提交一个新的commit：
+``` bash
+$ git add readme.txt 
+$ git commit -m "add merge"
+[dev f52c633] add merge
+ 1 file changed, 1 insertion(+)
+```
+
+现在，我们切换回master：
+``` bash
+$ git switch master
+Switched to branch 'master'
+```
+
+准备合并dev分支，请注意--no-ff参数，表示禁用Fast forward：
+``` bash
+git merge --no-ff -m "merge with no-ff" dev
+Merge made by the 'recursive' strategy.
+ readme.txt | 1 +
+ 1 file changed, 1 insertion(+)
+ ```
+
+因为本次合并要创建一个新的commit，所以加上-m参数，把commit描述写进去。
+
+合并后，我们用`git log`看看分支历史：
+
+``` bash
+$ git log --graph --pretty=oneline --abbrev-commit
+*   e1e9c68 (HEAD -> master) merge with no-ff
+|\  
+| * f52c633 (dev) add merge
+|/  
+*   cf810e4 conflict fixed
+...
+```
+可以看到，不使用Fast forward模式，merge后就像这样：
+![不使用Fast forward模式merge](https://www.liaoxuefeng.com/files/attachments/919023225142304/0)
+
+**分支策略**
+在实际开发中，我们应该按照几个基本原则进行分支管理：
+
+首先，master分支应该是非常稳定的，也就是仅用来发布新版本，平时不能在上面干活；
+
+那在哪干活呢？干活都在dev分支上，也就是说，dev分支是不稳定的，到某个时候，比如1.0版本发布时，再把dev分支合并到master上，在master分支发布1.0版本；
+
+你和你的小伙伴们每个人都在dev分支上干活，每个人都有自己的分支，时不时地往dev分支上合并就可以了。
+
+所以，团队合作的分支看起来就像这样：
+![合作开发](https://www.liaoxuefeng.com/files/attachments/919023260793600/0)
+
+
