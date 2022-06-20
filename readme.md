@@ -222,3 +222,5 @@ origin  git@github.com:michaelliao/learn-git.git (push)
 > git clone <ssh地址>
 
 即可将项目克隆下来了
+
+在本地的随便写一些东西
