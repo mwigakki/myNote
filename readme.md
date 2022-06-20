@@ -413,3 +413,4 @@ $ git log --graph --pretty=oneline --abbrev-commit
 ![合作开发](https://www.liaoxuefeng.com/files/attachments/919023260793600/0)
 
 dev分支的内容
+dev，然后使用fast forward方式提交
