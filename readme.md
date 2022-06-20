@@ -67,7 +67,7 @@ d9677798cd9c97b0ba6a3ba6d695c3e06cb78c3a first time commit
 在Git中，用HEAD表示当前版本，上一个版本就是HEAD^，上上一个版本就是HEAD^^，
 当然往上10个版本写10个^比较容易数不过来，所以写成HEAD~10。
 ```
-使用命令：`git reset --hard HEAD^` 回退到上一个版本 ,(在cmd下要写两个^, 因为cmd中^是转义符号，相当于linux的\)
+使用命令：`git reset --hard HEAD^` 回退到上一个版本 ,(在cmd下要写两个^, 因为cmd中^是转义符号，相当于linux的\ )
 
 也可使用命令：`git reset --hard <版本号>` , 版本号不必输全，输入前几个能够唯一分辨就行
 
@@ -249,6 +249,21 @@ Git创建一个分支很快，因为除了增加一个dev指针，改改HEAD的�
 
 ![master和dev分支3](https://www.liaoxuefeng.com/files/attachments/919022412005504/0)
 
+当我们把`dev`分支的工作成果合并到`master`分支上：
+```
+$ git merge dev
+Updating d46f35e..b17d20e
+Fast-forward
+ readme.txt | 1 +
+ 1 file changed, 1 insertion(+)
+```
+
+`git merge`命令用于合并指定分支到当前分支。合并后，再查看`readme.txt`的内容，就可以看到，和`dev`分支的最新提交是完全一样的。
+
+注意到上面的`Fast-forward`信息，Git告诉我们，这次合并是“快进模式”，也就是直接把`master`指向`dev`的当前提交，所以合并速度非常快。
+
+当然，也不是每次合并都能`Fast-forward`，我们后面会讲其他方式的合并。
+
 所以Git合并分支也很快！就改改指针，工作区内容也不变！
 
 合并完分支后，甚至可以删除dev分支。删除dev分支就是把dev指针给删掉，删掉后，我们就剩下了一条master分支：
@@ -256,7 +271,7 @@ Git创建一个分支很快，因为除了增加一个dev指针，改改HEAD的�
 ![master和dev分支3](https://www.liaoxuefeng.com/files/attachments/919022479428512/0)
 
 
-下面是具体命令：
+**下面是具体命令：**
 
 - 查看当前所有分支：`git branch` , 当前分支前面会标一个*号。
 - 创建一个从HEAD处创建一个新分支：`git branch dev`
@@ -265,6 +280,21 @@ Git创建一个分支很快，因为除了增加一个dev指针，改改HEAD的�
 - 将指定分支合并到**当前分支**： `git merge <分支名>`
 - 删除分支：`git checkout -b dev`
 
+注：在dev分支上修改了文件，但是并没有执行git add. git commit命令，然后切换到master分支，仍然能看到dev分支的改动。只是因为所有的修改还只是在工作区，连暂存区都不是，git都还不知道有任何的修改。
+
+### 需要解决冲突的分支合并
+准备一个新的分支`feature1`
+> git switch -c feature1
+
+对文件进行修改，然后再`feature1`分支上提交。
+切换到`master`分支
+> git switch master
+
+再对文件进行修改并提交。
+现在，master分支和feature1分支各自都分别有新的提交，变成了这样：
+![分支冲突](https://www.liaoxuefeng.com/files/attachments/919023000423040/0)
+
+这种情况下，Git无法执行“快速合并”，只能试图把各自的修改合并起来，但这种合并就可能会有冲突，我们试试看：
 
 
 
