@@ -412,4 +412,4 @@ $ git log --graph --pretty=oneline --abbrev-commit
 所以，团队合作的分支看起来就像这样：
 ![合作开发](https://www.liaoxuefeng.com/files/attachments/919023260793600/0)
 
-
+dev分支的内容
