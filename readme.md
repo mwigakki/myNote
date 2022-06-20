@@ -299,4 +299,8 @@ Fast-forward
 
 
 这里是master2
+<<<<<<< HEAD
 mastermastermaster
+=======
+这里是f3
+>>>>>>> f3
