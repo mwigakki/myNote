@@ -222,3 +222,45 @@ origin  git@github.com:michaelliao/learn-git.git (push)
 > git clone <ssh地址>
 
 即可将项目克隆下来了
+
+
+# 分支
+在版本回退里，你已经知道，每次提交，Git都把它们串成一条时间线，这条时间线就是一个分支。截止到目前，只有一条时间线，在Git里，这个分支叫主分支，即`master`分支。`HEAD`严格来说不是指向提交，而是指向`master`，`master`才是指向提交的，所以，`HEAD`指向的就是当前分支。
+
+一开始的时候，`master`分支是一条线，Git用`master`指向最新的提交，再用HEAD指向`master`，就能确定当前分支，以及当前分支的提交点：
+
+![master分支](https://www.liaoxuefeng.com/files/attachments/919022325462368/0)
+
+每次提交，master分支都会向前移动一步，这样，随着你不断提交，master分支的线也越来越长。
+
+当我们创建新的分支，例如`dev`时，Git新建了一个指针叫`dev`，指向`master`相同的提交，再把`HEAD`指向`dev`，就表示当前分支在`dev`上：
+
+![master和dev分支1](https://www.liaoxuefeng.com/files/attachments/919022363210080/l)
+
+Git创建一个分支很快，因为除了增加一个dev指针，改改HEAD的指向，工作区的文件都没有任何变化！
+
+不过，从现在开始，对工作区的修改和提交就是针对dev分支了，比如新提交一次后，dev指针往前移动一步，而master指针不变：
+
+![master和dev分支2](https://www.liaoxuefeng.com/files/attachments/919022387118368/l)
+
+假如我们在dev上的工作完成了，就可以把dev合并到master上。Git怎么合并呢？最简单的方法，就是直接把master指向dev的当前提交，就完成了合并：
+
+![master和dev分支3](https://www.liaoxuefeng.com/files/attachments/919022412005504/0)
+
+所以Git合并分支也很快！就改改指针，工作区内容也不变！
+
+合并完分支后，甚至可以删除dev分支。删除dev分支就是把dev指针给删掉，删掉后，我们就剩下了一条master分支：
+
+![master和dev分支3](https://www.liaoxuefeng.com/files/attachments/919022479428512/0)
+
+
+下面是具体命令：
+
+- 查看当前所有分支：`git branch` , 当前分支前面会标一个*号。
+- 创建一个从HEAD处创建一个新分支：`git branch dev`
+- 切换分支：`git switch dev`或`git checkout dev`
+- 创建并切换分支：`git switch -c dev`或`git checkout -b dev`
+
+
+
+
