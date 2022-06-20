@@ -245,7 +245,7 @@ Git创建一个分支很快，因为除了增加一个dev指针，改改HEAD的�
 
 ![master和dev分支2](https://www.liaoxuefeng.com/files/attachments/919022387118368/l)
 
-假如我们在dev上的工作完成了，就可以把dev合并到master上。Git怎么合并呢？最简单的方法，就是直接把master指向dev的当前提交，就完成了合并：
+假如我们在dev上的工作完成了(commit)，就可以把dev合并到master上。Git怎么合并呢？最简单的方法，就是直接把master指向dev的当前提交，就完成了合并：
 
 ![master和dev分支3](https://www.liaoxuefeng.com/files/attachments/919022412005504/0)
 
@@ -261,7 +261,9 @@ Git创建一个分支很快，因为除了增加一个dev指针，改改HEAD的�
 - 查看当前所有分支：`git branch` , 当前分支前面会标一个*号。
 - 创建一个从HEAD处创建一个新分支：`git branch dev`
 - 切换分支：`git switch dev`或`git checkout dev`
-- 创建并切换分支：`git switch -c dev`或`git checkout -b dev`
+- 创建并切换分支：`git switch -c dev`或`git checkout -b dev`，切换分支后进行相应的修改和提交commit
+- 将指定分支合并到**当前分支**： `git merge <分支名>`
+- 删除分支：`git checkout -b dev`
 
 
 
