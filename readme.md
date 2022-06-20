@@ -396,6 +396,10 @@ $ git log --graph --pretty=oneline --abbrev-commit
 |/  
 *   cf810e4 conflict fixed
 ...
+
+而使用fast forward方式的就是这样的
+* 1496baa (HEAD -> master, dev) ff commit in dev
+*   2328ae0 merge with no-ff
 ```
 可以看到，不使用Fast forward模式，merge后就像这样：
 ![不使用Fast forward模式merge](https://www.liaoxuefeng.com/files/attachments/919023225142304/0)
@@ -414,3 +418,8 @@ $ git log --graph --pretty=oneline --abbrev-commit
 
 dev分支的内容
 dev，然后使用fast forward方式提交
+
+### bug分支
+
+
+
