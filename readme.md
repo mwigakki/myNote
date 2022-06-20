@@ -418,3 +418,4 @@ dev，然后使用fast forward方式提交
 ### bug分支
 
 
+[此句写于issue-101分支，作为bug分支的联系] : 现在修复了一个bug
