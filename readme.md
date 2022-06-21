@@ -574,3 +574,13 @@ Deleted branch feature-vulcan (was 287773e).
 如果要丢弃一个没有被合并过的分支，可以通过git branch -D <name>强行删除。
 
 
+# rebase
+
+在上一节我们看到了，多人在同一个分支上协作时，很容易出现冲突。即使没有冲突，后push的童鞋不得不先pull，在本地合并，然后才能push成功。
+
+每次合并再push后，分支变成了这样：
+
+
+
+
+
