@@ -7,6 +7,7 @@
 > 就好比玩RPG游戏一样，每通过一关(完成一次的工作)都要保存一下游戏(add 和commit一下)。如果某一关没过去(某一次编辑出现了问题)，我们可以选择读取前一关的状态(回退上一个版本)。并且在你随时想暂停的时候都可以暂停(add,commit保存一个版本)。
 
  cmd 进入git怎么退出: 按q 回车
+ 查看分支合并情况： `git log --graph --pretty=oneline --abbrev-commit`
 
 # 安装与常用操作
 
@@ -638,10 +639,67 @@ Automatic merge failed; fix conflicts and then commit the result.
 
 如果`git pull`提示`no tracking information`，则说明本地分支和远程分支的链接关系没有创建，用命令`git branch --set-upstream-to <branch-name> origin/<branch-name>`。
 
-# rebase
+### rebase
 
-在上一节我们看到了，多人在同一个分支上协作时，很容易出现冲突。即使没有冲突，后push的童鞋不得不先pull，在本地合并，然后才能push成功。
+- rebase操作可以把本地未push的分叉提交历史整理成直线；
+- rebase的目的是使得我们在查看历史提交的变化时更容易，因为分叉的提交需要三方对比。
 
-每次合并再push后，分支变成了这样：
+# 标签管理
+发布一个版本时，我们通常先在版本库中打一个标签（tag），这样，就唯一确定了打标签时刻的版本。将来无论什么时候，取某个标签的版本，就是把那个打标签的时刻的历史版本取出来。所以，标签也是版本库的一个**快照**。
 
+Git的标签虽然是版本库的快照，但其实它就是指向某个commit的指针（跟分支很像对不对？但是分支可以移动，标签不能移动），所以，创建和删除标签都是瞬间完成的。
+
+在Git中打标签非常简单，首先，切换到需要打标签的分支上：
+
+然后，敲命令`git tag <name>`就可以打一个新标签：
+
+可以用命令`git tag`查看所有标签：
+
+默认标签是打在最新提交的commit上的。有时候，如果忘了打标签，比如，现在已经是周五了，但应该在周一打的标签没有打，怎么办？方法是找到历史提交的commit id，然后打上就可以了：
+``` bash
+git log --pretty=oneline --abbrev-commit
+2dff384 (HEAD -> dev, tag: v1.0, origin/dev) fix confilct 6.21 15.27
+c6d0545 cmt 6.21 15.25
+51e6b23 cmt 6.21 15.19
+3ecce4b feature 6.21 14.45
+0b9e615 cmt dev in dorm 6.20 22.43
+b253c9a cmt in dorm 6.20 22.38
+...
+```
+
+比方说要对`cmt 6.21 15.19`这次提交打标签，它对应的commit id是`51e6b23`，敲入命令：
+> `git tag v0.9 51e6b23`
+
+再用命令git tag查看标签：
+``` bash
+$ git tag
+v0.9
+v1.0
+```
+
+注意，标签不是按时间顺序列出，而是按字母排序的。可以用`git show <tagname>`查看标签信息。
+还可以创建带有说明的标签，用-a指定标签名，-m指定说明文字：
+例： ` git tag -a v0.1 -m "version 0.1 released" 1094adb`
+
+ - 注意：标签总是和某个commit挂钩。如果这个commit既出现在master分支，又出现在dev分支，那么在这两个分支上都可以看到这个标签。
+
+删除标签：
+`git tag -d v0.1`
+
+因为创建的标签都只存储在本地，不会自动推送到远程。所以，打错的标签可以在本地安全删除。
+
+如果要推送某个标签到远程，使用命令
+
+`git push origin <tagname>`：
+
+或者，一次性推送全部尚未推送到远程的本地标签：
+
+`git push origin --tags`
+
+如果标签已经推送到远程，要删除远程标签就麻烦一点，先从本地删除：
+然后，从远程删除。删除命令也是push，但是格式如下：
+
+`git push origin :refs/tags/v0.9`
+
+要看看是否真的从远程库删除了标签，可以登陆GitHub查看。
 
