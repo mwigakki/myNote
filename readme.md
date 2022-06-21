@@ -531,3 +531,117 @@ Git自动给dev分支做了一次提交，注意这次提交的commit是1d4b803�
 软件开发中，总有无穷无尽的新的功能要不断添加进来。
 
 添加一个新功能时，你肯定不希望因为一些实验性质的代码，把主分支搞乱了，所以，每添加一个新功能，最好新建一个feature分支，在上面开发，完成后，合并，最后，删除该feature分支。
+
+现在，你终于接到了一个新任务：开发代号为Vulcan的新功能，该功能计划用于下一代星际飞船。
+
+于是准备开发:
+
+> git switch -c feature-vulcan
+> Switched to a new branch 'feature-vulcan'
+
+5分钟后，开发完毕：使用`add`， `commit`将开发提交到feature分支
+
+切回`dev`，`git switch dev`准备合并
+
+一切顺利的话，feature分支和bug分支是类似的，合并，然后删除。
+
+但是！
+
+就在此时，接到上级命令，因经费不足，新功能必须取消！
+
+虽然白干了，但是这个包含机密资料的分支还是必须就地销毁：
+ 
+``` bash
+git branch -d feature-vulcan
+error: The branch 'feature-vulcan' is not fully merged.
+If you are sure you want to delete it, run 'git branch -D feature-vulcan'.
+```
+
+销毁失败。Git友情提醒，`feature-vulcan`分支还没有被合并，如果删除，将丢失掉修改，如果要强行删除，需要使用大写的`-D`参数。
+
+现在我们强行删除：
+``` bash
+$ git branch -D feature-vulcan
+Deleted branch feature-vulcan (was 287773e).
+```
+
+终于删除成功！
+
+总结：
+
+开发一个新feature，最好新建一个分支；
+
+如果要丢弃一个没有被合并过的分支，可以通过git branch -D <name>强行删除。
+
+### 抓取分支
+多人协作时，大家都会往master和dev分支上推送各自的修改。
+
+当你的小伙伴（注意要把SSH Key添加到GitHub）从远程库clone时，默认情况下，你的小伙伴只能看到本地的master分支。
+
+现在，你的小伙伴要在dev分支上开发，就必须创建远程origin的dev分支到本地，于是他用这个命令创建本地dev分支：
+
+> git switch -c dev origin/dev
+
+现在，他就可以在dev上继续修改，然后，时不时地把dev分支push到远程：
+
+... 
+
+现在，你的小伙伴已经向origin/dev分支推送了他的提交，而碰巧你也对同样的文件作了修改，并试图推送：
+``` bash
+git push origin dev
+To github.com:michaelliao/learngit.git
+ ! [rejected]        dev -> dev (non-fast-forward)
+error: failed to push some refs to 'git@github.com:michaelliao/learngit.git'
+hint: Updates were rejected because the tip of your current branch is behind
+hint: its remote counterpart. Integrate the remote changes (e.g.
+hint: 'git pull ...') before pushing again.
+hint: See the 'Note about fast-forwards' in 'git push --help' for details.
+```
+
+推送失败，因为你的小伙伴的最新提交和你试图推送的提交有冲突，解决办法也很简单，Git已经提示我们，先用git pull把最新的提交从origin/dev抓下来，然后，在本地合并，解决冲突，再推送：
+
+``` bash
+$ git pull
+There is no tracking information for the current branch.
+Please specify which branch you want to merge with.
+See git-pull(1) for details.
+
+    git pull <remote> <branch>
+
+If you wish to set tracking information for this branch you can do so with:
+
+    git branch --set-upstream-to=origin/<branch> dev
+```
+`git pull`也失败了，原因是没有指定本地dev分支与远程origin/dev分支的链接，根据提示，设置dev和origin/dev的链接：
+
+``` bash
+git branch --set-upstream-to=origin/dev dev
+Branch 'dev' set up to track remote branch 'dev' from 'origin'.
+```
+
+再pull：
+
+``` bash
+$ git pull
+Auto-merging env.txt
+CONFLICT (add/add): Merge conflict in env.txt
+Automatic merge failed; fix conflicts and then commit the result.
+```
+
+这回git pull成功，但是合并有冲突，需要手动解决，解决的方法和分支管理中的解决冲突完全一样。解决后，提交，再push：
+
+因此，多人协作的工作模式通常是这样：
+1. 首先，可以试图用`git push origin <branch-name>`推送自己的修改；
+2. 如果推送失败，则因为远程分支比你的本地更新，需要先用git pull试图合并；
+3. 如果合并有冲突，则解决冲突，并在本地提交；
+4. 没有冲突或者解决掉冲突后，再用`git push origin <branch-name>`推送就能成功！
+
+如果`git pull`提示`no tracking information`，则说明本地分支和远程分支的链接关系没有创建，用命令`git branch --set-upstream-to <branch-name> origin/<branch-name>`。
+
+# rebase
+
+在上一节我们看到了，多人在同一个分支上协作时，很容易出现冲突。即使没有冲突，后push的童鞋不得不先pull，在本地合并，然后才能push成功。
+
+每次合并再push后，分支变成了这样：
+
+
