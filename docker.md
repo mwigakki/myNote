@@ -4,7 +4,7 @@ https://www.w3cschool.cn/docker/docker-tutorial.html
 
 [什么是Docker？看这一篇干货文章就够了！ - 知乎 (zhihu.com)](https://zhuanlan.zhihu.com/p/187505981)
 
-[[容器 - Docker — 从入门到实践 (gitbook.io)](https://yeasy.gitbook.io/docker_practice/basic_concept/container)](https://ruanyifeng.com/blog/2018/02/docker-tutorial.html)
+[Docker — 从入门到实践 | Docker 从入门到实践 (docker-practice.com)](https://vuepress.mirror.docker-practice.com/)
 
 ## 1. 容器简介
 
@@ -203,6 +203,8 @@ docker images
 
 Docker 主机安装之后，本地并没有镜像。
 
+镜像的唯一标识是其 ID 和摘要（DIGEST），而一个镜像可以有多个标签。
+
 #### 搜索镜像
 
 使用命令：
@@ -267,6 +269,97 @@ docker image rm <镜像ID>或<repository>:<tag>
 
 首先需要登录docker的站点，在https://hub.docker.com/注册个账号，然后docker login，成功后使用docker tag修改测试运行过的image，然后再docker push 【账号】/【docker】：【tag】，如果没给tag，默认就是latest，如果制定了，以后pull镜像就需要指定tag
 
+#### 其他
+
+##### 分层存储
+
+因为镜像包含操作系统完整的 `root` 文件系统，其体积往往是庞大的，因此在 Docker 设计时，就充分利用 [Union FS (opens new window)](https://en.wikipedia.org/wiki/Union_mount)的技术，将其设计为分层存储的架构。所以严格来说，镜像并非是像一个 `ISO` 那样的打包文件，镜像只是一个虚拟的概念，其实际体现并非由一个文件组成，而是由一组文件系统组成，或者说，由多层文件系统联合组成。
+
+镜像构建时，会一层层构建，前一层是后一层的基础。每一层构建完就不会再发生改变，后一层上的任何改变只发生在自己这一层。比如，删除前一层文件的操作，实际不是真的删除前一层的文件，而是仅在当前层标记为该文件已删除。在最终容器运行的时候，虽然不会看到这个文件，但是实际上该文件会一直跟随镜像。因此，在构建镜像的时候，需要额外小心，每一层尽量只包含该层需要添加的东西，任何额外的东西应该在该层构建结束前清理掉。
+
+分层存储的特征还使得镜像的复用、定制变的更为容易。甚至可以用之前构建好的镜像作为基础层，然后进一步添加新的层，以定制自己所需的内容，构建新的镜像。
+
+##### 镜像体积
+
+如果仔细观察，会注意到，这里标识的所占用空间和在 Docker Hub 上看到的镜像大小不同。比如，`ubuntu:18.04` 镜像大小，在这里是 `63.3MB`，但是在 [Docker Hub (opens new window)](https://hub.docker.com/layers/ubuntu/library/ubuntu/bionic/images/sha256-32776cc92b5810ce72e77aca1d949de1f348e1d281d3f00ebcc22a3adcdc9f42?context=explore)显示的却是 `25.47 MB`。这是因为 Docker Hub 中显示的体积是压缩后的体积。在镜像下载和上传过程中镜像是保持着压缩状态的，因此 Docker Hub 所显示的大小是网络传输中更关心的流量大小。而 `docker image ls` 显示的是镜像下载到本地后，展开的大小，准确说，是展开后的各层所占空间的总和，因为镜像到本地后，查看空间的时候，更关心的是本地磁盘空间占用的大小。
+
+另外一个需要注意的问题是，`docker image ls` 列表中的镜像体积总和并非是所有镜像实际硬盘消耗。由于 Docker 镜像是多层存储结构，并且可以继承、复用，因此不同镜像可能会因为使用相同的基础镜像，从而拥有共同的层。由于 Docker 使用 Union FS，相同的层只需要保存一份即可，因此实际镜像硬盘占用空间很可能要比这个列表镜像大小的总和要小的多。
+
+#####  虚悬镜像
+
+上面的镜像列表中，还可以看到一个特殊的镜像，这个镜像既没有仓库名，也没有标签，均为 `<none>`。：
+
+```bash
+<none>               <none>              00285df0df87        5 days ago          342 MB
+```
+
+这个镜像原本是有镜像名和标签的，原来为 `mongo:3.2`，随着官方镜像维护，发布了新版本后，重新 `docker pull mongo:3.2` 时，`mongo:3.2` 这个镜像名被转移到了新下载的镜像身上，而旧的镜像上的这个名称则被取消，从而成为了 `<none>`。除了 `docker pull` 可能导致这种情况，`docker build` 也同样可以导致这种现象。由于新旧镜像同名，旧镜像名称被取消，从而出现仓库名、标签均为 `<none>` 的镜像。这类无标签镜像也被称为 **虚悬镜像(dangling image)** ，可以用下面的命令专门显示这类镜像：
+
+```bash
+$ docker image ls -f dangling=true
+REPOSITORY          TAG                 IMAGE ID            CREATED             SIZE
+<none>              <none>              00285df0df87        5 days ago          342 MB
+```
+
+一般来说，虚悬镜像已经失去了存在的价值，是可以随意删除的，可以用下面的命令删除。
+
+```bash
+$ docker image prune
+```
+
+##### 中间层镜像
+
+为了加速镜像构建、重复利用资源，Docker 会利用 **中间层镜像**。所以在使用一段时间后，可能会看到一些依赖的中间层镜像。默认的 `docker image ls` 列表中只会显示顶层镜像，如果希望显示包括中间层镜像在内的所有镜像的话，需要加 `-a` 参数。	
+
+```bash
+$ docker image ls -a
+```
+
+这样会看到很多无标签的镜像，与之前的虚悬镜像不同，这些无标签的镜像很多都是中间层镜像，是其它镜像所依赖的镜像。这些无标签镜像不应该删除，否则会导致上层镜像因为依赖丢失而出错。实际上，这些镜像也没必要删除，因为之前说过，相同的层只会存一遍，而这些镜像是别的镜像的依赖，因此并不会因为它们被列出来而多存了一份，无论如何你也会需要它们。只要删除那些依赖它们的镜像后，这些依赖的中间层镜像也会被连带删除。
+
+##### 以特定格式显示
+
+默认情况下，`docker image ls` 会输出一个完整的表格，但是我们并非所有时候都会需要这些内容。比如，刚才删除虚悬镜像的时候，我们需要利用 `docker image ls` 把所有的虚悬镜像的 ID 列出来，然后才可以交给 `docker image rm` 命令作为参数来删除指定的这些镜像，这个时候就用到了 `-q` 参数。
+
+```bash
+$ docker image ls -q
+5f515359c7f8
+05a60462f8ba
+fe9198c04d62
+```
+
+`--filter` 配合 `-q` 产生出指定范围的 ID 列表，然后送给另一个 `docker` 命令作为参数，从而针对这组实体成批的进行某种操作的做法在 Docker 命令行使用过程中非常常见，不仅仅是镜像，将来我们会在各个命令中看到这类搭配以完成很强大的功能。
+
+另外一些时候，我们可能只是对表格的结构不满意，希望自己组织列；或者不希望有标题，这样方便其它程序解析结果等，这就用到了 [Go 的模板语法 (opens new window)](https://gohugo.io/templates/introduction/)。
+
+比如，下面的命令会直接列出镜像结果，并且只包含镜像ID和仓库名：
+
+```bash
+$ docker image ls --format "{{.ID}}: {{.Repository}}"
+5f515359c7f8: redis
+05a60462f8ba: nginx
+fe9198c04d62: mongo
+00285df0df87: <none>
+```
+
+像其它可以承接多个实体的命令一样，可以使用 `docker image ls -q` 来配合使用 `docker image rm`，这样可以成批的删除希望删除的镜像。我们在“镜像列表”章节介绍过很多过滤镜像列表的方式都可以拿过来使用。
+
+比如，我们需要删除所有仓库名为 `redis` 的镜像：
+
+```bash
+$ docker image rm $(docker image ls -q redis)
+```
+
+或者删除所有在 `mongo:3.2` 之前的镜像：
+
+```bash
+$ docker image rm $(docker image ls -q -f before=mongo:3.2)
+```
+
+
+
+
+
 ## 5. Docker 容器 
 
 容器是镜像的运行时实例。正如从虚拟机模板上启动 VM 一样，用户也同样可以从单个镜像上启动一个或多个容器。
@@ -277,7 +370,23 @@ docker image rm <镜像ID>或<repository>:<tag>
 
 容器的实质是进程，但与直接在宿主执行的进程不同，容器进程运行于属于自己的独立的 [命名空间](https://en.wikipedia.org/wiki/Linux_namespaces)。
 
+前面讲过镜像使用的是分层存储，容器也是如此。每一个容器运行时，是以镜像为基础层，在其上创建一个当前容器的存储层，我们可以称这个为容器运行时读写而准备的存储层为 **容器存储层**。
 
+容器存储层的生存周期和容器一样，容器消亡时，容器存储层也随之消亡。因此，任何保存于容器存储层的信息都会随容器删除而丢失。
+
+按照 Docker 最佳实践的要求，容器不应该向其存储层内写入任何数据，容器存储层要保持无状态化。所有的文件写入操作，都应该使用 [数据卷（Volume）](https://vuepress.mirror.docker-practice.com/data_management/volume.html)、或者 [绑定宿主目录](https://vuepress.mirror.docker-practice.com/data_management/bind-mounts.html)，在这些位置的读写会跳过容器存储层，直接对宿主（或网络存储）发生读写，其性能和稳定性更高。
+
+数据卷的生存周期独立于容器，容器消亡，数据卷不会消亡。因此，使用数据卷后，容器删除或者重新运行之后，数据却不会丢失。
+
+**当利用 `docker run` 来创建容器时，Docker 在后台运行的标准操作包括**：
+
+- 检查本地是否存在指定的镜像，不存在就从 [registry](https://vuepress.mirror.docker-practice.com/repository/) 下载
+- 利用镜像创建并启动一个容器
+- 分配一个文件系统，并在只读的镜像层外面挂载一层可读写层
+- 从宿主主机配置的网桥接口中桥接一个虚拟接口到容器中去
+- 从地址池配置一个 ip 地址给容器
+- 执行用户指定的应用程序
+- 执行完毕后容器被终止
 
 #### 创建并使用容器
 
@@ -292,6 +401,7 @@ OPTIONS说明：(常用)
 - -i: 以交互模式运行容器，通常与 -t 同时使用；
 - --name="xxx": 为容器指定一个名称；
 - -t: 为容器重新分配一个伪输入终端，通常与 -i 同时使用；
+- -d: 让 Docker 在后台运行而不是直接把执行命令的结果输出在当前宿主机下
 
 更多见：[Docker run 命令 | 菜鸟教程 (runoob.com)](https://www.runoob.com/docker/docker-run-command.html)
 
@@ -394,7 +504,7 @@ apt install iputils-ping # ping
 
 此时该容器即可使用`ping`了。
 
-当对某一个容器做了修改之后（通过在容器中运行某一个命令），可以把对容器的修改保存下来，并**存储为一个image**，这样下次可以从保存后的最新状态运行该容器。docker中保存状态的过程称之为commit，它保存的新旧状态之间的区别，从而产生一个新的版本。
+当对某一个容器做了修改之后（通过在容器中运行某一个命令），可以把对容器的修改保存下来，并**制作为一个image**，这样下次可以从保存后的最新状态运行该容器。docker中保存状态的过程称之为commit，它保存的新旧状态之间的区别，从而产生一个新的版本。（但是不建议用commit制作镜像，而应该用dockerfile）
 
 ``` bash
 docker commit <容器ID> <保存的名字>
