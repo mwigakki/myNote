@@ -980,10 +980,6 @@ Network Namespace 是 Linux 内核提供的功能，是实现网络虚拟化的�
 
 可以为每个联网容器创建一个命名空间，当然这需要有足够的物理网卡。当物理网卡不足而需要多个网络容器时，就需要虚拟网卡设备。
 
-
-
-Docker 允许通过外部访问容器或容器互联的方式来提供网络服务。
-
 #### 外部访问容器
 
 在上文 **4. Docker镜像 - 利用 commit 理解镜像构成** 已有例子。命令例子如下：
@@ -1005,7 +1001,7 @@ docker run --name webserver -d -p 80:80 nginx
 使用 `hostPort:containerPort` 格式本地的 80 端口映射到容器的 80 端口，可以执行
 
 ``` shell
-$ docker run -d -p 80:80 nginx:alpin
+$ docker run -d -p 80:80 nginx
 ```
 
 此时默认会绑定本地所有接口上的所有地址。
@@ -1015,8 +1011,149 @@ $ docker run -d -p 80:80 nginx:alpin
 可以使用 `ip:hostPort:containerPort` 格式指定映射使用一个特定地址，比如 localhost 地址 127.0.0.1
 
 ``` shell
-$ docker run -d -p 127.0.0.1:80:80 nginx:alpine
+$ docker run -d -p 127.0.0.1:80:80 nginx
 ```
+
+- 映射到指定地址的任意端口
+
+使用 `ip::containerPort` 绑定 localhost 的任意端口到容器的 80 端口，本地主机会自动分配一个端口。
+
+``` shell
+$ docker run -d -p 127.0.0.1::80 nginx
+```
+
+还可以使用 `udp` 标记来指定 `udp` 端口
+
+``` shell
+$ docker run -d -p 127.0.0.1:80:80/udp nginx
+```
+
+#### 查看端口映射
+
+使用 `docker port` 来查看当前映射的端口配置，也可以查看到绑定的地址:
+
+``` shell
+ubuntu@VM-8-17-ubuntu:~$ docker port 39
+80/tcp -> 0.0.0.0:8000
+80/tcp -> :::8000
+```
+
+注意：
+
+- 容器有自己的内部网络和 ip 地址（使用 `docker inspect` 查看，Docker 还可以有一个可变的网络配置。）
+- `-p` 标记可以多次使用来绑定多个端口
+
+例：
+
+``` shell
+$ docker run -d -p 80:80 -p 443:443 nginx
+```
+
+#### 容器互联
+
+##### 新建网络
+
+``` shell
+$ docker network create -d bridge my-net
+```
+
+`-d` 参数指定 Docker 网络类型，有 `bridge` `overlay`。其中 `overlay` 网络类型用于 [Swarm mode]()，在本小节中你可以忽略它。
+
+##### 连接容器
+
+运行一个容器并连接到新建的 `my-net` 网络
+
+``` shell
+$ docker run -it --rm --name busybox1 --network my-net busybox sh
+```
+
+打开新的终端，再运行一个容器并加入到 `my-net` 网络
+
+``` shell
+$ docker run -it --rm --name busybox2 --network my-net busybox sh
+```
+
+再打开一个新的终端查看容器信息
+
+``` sh
+ubuntu@VM-8-17-ubuntu:~$ docker container ls
+CONTAINER ID   IMAGE     COMMAND   CREATED              STATUS              PORTS     NAMES
+f106ab656bce   busybox   "sh"      11 seconds ago       Up 10 seconds                 busybox2
+5dc68eb21ca6   busybox   "sh"      About a minute ago   Up About a minute             busybox1
+```
+
+下面通过 `ping` 来证明 `busybox1` 容器和 `busybox2` 容器建立了互联关系。
+
+在 `busybox1` 容器输入以下命令
+
+``` shell
+/ # ping busybox2
+PING busybox2 (172.18.0.3): 56 data bytes
+64 bytes from 172.18.0.3: seq=0 ttl=64 time=0.091 ms
+64 bytes from 172.18.0.3: seq=1 ttl=64 time=0.082 ms
+64 bytes from 172.18.0.3: seq=2 ttl=64 time=0.080 ms
+64 bytes from 172.18.0.3: seq=3 ttl=64 time=0.086 ms
+...
+```
+
+同理在 `busybox2` 容器执行 `ping busybox1`，也会成功连接到。
+
+这样，`busybox1` 容器和 `busybox2` 容器建立了互联关系。
+
+如果你有多个容器之间需要互相连接，推荐使用 [Docker Compose]()。
+
+#### 配置DNS
+
+如何自定义配置容器的主机名和 DNS 呢？秘诀就是 Docker 利用虚拟文件来挂载容器的 3 个相关配置文件。
+
+在容器中使用 `mount` 命令可以看到挂载信息：
+
+``` shell
+$ mount
+/dev/disk/by-uuid/1fec...ebdf on /etc/hostname type ext4 ...
+/dev/disk/by-uuid/1fec...ebdf on /etc/hosts type ext4 ...
+tmpfs on /etc/resolv.conf type tmpfs ...
+```
+
+这种机制可以让宿主主机 DNS 信息发生更新后，所有 Docker 容器的 DNS 配置通过 `/etc/resolv.conf` 文件立刻得到更新。
+
+配置全部容器的 DNS ，也可以在 `/etc/docker/daemon.json` 文件中增加以下内容来设置。
+
+``` json
+{
+  "dns" : [
+    "114.114.114.114",
+    "8.8.8.8"
+  ]
+}
+```
+
+然后重载配置及重新启动
+
+``` shell
+sudo systemctl daemon-reload
+sudo service docker restart
+```
+
+这样每次启动的容器 DNS 自动配置为 `114.114.114.114` 和 `8.8.8.8`。使用以下命令来证明其已经生效。
+
+``` shell
+$ docker run -it --rm ubuntu  cat etc/resolv.conf # --rm 表示容器结束即删除
+
+nameserver 114.114.114.114
+nameserver 8.8.8.8
+```
+
+如果用户想要手动指定容器的配置，可以在使用 `docker run` 命令启动容器时加入如下参数：
+
+- `-h HOSTNAME` 或者 `--hostname=HOSTNAME` 设定容器的主机名，它会被写到容器内的 `/etc/hostname` 和 `/etc/hosts`。但它在容器外部看不到，既不会在 `docker container ls` 中显示，也不会在其他的容器的 `/etc/hosts` 看到。
+
+- `--dns=IP_ADDRESS` 添加 DNS 服务器到容器的 `/etc/resolv.conf` 中，让容器用这个服务器来解析所有不在 `/etc/hosts` 中的主机名。
+- `--dns-search=DOMAIN` 设定容器的搜索域，当设定搜索域为 `.example.com` 时，在搜索一个名为 host 的主机时，DNS 不仅搜索 host，还会搜索 `host.example.com`。
+
+> 注意：如果在容器启动时没有指定最后两个参数，Docker 会默认用主机上的 `/etc/resolv.conf` 来配置容器
+
+
 
 
 
@@ -1051,4 +1188,129 @@ docker0: flags=4163<UP,BROADCAST,RUNNING,MULTICAST>  mtu 1500
 
 这种是最常见的场景，使用容器部署应用，给其他机器提供服务，此时**容器和宿主机IP是通的，可以直接使用容器的虚拟IP+端口进行访问容器服务**，如果想**使用宿主机的IP访问到容器服务，需要将宿主机的某端口映射到容器的服务端口**，即对外暴露端口供宿主机和其他机器访问，**如果不发布端口，外界将无法访问这些容器**
 
- 
+ ## 10. 更多网络配置
+
+当 Docker 启动时，会自动在主机上创建一个 `docker0` 虚拟网桥，实际上是 Linux 的一个 bridge，可以理解为一个软件交换机。它会在挂载到它的网口之间进行转发。
+
+同时，Docker 随机分配一个本地未占用的私有网段（在 [RFC1918](https://datatracker.ietf.org/doc/html/rfc1918) 中定义）中的一个地址给 `docker0` 接口。比如典型的 `172.17.42.1`，掩码为 `255.255.0.0`。此后启动的容器内的网口也会自动分配一个同一网段（`172.17.0.0/16`）的地址。
+
+``` shell
+ubuntu@VM-8-17-ubuntu:~$ ifconfig 
+......
+docker0: flags=4163<UP,BROADCAST,RUNNING,MULTICAST>  mtu 1500
+        inet 172.17.0.1  netmask 255.255.0.0  broadcast 172.17.255.255
+        inet6 fe80::42:88ff:fed9:a67d  prefixlen 64  scopeid 0x20<link>
+        ether 02:42:88:d9:a6:7d  txqueuelen 0  (Ethernet)
+        RX packets 9988  bytes 888581 (888.5 KB)
+        RX errors 0  dropped 0  overruns 0  frame 0
+        TX packets 13743  bytes 25489951 (25.4 MB)
+        TX errors 0  dropped 0 overruns 0  carrier 0  collisions 0
+veth18f4d1d: flags=4163<UP,BROADCAST,RUNNING,MULTICAST>  mtu 1500
+        inet6 fe80::68a0:fff:fe67:3630  prefixlen 64  scopeid 0x20<link>
+        ether 6a:a0:0f:67:36:30  txqueuelen 0  (Ethernet)
+        RX packets 71  bytes 7782 (7.7 KB)
+        RX errors 0  dropped 0  overruns 0  frame 0
+        TX packets 98  bytes 6920 (6.9 KB)
+        TX errors 0  dropped 0 overruns 0  carrier 0  collisions 0        
+......
+```
+
+当创建一个 Docker 容器的时候，同时会创建了一对 `veth pair` 接口（当数据包发送到一个接口时，另外一个接口也可以收到相同的数据包）。这对接口一端在容器内，即 `eth0`；另一端在本地并被挂载到 `docker0` 网桥，名称以 `veth` 开头（例如 `vethAQI2QT`）。通过这种方式，主机可以跟容器通信，容器之间也可以相互通信。Docker 就创建了在主机和所有容器之间一个虚拟共享网络。
+
+<img src="https://3503645665-files.gitbook.io/~/files/v0/b/gitbook-x-prod.appspot.com/o/spaces%2F-M5xTVjmK7ax94c8ZQcm%2Fuploads%2Fgit-blob-fdf892864409593e4417468c6f0430ee8c0ebfe9%2Fnetwork.png?alt=media" alt="docker网络" style="zoom: 50%;" />
+
+接下来的部分将介绍在一些场景中，Docker 所有的网络定制配置。以及通过 Linux 命令来调整、补充、甚至替换 Docker 默认的网络配置。
+
+#### 快速配置指南
+
+下面是一个跟 Docker 网络相关的命令列表。
+
+其中有些命令选项只有在 **Docker 服务启动**的时候才能配置，而且不能马上生效。
+
+- `-b BRIDGE` 或 `--bridge=BRIDGE` 指定容器挂载的网桥
+- `--bip=CIDR` 定制 docker0 的掩码
+- `-H SOCKET...` 或 `--host=SOCKET...` Docker 服务端接收命令的通道
+- `--icc=true|false` 是否支持容器之间进行通信
+- `--ip-forward=true|false` 请看下文容器之间的通信
+- `--iptables=true|false` 是否允许 Docker 添加 iptables 规则
+- `--mtu=BYTES` 容器网络中的 MTU
+
+下面2个命令选项既可以在启动服务时指定，也可以在启动容器时指定。在 Docker 服务启动的时候指定则会成为默认值，后**面执行 `docker run` 时**可以覆盖设置的默认值。
+
+- `--dns=IP_ADDRESS...` 使用指定的DNS服务器
+- `--dns-search=DOMAIN...` 指定DNS搜索域
+
+最后这些选项只有在 `docker run` 执行时使用，因为它是针对容器的特性内容。
+
+- `-h HOSTNAME` 或 `--hostname=HOSTNAME` 配置容器主机名
+- `--link=CONTAINER_NAME:ALIAS` 添加到另一个容器的连接
+- `--net=bridge|none|container:NAME_or_ID|host` 配置容器的桥接模式
+- `-p SPEC` 或 `--publish=SPEC` 映射容器端口到宿主主机
+- `-P or --publish-all=true|false` 映射容器所有端口到宿主主机
+
+#### 容器访问控制
+
+容器的访问控制，主要通过 Linux 上的 `iptables` 防火墙来进行管理和实现。`iptables` 是 Linux 上默认的防火墙软件，在大部分发行版中都自带。
+
+容器要想访问外部网络，需要本地系统的转发支持。在Linux 系统中，检查转发是否打开。
+
+``` shell
+$sysctl net.ipv4.ip_forward
+net.ipv4.ip_forward = 1
+```
+
+如果为 0，说明没有开启转发，则需要手动打开。
+
+``` shell
+$sysctl -w net.ipv4.ip_forward=1
+```
+
+如果在启动 Docker 服务的时候设定 `--ip-forward=true`, Docker 就会自动设定系统的 `ip_forward` 参数为 1。
+
+##### 容器之间访问
+
+容器之间相互访问，需要两方面的支持。
+
+- 容器的网络拓扑是否已经互联。默认情况下，所有容器都会被连接到 `docker0` 网桥上。
+- 本地系统的防火墙软件 -- `iptables` 是否允许通过。
+
+##### 访问所有端口
+
+当启动 Docker 服务（即 dockerd）的时候，默认会添加一条转发策略到本地主机 iptables 的 FORWARD 链上。策略为通过（`ACCEPT`）还是禁止（`DROP`）取决于配置`--icc=true`（缺省值）还是 `--icc=false`。当然，如果手动指定 `--iptables=false` 则不会添加 `iptables` 规则。
+
+可见，默认情况下，不同容器之间是允许网络互通的。如果为了安全考虑，可以在 `/etc/docker/daemon.json` 文件中配置 `{"icc": false}` 来禁止它。
+
+##### 访问指定端口
+
+在通过 `-icc=false` 关闭网络访问后，还可以通过 `--link=CONTAINER_NAME:ALIAS` 选项来访问容器的开放端口。
+
+例如，在启动 Docker 服务时，可以同时使用 `icc=false --iptables=true` 参数来关闭允许相互的网络访问，并让 Docker 可以修改系统中的 `iptables` 规则。
+
+此时，系统中的 `iptables` 规则可能是类似
+
+``` shell
+$ sudo iptables -nL
+...
+Chain FORWARD (policy ACCEPT)
+target     prot opt source               destination
+DROP       all  --  0.0.0.0/0            0.0.0.0/0
+...
+```
+
+之后，启动容器（`docker run`）时使用 `--link=CONTAINER_NAME:ALIAS` 选项。Docker 会在 `iptable` 中为两个容器分别添加一条 `ACCEPT` 规则，允许相互访问开放的端口（取决于 `Dockerfile` 中的 `EXPOSE` 指令）。
+
+当添加了 `--link=CONTAINER_NAME:ALIAS` 选项后，添加了 `iptables` 规则。
+
+``` shell
+$ sudo iptables -nL
+...
+Chain FORWARD (policy ACCEPT)
+target     prot opt source               destination
+ACCEPT     tcp  --  172.17.0.2           172.17.0.3           tcp spt:80
+ACCEPT     tcp  --  172.17.0.3           172.17.0.2           tcp dpt:80
+DROP       all  --  0.0.0.0/0            0.0.0.0/0
+```
+
+注意：`--link=CONTAINER_NAME:ALIAS` 中的 `CONTAINER_NAME` 目前必须是 Docker 分配的名字，或使用 `--name` 参数指定的名字。主机名则不会被识别。
+
+更多见：[端口映射实现 - Docker — 从入门到实践 (gitbook.io)](https://yeasy.gitbook.io/docker_practice/advanced_network/port_mapping)
