@@ -7,6 +7,7 @@
 > 就好比玩RPG游戏一样，每通过一关(完成一次的工作)都要保存一下游戏(add 和commit一下)。如果某一关没过去(某一次编辑出现了问题)，我们可以选择读取前一关的状态(回退上一个版本)。并且在你随时想暂停的时候都可以暂停(add,commit保存一个版本)。
 
  cmd 进入git怎么退出: 按q 回车
+ 
  查看分支合并情况： `git log --graph --pretty=oneline --abbrev-commit`
 
 # 安装与常用操作
@@ -14,13 +15,16 @@
 ### 安装git（windows）
 
 官网下载后，一直下一步就行。只有把默认编辑器从vim改成VScode需要注意
+
 安装git完成后，需要在命令行设置：
 
 > `git config --global user.name "Your Name"`
+> 
 > `git config --global user.email "email@example.com"`
+
 相当于自报家门
 
-然后还要给github加上一个ssh key以便方便地使用guihub，见后面。
+然后还要给github加上一个ssh key以便方便地使用github，见后面。
 
 ### 初始化
 
