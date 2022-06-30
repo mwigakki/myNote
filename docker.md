@@ -3,7 +3,9 @@
 https://www.w3cschool.cn/docker/docker-tutorial.html
 
 [什么是Docker？看这一篇干货文章就够了！ - 知乎 (zhihu.com)](https://zhuanlan.zhihu.com/p/187505981)
+
 [Docker — 从入门到实践 | Docker 从入门到实践 (docker-practice.com)](https://vuepress.mirror.docker-practice.com/)
+
 [前言 - Docker — 从入门到实践 (gitbook.io)](https://yeasy.gitbook.io/docker_practice/)
 
 ## 1. 容器简介
@@ -499,7 +501,7 @@ $ docker image rm $(docker image ls -q -f before=mongo:3.2)
 
 容器存储层的生存周期和容器一样，容器消亡时，容器存储层也随之消亡。因此，任何保存于容器存储层的信息都会随容器删除而丢失。
 
-按照 Docker 最佳实践的要求，容器不应该向其存储层内写入任何数据，容器存储层要保持无状态化。所有的文件写入操作，都应该使用 [数据卷（Volume）](https://vuepress.mirror.docker-practice.com/data_management/volume.html)、或者 [绑定宿主目录](https://vuepress.mirror.docker-practice.com/data_management/bind-mounts.html)，在这些位置的读写会跳过容器存储层，直接对宿主（或网络存储）发生读写，其性能和稳定性更高。
+按照 Docker 最佳实践的要求，**容器不应该向其存储层内写入任何数据，容器存储层要保持无状态化**。所有的文件写入操作，都应该使用 [数据卷（Volume）](https://vuepress.mirror.docker-practice.com/data_management/volume.html)、或者 [绑定宿主目录](https://vuepress.mirror.docker-practice.com/data_management/bind-mounts.html)，在这些位置的读写会跳过容器存储层，直接对宿主（或网络存储）发生读写，其性能和稳定性更高。
 
 数据卷的生存周期独立于容器，容器消亡，数据卷不会消亡。因此，使用数据卷后，容器删除或者重新运行之后，数据却不会丢失。
 
@@ -1033,7 +1035,7 @@ $ docker run -d -p 127.0.0.1:80:80/udp nginx
 使用 `docker port` 来查看当前映射的端口配置，也可以查看到绑定的地址:
 
 ``` shell
-ubuntu@VM-8-17-ubuntu:~$ docker port 39
+ubuntu@VM-8-17-ubuntu:~$ docker port <container-ID>
 80/tcp -> 0.0.0.0:8000
 80/tcp -> :::8000
 ```

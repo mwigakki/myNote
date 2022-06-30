@@ -85,7 +85,7 @@ get myKey
 
 ### 启动 Redis
 
-```bash
+```shell
 # redis-server
 ```
 
@@ -313,7 +313,7 @@ Redis 列表是简单的**字符串列表**，**按照插入顺序排序**。你
 ```bash
 redis 127.0.0.1:6379> DEL runoob
 redis 127.0.0.1:6379> lpush runoob redis
-(integer) 1
+(integer) 1			# 这里显示的是插入到list中的位置
 redis 127.0.0.1:6379> lpush runoob mongodb
 (integer) 2
 redis 127.0.0.1:6379> lpush runoob rabbitmq
@@ -325,7 +325,7 @@ redis 127.0.0.1:6379> lrange runoob 0 10
 redis 127.0.0.1:6379>
 ```
 
-列表最多可存储 232 - 1 元素 (4294967295, 每个列表可存储40多亿)。
+列表最多可存储 2^32 - 1 元素 (4294967295, 每个列表可存储40多亿)。
 
 > 注：这里使用到了range，经过测试，redis中有序的数据结构如List或zset，下标是从1开始的，且range [min max]，左闭右闭
 
@@ -372,7 +372,7 @@ sadd key member
 ```bash
 redis 127.0.0.1:6379> DEL runoob
 redis 127.0.0.1:6379> sadd runoob redis
-(integer) 1
+(integer) 1			# 这里显示的是插入到set中的元素个数
 redis 127.0.0.1:6379> sadd runoob mongodb
 (integer) 1
 redis 127.0.0.1:6379> sadd runoob rabbitmq
@@ -416,11 +416,9 @@ redis 127.0.0.1:6379> smembers runoob
 
 Redis zset 和 set 一样也是string类型元素的集合,且不允许重复的成员。
 
-
-
 不同的是每个元素都会关联一个double类型的分数。redis正是通过分数来为集合中的成员进行从小到大的排序。
 
-zset的成员是唯一的,但分数(score)却可以重复。
+zset的**成员是唯一的**, **但分数(score)却可以重复**。
 
 ### zadd 命令
 
@@ -435,7 +433,7 @@ zadd key score member
 ```bash
 redis 127.0.0.1:6379> DEL runoob
 redis 127.0.0.1:6379> zadd runoob 0 redis
-(integer) 1
+(integer) 1		# 这里显示的是插入到zset中的元素个数
 redis 127.0.0.1:6379> zadd runoob 0 mongodb
 (integer) 1
 redis 127.0.0.1:6379> zadd runoob 0 rabbitmq
