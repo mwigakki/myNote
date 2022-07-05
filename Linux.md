@@ -1364,3 +1364,154 @@ $ uname -v   # 显示系统版本与时间
 ```
 
 # 
+
+
+## 一些安装
+
+#### linux下安装python模块包
+
+- 默认下载python2的包：`apt-get install python-packageName`
+- 改为下载python3的包：`apt-get install python3-packageName`
+
+[可能需要管理员权限sudo]
+
+可能需要提前执行一下这个` sudo apt-get update`
+
+注：【tkinter】这个包：`apt-get install python3-tk`
+
+#### python实现.py的带参数启动
+
+- sys中的argv保存了启动时的输入参数，其中argv[0]为运行的文件名，输入参数从argv[1]开始
+
+``` python
+import sys
+a = sys.argv[1]
+b = sys.argv[2]
+print(a,b)
+print(str(int(a)+int(b)))
+```
+
+> argv[]中自动append启动时传入的参数，如果传入了多余的参数，在代码中没有引用是允许的；但是当没有相应的参数传入时，会报超出索引值的错误
+
+#### linux下安装java
+
+-  安装openjdk-8-jdk：`sudo apt-get install openjdk-8-jdk`	
+-  查看java版本，看看是否安装成功：`java -version`
+-  剩余步骤见：https://blog.csdn.net/weixin_42763696/article/details/106799244
+
+#### python中执行shell命令：
+
+1. os模块中的os.system()这个函数来执行shell命令
+
+``` python
+os.system('ls')
+anaconda-ks.cfg  install.log  install.log.syslog  send_sms_service.py  sms.py
+注，这个方法得不到shell命令的输出
+```
+
+2. commands模块#可以很方便的取得命令的输出（包括标准和错误输出）和执行状态位
+
+``` python
+import commands
+a,b = commands.getstatusoutput('ls')
+a是退出状态
+b是输出的结果。
+```
+
+3. subprocess 模块允许我们启动一个新进程，并连接到它们的输入/输出/错误管道，从而获取返回值。
+
+``` python
+subprocess.call(command, shell=True)
+#会直接打印出结果
+subprocess.Popen(command, shell=True) 也可以是subprocess.Popen(command, stdout=subprocess.PIPE, shell=True) 这样就可以输出结果了。
+```
+
+#### java中执行shell命令
+
+``` java
+public class TestDemo  {
+    public static void main(String[] args) throws Exception{
+        // test Shell
+        Process p = null;
+        p = Runtime.getRuntime().exec("python3 /home/sient/p4_start/src/test.py");
+        // 这里要执行文件的话尽量写完整的绝对路径
+//        p.waitFor();  // 使用waitFor的话就会让此Java程序一直等待上面执行脚本的进程结束才能继续执行Java
+        System.out.println("执行");
+    }
+} 
+```
+
+#### linux下安装mysql5.7
+
+- 参见：https://www.bilibili.com/video/BV12q4y1U7sZ/
+
+1. 首先，输入下列命令确保你的仓库已经被更新：` sudo apt update`
+2. 现在，安装 **MySQL 5.7**，简单输入下列命令： `sudo apt install mysql-server`
+3. 进行安全配置: `sudo mysql_secure_installation`，按y，然后会询问我们的强制密码强度，设置为0即可。
+4. 设置一个至少8位的密码，然后y,y,n,n,y
+5. 查看mysql是否正在运行 `systemctl status mysql.service`
+
+- **连接mysql** :  `sudo mysql -u root -p`然后输入密码即可
+- **查看自带的数据库** `show schemas`; 
+- **重启mysql**：`sudo /etc/init.d/mysql restart `
+- **查看mysql的启动状态** : `service mysql status  `
+
+***接下来进行进行一些远程配置：***
+
+1. 首先`sudo ufw status`查看防火墙是否开启，状态为inactive说明没有开启防火墙。
+
+2. 进入mysql， 修改mysql访问权限
+
+3. 输入`grant all privileges on *.* to 'root'@'%' identified by 'password' with grant option`; 授予所有权限给 库名.表名 to 用户@ip地址 , 通过密码"password" 确认连接
+
+4. `flush privileges`立刻刷新权限生效
+
+5. 然而此时的数据库还不能使用 *Navicat* 连接，（因为还没配置文件远程连接）：
+
+  - 解决操作如下：
+
+    在终端输入命令：`sudo vi /etc/mysql/mysql.conf.d/mysqld.cnf`将 **bind-address=127.0.0.1** 改成**bind-address=0.0.0.0**
+
+    接下来进入mysql：
+
+    ``` mysql
+    use mysql;
+    select user,host from user;
+    # 给权限：
+    update user set host='%' where host='localhost';
+    # 刷新配置：
+    flush privileges;
+    ```
+
+#### [Linux--Shell] 使用命令行关机或重启
+
+`shutdown -h now` 会立即**关闭机器**。
+
+`shutdown -r now`，`sudo reboot`， 这两个命令功能一样，**重启**，其中shutdown -r now的-r应当就是restart的意思。
+
+## 可能遇到的问题与解决
+
+- **swap file “*.swp”already exists！问题：**
+    - 在其目录下详细显示所有文件 ls -al , 将.swp结尾的文件rm掉
+
+- **使用ssh远程连接时出现The authenticity of host xxx can't be established问题：**
+    - 主机的key发生了变化，因此每次SSH链接都会有提示，只需要在交互下输入yes即可。
+        当然如果长久的想解决问题，可以采用以下方法：
+        	使用ssh连接远程主机时加上“-o StrictHostKeyChecking=no”的选项，去掉对主机的验证检查。
+        	ssh -o StrictHostKeyChecking=no 192.168.xxx.xxx
+        	参见：https://www.cnblogs.com/gauze/p/5554840.html
+
+- **安装sshpass以在ssh连接时可以带上密码**
+    - **安装命令**： sudo apt-get install sshpass
+        **连接命令**： sshpass -p "密码" ssh 192.168.199.151 "其他sh命令"
+        加上命令：-o StrictHostKeyChecking=no  可以跳过keyChecking，）就不用输yes/no了
+        	例：sshpass -p 'onl' ssh -o StrictHostKeyChecking=no 192.168.199.151
+
+- **使用服务器ssh连接交换机时出现Permission denied, please try again错误，无法连接；而使用交换机连交换机就可以连接**
+    - **原因**：服务器的用户都是sinet，而交换机的用户都是root
+    - **解决**：使用服务器连接时要把用户带上，即ssh root@192.168.199.151
+- **navicat连接出现1251 client does not support authentication问题时**
+    -  https://minsonlee.github.io/2021/11/mysql-client-not-support-authentication  
+- **mysql连接jar包需要放在linux下的哪里呢？**
+    - 该jar包应该被置于jdk安装路径下jre文件夹lib目录的ext文件夹下。例如我的JDK安装路径为`/usr/lib/jvm/java-8-openjdk-amd64`，则我的jar包位置应该是：`/usr/lib/jvm/java-8-openjdk-amd64/jre/lib/ext/mysql-connector-java-8.0.18.jar`（通过whereis java查看jdk路径）
+

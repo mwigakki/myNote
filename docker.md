@@ -118,7 +118,7 @@ Docker 使用**客户端-服务器 (C/S) 架构**模式。
 
 
 
-<img src="https://raw.githubusercontent.com/mwigakki/learnGit/master/docker.assets/576507-docker1.png" alt="docker示例图" style="zoom: 150%;" />
+<img src="https://raw.githubusercontent.com/mwigakki/learnGit/master/docker.assets/docker1.png" alt="docker示例图" style="zoom: 150%;" />
 
 | 概念                   | 说明                                                         |
 | :------------------------------------ | :-------------------------------------------- |
@@ -290,7 +290,7 @@ docker run --name webserver -d -p 80:80 nginx
 
 > 如果是在本机运行的 Docker，那么可以直接访问：`http://localhost` ，如果是在虚拟机、云服务器上安装的 Docker，则需要将 `localhost` 换为虚拟机地址或者实际云服务器地址。直接用浏览器访问的话，我们会看到默认的 Nginx 欢迎页面。
 
-<img src="https://raw.githubusercontent.com/mwigakki/learnGit/master/docker.assets/image-20220623105826877.png" alt="nginx欢迎页面" style="zoom:80%;" />
+<img src="https://raw.githubusercontent.com/mwigakki/learnGit/master/docker.assets/docker2.png" alt="nginx欢迎页面" style="zoom:80%;" />
 
 现在，假设我们非常不喜欢这个欢迎页面，我们希望改成欢迎 Docker 的文字，我们可以使用 `docker exec` 命令进入容器，修改其内容。
 
