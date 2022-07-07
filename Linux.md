@@ -1,4 +1,6 @@
-[Linux 教程 | 菜鸟教程 (runoob.com)](https://www.runoob.com/linux/linux-tutorial.html)
+Linux 教程 | 菜鸟教程 (runoob.com)](https://www.runoob.com/linux/linux-tutorial.html)
+
+[【linux】最常用 150 个Linux命令汇总 - 腾讯云开发者社区-腾讯云 (tencent.com)](https://cloud.tencent.com/developer/article/1540697)
 
 # 1. Linux 系统启动过程
 
@@ -8,7 +10,7 @@
 
 操作系统接管硬件以后，首先读入 /boot 目录下的内核文件。
 
-![image-20220526153409500](D:\record\Linux.assets\image-20220526153409500.png)
+![image-20220526153409500](img\linux1.png)
 
 - **运行init**
 
@@ -22,7 +24,7 @@ init 进程是系统所有进程的起点，你可以把它比拟成系统所有
 
 init 程序首先是需要读取配置文件 /etc/inittab。
 
-![image-20220526153436284](D:\record\Linux.assets\image-20220526153436284.png)
+![image-20220526153436284](img\linux2.png)
 
 许多程序需要开机启动。它们在Windows叫做"服务"（service），在Linux就叫做"守护进程"（daemon）。
 
@@ -32,7 +34,7 @@ init进程的一大任务，就是去运行这些开机启动的程序。
 
 Linux允许为不同的场合，分配不同的开机启动程序，这就叫做"运行级别"（runlevel）。也就是说，启动时根据"运行级别"，确定要运行哪些程序。
 
-![image-20220526153553455](D:\record\Linux.assets\image-20220526153553455.png)
+![image-20220526153553455](img\linux3.png)
 
 > Linux系统有7个运行级别(runlevel)：
 >
@@ -66,7 +68,7 @@ l5:5:wait:/etc/rc.d/rc 5
 
 至于在每个运行级中将运行哪些守护进程，用户可以通过chkconfig或setup中的"System Services"来自行设定。
 
-![image-20220526153756556](D:\record\Linux.assets\image-20220526153756556.png)
+![image-20220526153756556](img\linux4.png)
 
 - **建立终端**
 
@@ -93,7 +95,7 @@ init接下来会打开6个终端，以便用户登录系统。在inittab中的�
 - （2）ssh登录
 - （3）图形界面登录
 
-![image-20220526153856769](D:\record\Linux.assets\image-20220526153856769.png)
+![image-20220526153856769](img\linux5.png)
 
 对于运行级别为5的图形方式用户来说，他们的登录是通过一个图形化的登录界面。登录成功后可以直接进入 KDE、Gnome 等窗口管理器。
 
@@ -109,7 +111,7 @@ Linux 的账号验证程序是 login，login 会接收 mingetty 传来的用户�
 
 ### Linux的发行版
 
-![image-20220526161700057](D:\record\Linux.assets\image-20220526161700057.png)
+![image-20220526161700057](img\linux6.png)
 
 ### Linux 关机
 
@@ -152,7 +154,7 @@ halt 关闭系统，等同于shutdown –h now 和 poweroff
 
 树状目录结构:
 
-![image-20220526161140810](D:\record\Linux.assets\image-20220526161140810.png)
+![image-20220526161140810](img\linux7.png)
 
 以下是对这些目录的解释：
 
@@ -440,7 +442,7 @@ Linux 文件的基本权限就有九个，分别是 **owner/group/others(拥有�
 
 此外， **a** 则代表 **all**，即全部的身份。读写的权限可以写成 **r, w, x**，也就是可以使用下表的方式来看：
 
-![image-20220526163246367](D:\record\Linux.assets\image-20220526163246367.png)
+![image-20220526163246367](img\linux8.png)
 
 如果我们需要将文件权限设置为 **-rwxr-xr--** ，可以使用 **chmod u=rwx,g=rx,o=r 文件名** 来设定:
 
@@ -1258,11 +1260,13 @@ sh test.sh
 
 - `gzip`: 是个使用广泛的压缩程序，压缩后的文件后缀名为 **.gz**。
 
-
-
 ## 磁盘管理
 
-- `stat` : 以文字的格式来显示 inode 的内容。
+
+
+### `stat`
+
+以文字的格式来显示 inode 的内容。
 
 ``` shell
 $ stat test.py 
@@ -1276,19 +1280,90 @@ Change: 2022-07-04 16:50:11.364509583 +0800
  Birth: -
 ```
 
-- `du` :（英文全拼：disk usage）命令用于显示目录或文件的大小。
 
-    [Linux du 命令 | 菜鸟教程 (runoob.com)](https://www.runoob.com/linux/linux-comm-du.html)
 
-[Linux 命令大全 | 菜鸟教程 (runoob.com)](https://www.runoob.com/linux/linux-command-manual.html)
+### `du`
 
-## 基础网络操作命令
+（英文全拼：disk usage）命令用于显示目录或文件的大小。计算磁盘空间使用情况
+
+``` shell
+ubuntu@VM-8-17-ubuntu:~/test$ ls
+asd  a.tar.gz  b.gz  c.tar  Desktop.zip  erer.txt  qwer  test.py  www
+ubuntu@VM-8-17-ubuntu:~/test$ du -h
+12K	./qwer
+12K	./www
+56K	.
+```
+
+
+`du -h` ： 显示当前目录及所有子目录的大小，`-h`是以人类易读的形式显示
+
+``` shell
+ubuntu@VM-8-17-ubuntu:~$ du -h mynginx/
+12K	mynginx/
+```
+
+在其后加上具体的目录可以指定显示该目录或文件
+
+
+​    
+
+### `df`
+
+-  （英文全拼：disk free） 显示文件系统磁盘使用情况统计。
+
+    ``` shell
+    ubuntu@VM-8-17-ubuntu:~$ df -h
+    Filesystem      Size  Used Avail Use% Mounted on
+    udev            944M     0  944M   0% /dev
+    tmpfs           199M  856K  198M   1% /run
+    /dev/vda2        40G  7.5G   31G  20% /
+    tmpfs           992M   24K  992M   1% /dev/shm
+    tmpfs           5.0M     0  5.0M   0% /run/lock
+    tmpfs           992M     0  992M   0% /sys/fs/cgroup
+    tmpfs           199M     0  199M   0% /run/user/1000
+	```
+
+    第一列指定文件系统的名称，第二列指定一个特定的文件系统1K-块1K是1024字节为单位的总内存。用和可用列正在使用中，分别指定的内存量。
+    
+    使用列指定使用的内存的百分比，而最后一栏"安装在"指定的文件系统的挂载点。	
+    
+    - 用一个-i选项的df命令的输出显示inode信息而非块使用量。
+    
+    ``` shell
+    ubuntu@VM-8-17-ubuntu:~$ df -i
+    Filesystem      Inodes  IUsed   IFree IUse% Mounted on
+    udev            241584    413  241171    1% /dev
+    tmpfs           253779    698  253081    1% /run
+    /dev/vda2      2600960 238823 2362137   10% /
+    tmpfs           253779      7  253772    1% /dev/shm
+    tmpfs           253779      5  253774    1% /run/lock
+    tmpfs           253779     18  253761    1% /sys/fs/cgroup
+    tmpfs           253779     21  253758    1% /run/user/1000
+    ```
+    
+    - 显示所有的信息:
+    
+    ``` shell
+    ubuntu@VM-8-17-ubuntu:~$ df --total
+    Filesystem     1K-blocks    Used Available Use% Mounted on
+    udev              966336       0    966336   0% /dev
+    tmpfs             203024     856    202168   1% /run
+    /dev/vda2       41222348 7801332  31648328  20% /
+    tmpfs            1015116      24   1015092   1% /dev/shm
+    tmpfs               5120       0      5120   0% /run/lock
+    tmpfs            1015116       0   1015116   0% /sys/fs/cgroup
+    tmpfs             203020       0    203020   0% /run/user/1000
+    total           44630080 7802212  35055180  19% -
+    ```
 
 
 
 ## 系统管理
 
-- `uname` :  （英文全拼：unix name）显示操作系统相关信息的命令。
+### `uname` 
+
+（英文全拼：unix name）显示操作系统相关信息的命令。
 
 ``` shell
 $ uname -a  # 显示系统信息
@@ -1311,13 +1386,346 @@ $ uname -v   # 显示系统版本与时间
 
 
 
+### `ps `
+
+（英文全拼：process status）命令用于**显示当前进程的状态**，类似于 windows 的任务管理器。
+
+语法:
+
+```
+ps [options] [--help]
+
+ps 的参数非常多, 在此仅列出几个常用的参数并大略介绍含义
+-A 列出所有的进程
+-w 显示加宽可以显示较多的资讯
+-au 显示较详细的资讯
+-aux 显示所有包含其他使用者的进程
+
+进程状态：
+
+R 运行，正在运行或在运行队列中等待。
+S 中断，休眠中, 受阻, 在等待某个条件的形成或接受到信号。
+D 不可中断，收到信号不唤醒和不可运行, 进程必须等待直到有中断发生。
+Z 僵死 ，进程已终止, 但进程描述符存在, 直到父进程调用wait4()系统调用后释放。
+T 停止，进程收到SIGSTOP, SIGSTP, SIGTIN, SIGTOU信号后停止运行运行。
+```
+
+显示指定用户信息
+
+```bash
+$ ps -u root //显示root进程用户信息
+ PID TTY     TIME CMD
+  1 ?    00:00:02 init
+  2 ?    00:00:00 kthreadd
+  3 ?    00:00:00 migration/0
+```
+
+grep命令是查找，grep全称是Global Regular Expression Print，表示全局正则表达式版本，它的使用权限是所有用户。
+
+中间的|是管道命令 是指ps命令与grep同时执行
+
+``` shell
+ubuntu@VM-8-17-ubuntu:~$ ps -aux | grep redis
+ubuntu     77504  0.0  0.0   6300   656 pts/0    S+   21:30   0:00 grep --color=auto redis
+systemd+ 2687668  0.1  0.4  53996  8696 ?        Ssl  Jun30  15:08 redis-server *:6379
+```
+
+
+
+### `top` 
+
+ 实时显示系统资源使用情况。可以动态地持续监听进程地运行状态，**主要用于查看CPU利用率**
+
+top 命令的基本格式如下：
+
+`[root@localhost ~]#top [选项]`
+
+选项：
+
+``` 
+-d 秒数：指定 top 命令每隔几秒更新。默认是 3 秒；
+-b：使用批处理模式输出。一般和"-n"选项合用，用于把 top 命令重定向到文件中；
+-n 次数：指定 top 命令执行的次数。一般和"-"选项合用；
+-p 进程PID：仅查看指定 ID 的进程；
+-s：使 top 命令在安全模式中运行，避免在交互模式中出现错误；
+-u 用户名：只监听某个用户的进程；
+```
+
+
+在 top 命令的显示窗口中，还可以使用如下按键，进行一下交互操作：
+
+``` 
+? 或 h：显示交互模式的帮助；
+P：按照 CPU 的使用率排序，默认就是此选项；
+M：按照内存的使用率排序；
+N：按照 PID 排序；
+T：按照 CPU 的累积运算时间排序，也就是按照 TIME+ 项排序；
+k：按照 PID 给予某个进程一个信号。一般用于中止某个进程，信号 9 是强制中止的信号；
+r：按照 PID 给某个进程重设优先级（Nice）值；
+q：退出 top 命令；
+```
+
+``` shell
+ubuntu@VM-8-17-ubuntu:~$ top
+top - 15:22:29 up 19 days, 15:41,  1 user,  load average: 0.00, 0.00, 0.00
+Tasks: 124 total,   1 running, 123 sleeping,   0 stopped,   0 zombie
+%Cpu(s):  0.0 us,  0.0 sy,  0.0 ni,100.0 id,  0.0 wa,  0.0 hi,  0.0 si,  0.0 st
+MiB Mem :   1982.7 total,    211.6 free,    336.0 used,   1435.1 buff/cache
+MiB Swap:      0.0 total,      0.0 free,      0.0 used.   1452.3 avail Mem 
+
+    PID USER      PR  NI    VIRT    RES    SHR S  %CPU  %MEM     TIME+ COMMAND
+      1 root      20   0  169268  12856   8496 S   0.0   0.6   0:35.28 systemd
+      2 root      20   0       0      0      0 S   0.0   0.0   0:00.73 kthreadd
+      3 root       0 -20       0      0      0 I   0.0   0.0   0:00.00 rcu_gp
+      4 root       0 -20       0      0      0 I   0.0   0.0   0:00.00 rcu_par_gp
+      6 root       0 -20       0      0      0 I   0.0   0.0   0:00.00 kworker/0:0H-kblockd
+      9 root       0 -20       0      0      0 I   0.0   0.0   0:00.00 mm_percpu_wq 
+```
+
+下面解释各个内容含义:
+
+**第一行为任务队列信息，具体内容如表 1 所示**
+
+| 内 容                         | 说 明                                                        |
+| ----------------------------- | ------------------------------------------------------------ |
+| 15:22:29                      | 系统当前时间                                                 |
+| up 19 days, 15:41             | 系统的运行时间.本机己经运行 19 天 15 小时 41 分钟            |
+| 1 users                       | 当前登录了1个用户                                            |
+| load average: 0.00,0.00，0.00 | 系统在之前 1 分钟、5 分钟、15 分钟的平均负载。如果 CPU 是单核的，则这个数值超过 1 就是高负载：如果 CPU 是四核的，则这个数值超过 4 就是高负载 （这个平均负载完全是依据个人经验来进行判断的，一般认为不应该超过服务器 CPU 的核数） |
+
+**第二行为进程信息：具体内容如表 2 所示。**
+
+| 内 容            | 说 明                                          |
+| ---------------- | ---------------------------------------------- |
+| Tasks: 124 total | 系统中的进程总数                               |
+| 1 running        | 正在运行的进程数                               |
+| 123 sleeping     | 睡眠的进程数                                   |
+| 0 stopped        | 正在停止的进程数                               |
+| 0 zombie         | 僵尸进程数。如果不是 0，则需要手工检查僵尸进程 |
+
+**第三行为 CPU 信息，具体内容如表 3 所示。(CPU前有%，表示此行显示的是百分比值)**
+
+| 内 容           | 说 明                                                        |
+| --------------- | ------------------------------------------------------------ |
+| Cpu(s): 0.0  us | 用户模式占用的 CPU 百分比                                    |
+| 0.0 sy          | 系统模式占用的 CPU 百分比                                    |
+| 0.0 ni          | 改变过优先级的用户进程占用的 CPU 百分比                      |
+| 100.0 id        | 空闲 (idle)CPU 占用的 CPU 百分比                             |
+| 0.0 wa          | 等待输入/输出的进程占用的 CPU 百分比                         |
+| 0.0 hi          | 硬中断请求服务占用的 CPU 百分比                              |
+| 0.0 si          | 软中断请求服务占用的 CPU 百分比                              |
+| 0.0 st          | st（steal time）意为虚拟时间百分比，就是当有虚拟机时，虚拟 CPU 等待实际 CPU 的时间百分比 |
+
+**第四行为物理内存信息，具体内容如表 4 所示。(Mem前的MiB指定了单位)**
+
+| 内 容             | 说 明                    |
+| ----------------- | ------------------------ |
+| Mem: 1982.7 total | 物理内存的总量，单位为MB |
+| 211.6 free        | 空闲的物理内存数量。     |
+| 336.0 used        | 己经使用的物理内存数量   |
+| 1435.1 buff/cache | 作为缓冲的内存数量       |
+
+**第五行为交换分区（swap）信息，如表 5 所示。**
+
+| 内 容                | 说 明                        |
+| -------------------- | ---------------------------- |
+| Swap:      0.0 total | 交换分区（虚拟内存）的总大小 |
+| 0.0 free             | 空闲交换分区的大小           |
+| 0.0 used             | 已经使用的交换分区的大小     |
+| 1452.3 avail Mem     | 作为缓存的交换分区的大小     |
+
+
+
+### `free` 
+
+ 用于**显示内存状态**，利用率等
+
+``` shell
+ubuntu@VM-8-17-ubuntu:~$ free -h
+              total        used        free      shared  buff/cache   available
+Mem:          1.9Gi       336Mi       217Mi       2.0Mi       1.4Gi       1.4Gi
+Swap:            0B          0B          0B
+```
+
+``` shell
+ubuntu@VM-8-17-ubuntu:~$ free -hs 5		# 每隔5s执行一次
+              total        used        free      shared  buff/cache   available
+Mem:          1.9Gi       336Mi       217Mi       2.0Mi       1.4Gi       1.4Gi
+Swap:            0B          0B          0B
+
+              total        used        free      shared  buff/cache   available
+Mem:          1.9Gi       336Mi       217Mi       2.0Mi       1.4Gi       1.4Gi
+Swap:            0B          0B          0B
+
+...
+```
+
+下面先解释一下输出的内容：
+
+**Mem** 行(第二行)是内存的使用情况。
+
+**Swap** 行(第三行)是交换空间的使用情况。
+
+**total** 列显示系统总的可用物理内存和交换空间大小。
+
+**used** 列显示已经被使用的物理内存和交换空间。
+
+**free** 列显示还有多少物理内存和交换空间可用使用。
+
+**shared** 列显示被共享使用的物理内存大小。
+
+**buff/cache** 列显示被 buffer 和 cache 使用的物理内存大小。buffer/cache的区别见最后
+
+**available** 列显示还可以被应用程序使用的物理内存大小。从应用程序的角度来说，**available = free + buffer + cache**。
+
+***交换空间(swap space)***
+
+swap space 是磁盘上的一块区域，可以是一个分区，也可以是一个文件。当系统物理内存吃紧时，Linux 会将内存中不常访问的数据保存到 swap 上，这样系统就有更多的物理内存为各个进程服务。
 
 
 
 
 
+## 基础网络操作命令
+
+查询自己的公网地址：`curl ifconfig.me`，Linux和windows下都可以用。
+
+### ifconfig
+
+查询和配置网络接口卡（网卡）的命令，使用 **ifconfig** 命令对网卡所做的配置都是临时配置，重启之后都会被还原的。如果要永久配置网卡则需要通过修改配置文件的方式。
+
+- 显示网卡信息
+
+（1）`ifconfig` ：显示激活的网卡信息
+
+> 如果网卡被关闭了则不会被显示出来。
+
+（2）`ifconfig -a`：显示所有的网卡信息
+
+（3）`ifconfig -s`：显示网卡的简要信息
+
+``` shell
+ubuntu@VM-8-17-ubuntu:~$ ifconfig -s
+Iface      MTU    RX-OK RX-ERR RX-DRP RX-OVR    TX-OK TX-ERR TX-DRP TX-OVR Flg
+br-59f05  1500        1      0      0 0             5      0      0      0 BMU
+docker0   1500    43494      0      0 0         53055      0      0      0 BMRU
+eth0      1500  8705857      0      0 0       7852596      0      0      0 BMRU
+lo       65536   637786      0      0 0        637786      0      0      0 LRU
+veth18f4  1500    16228      0      0 0         18840      0      0      0 BMRU
+vethad45  1500    17349      0      0 0         22411      0      0      0 BMRU
+```
+
+（4）`ifconfig [网卡名称]`：显示指定网卡的信息
+
+> 例：ifconfig enp0s3
+
+- 指定网卡的开关
+
+这里以 enp0s3 网卡为例。当网卡被关闭后使用 **ifconfig** 是不会显示出来的。
+
+```c
+//启动enp0s3网卡
+sudo ifconfig enp0s3 up
+//关闭enp0s3网卡
+sudo ifconfig enp0s3 down
+```
+
+- 指定网卡的ARP协议开关
+
+这里以 enp0s3 网卡为例。
+
+ARP协议是地址解析协议（Address Resolution Protocol），每台主机或路由器都维护着一份ARP缓存表（ARP table），这个表包含IP地址到MAC地址的映射关系，表中记录了<IP地址，MAC地址>对，从而实现IP地址与MAC地址的查询与转换。
+详细的查看：https://blog.csdn.net/jiejiemcu/article/details/88406088
+
+``` shell
+# 启动enp0s3网卡的ARP协议
+sudo ifconfig enp0s3 arp
+# 关闭enp0s3网卡的ARP协议
+sudo ifconfig enp0s3 -arp
+```
+
+还可以设置（临时的）网卡的IPv4地址和子网掩码，配置网卡的虚拟接口，设置网卡的MAC地址，设置网卡的最大传输单元，增加及删除网卡的IPv6地址，等等操作。再次不赘述了。
+
+### netstat 
+
+利用 netstat 指令可让你得知整个 Linux 系统的网络情况。
+
+``` shell
+ubuntu@VM-8-17-ubuntu:~$ netstat 
+Active Internet connections (w/o servers)
+Proto Recv-Q Send-Q Local Address           Foreign Address         State      
+tcp        0    200 VM-8-17-ubuntu:ssh      223.72.72.137:22425     ESTABLISHED
+tcp        0      0 VM-8-17-ubuntu:55282    169.254.0.138:8086      ESTABLISHED
+tcp        0      0 VM-8-17-ubuntu:42146    169.254.0.55:5574       ESTABLISHED
+Active UNIX domain sockets (w/o servers)
+Proto RefCnt Flags       Type       State         I-Node   Path
+unix  2      [ ]         DGRAM                    23956582 /run/user/1000/systemd/notify
+```
+
+结果的第一条就是xshell连接服务的TCP连接，可以看到本机IP为 223.72.72.137
+
+选项：
+
+``` shell
+-a：列出所有网络状态，包括 Socket 程序；
+-c 秒数：指定每隔几秒刷新一次网络状态；
+-n：使用 IP 地址和端口号显示，不使用域名与服务名；
+-p：显示 PID 和程序名；
+-t：显示使用 TCP 协议端口的连接状况；
+-u：显示使用 UDP 协议端口的连接状况；
+-I：仅显示监听状态的连接；
+-r：显示路由表；
+```
+
+### route
+
+用于显示和操作IP路由表。
+
+参数：
+  `-n `：不要使用通讯协定或主机名称，直接使用 IP 或 port number；
+  `-ee `：使用更详细的资讯来显示
+
+``` shell
+ubuntu@VM-8-17-ubuntu:~$ route
+Kernel IP routing table
+Destination     Gateway         Genmask         Flags Metric Ref    Use Iface
+default         _gateway        0.0.0.0         UG    100    0        0 eth0
+10.0.8.0        0.0.0.0         255.255.252.0   U     0      0        0 eth0
+172.17.0.0      0.0.0.0         255.255.0.0     U     0      0        0 docker0
+172.18.0.0      0.0.0.0         255.255.0.0     U     0      0        0 br-59f052e5d856
+
+ubuntu@VM-8-17-ubuntu:~$ route -n
+Kernel IP routing table
+Destination     Gateway         Genmask         Flags Metric Ref    Use Iface
+0.0.0.0         10.0.8.1        0.0.0.0         UG    100    0        0 eth0
+10.0.8.0        0.0.0.0         255.255.252.0   U     0      0        0 eth0
+172.17.0.0      0.0.0.0         255.255.0.0     U     0      0        0 docker0
+172.18.0.0      0.0.0.0         255.255.0.0     U     0      0        0 br-59f052e5d856
+
+# Flags中的U表示UP，启动；G表示use gateway，需要透过外部的主机 (gateway) 来转递封包；
+# Metric 距离、跳数。
+# 此结果与 netstat -r 的结果一致
+```
+
+可以看到，默认出口都是eth0，默认网关腾讯服务器没有告诉我们地址，写的是 _gateway，
+
+route还可以添加路由、删除路由、设置路由规则等等。例：
+
+- 格式：`route add -net {NETWORK-ADDRESS} netmask {NETMASK} dev {INTERFACE-NAME}`  ： 添加到达指定网络的路由规则，
+
+- 格式：`route add -net {NETWORK-ADDRESS} netmask {NETMASK} reject `  ：设置到指定网络为不可达，避免在连接到这个网络的地址时程序过长时间的等待，直接就知道该网络不可达。
 
 
+
+### tcpdump
+
+
+
+### traceroute
+
+
+
+### nslookup
 
 
 
@@ -1514,4 +1922,26 @@ public class TestDemo  {
     -  https://minsonlee.github.io/2021/11/mysql-client-not-support-authentication  
 - **mysql连接jar包需要放在linux下的哪里呢？**
     - 该jar包应该被置于jdk安装路径下jre文件夹lib目录的ext文件夹下。例如我的JDK安装路径为`/usr/lib/jvm/java-8-openjdk-amd64`，则我的jar包位置应该是：`/usr/lib/jvm/java-8-openjdk-amd64/jre/lib/ext/mysql-connector-java-8.0.18.jar`（通过whereis java查看jdk路径）
+
+# #. 一些操作系统的知识
+
+## CPU、内存、I/O设备速度差异
+
+1. CPU增加了缓存，以均衡与内存的速度差异；
+
+2. 操作系统增加了进程、线程，以分时复用CPU，进而均衡CPU/IO设备的速度差异；
+
+3. 编译程序优化指令执行次序，使得缓存能够得到更加合理的利用。
+
+## buffer and cache 
+
+- **buffer** ： ***缓冲区***，**用于平滑流速、衔接不同流速的设备**，进多少数据就一定要出多少数据
+
+Buffer的核心作用是用来缓冲，缓和冲击，每当buffer满或者主动flush buffer的时候触发一次读取。比如你每秒要写100次硬盘，对系统冲击很大，浪费了大量时间在忙着处理开始写和结束写这两件事嘛。用个buffer暂存起来，变成每10秒写一次硬盘，对系统的冲击就很小，写入效率高了，极大缓和了冲击。
+
+- **cache**  ：*** 缓存***，**用于减少对低速设备的访问**，进多少数据不用非要出多少数据，只是把常用的数据放在手边，用起来方便
+
+即高速缓冲存储器，**一般位于CPU与内存之间**（很多IO设备例如硬盘、RAID卡上也有Cache，浏览器也有Cache），容量小但速度快。由于CPU快而内存慢，CPU不存在直接读/写内存的情况,**每次读/写内存都要访问Cache**。**Cache Line是cache与内存同步的最小单位**，典型的虚拟内存页面大小为4K，Cache line为32或64字节。Cache中**一般保存着CPU刚用过或循环使用的部分数据**，当CPU再次使用该部分数据时可从Cache中直接调用,这样就抹平了CPU与内存的速度差。Cache又分为L1、L2、L3（L1、L2一般集成在CPU上）。
+
+两者的使用要根据具体应用场景来判断，**它们并不互斥**。
 
