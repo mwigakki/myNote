@@ -7,7 +7,7 @@
 > 就好比玩RPG游戏一样，每通过一关(完成一次的工作)都要保存一下游戏(add 和commit一下)。如果某一关没过去(某一次编辑出现了问题)，我们可以选择读取前一关的状态(回退上一个版本)。并且在你随时想暂停的时候都可以暂停(add,commit保存一个版本)。
 
  cmd 进入git怎么退出: 按q 回车
- 
+
  查看分支合并情况： `git log --graph --pretty=oneline --abbrev-commit`
 
 # 安装与常用操作
@@ -320,7 +320,7 @@ Unmerged paths:
 	both modified:   readme.txt
 
 no changes added to commit (use "git add" and/or "git commit -a")
-``` 
+```
 
 我们可以直接查看readme.txt的内容：
 ``` bash
@@ -350,7 +350,7 @@ git log --graph --pretty=oneline --abbrev-commit
 * b17d20e branch test
 * d46f35e (origin/master) remove test.txt
 * b84166e add test.txt
-``` 
+```
 
 最后，删除feature1分支
 
@@ -383,7 +383,7 @@ git merge --no-ff -m "merge with no-ff" dev
 Merge made by the 'recursive' strategy.
  readme.txt | 1 +
  1 file changed, 1 insertion(+)
- ```
+```
 
 因为本次合并要创建一个新的commit，所以加上-m参数，把commit描述写进去。
 
@@ -470,7 +470,7 @@ git add readme.txt
 git commit -m "fix bug 101"
 [issue-101 4c805e2] fix bug 101
  1 file changed, 1 insertion(+), 1 deletion(-)
- ```
+```
 
 修复完成后，切换到master分支，并完成合并，最后删除issue-101分支：
 ``` bash
@@ -483,7 +483,7 @@ git merge --no-ff -m "merged bug fix 101" issue-101
 Merge made by the 'recursive' strategy.
  readme.txt | 2 +-
  1 file changed, 1 insertion(+), 1 deletion(-)
- ```
+```
 
 太棒了，原计划两个小时的bug修复只花了5分钟！现在，是时候接着回到dev分支！
 使用`git status`工作区是干净的，刚才的工作现场存到哪去了？用`git stash list`命令看看：
@@ -493,9 +493,9 @@ stash@{0}: WIP on dev: f52c633 add merge
 ```
 工作现场还在，Git把stash内容存在某个地方了，但是需要恢复一下，有两个办法：
 
-一是用git stash apply恢复，但是恢复后，stash内容并不删除，你需要用git stash drop来删除；
+一是用`git stash apply`恢复，但是恢复后，stash内容并不删除，你需要用`git stash drop`来删除；
 
-另一种方式是用git stash pop，恢复的同时把stash内容也删了：
+另一种方式是用`git stash pop`，恢复的同时把stash内容也删了：
 
 再用git stash list查看，就看不到任何stash内容了：
 
@@ -523,7 +523,7 @@ git branch
 $ git cherry-pick 4c805e2
 [master 1d4b803] fix bug 101
  1 file changed, 1 insertion(+), 1 deletion(-)
-```  
+```
 
 `git cherry-pick`可以理解为”挑拣”提交，它会获取某一个分支的单笔提交，并作为一个新的提交引入到你当前分支上。当我们需要在本地合入其他分支的提交时，如果我们不想对整个分支进行合并，而是只想将某一次提交合入到本地当前分支上，那么就要使用`git cherry-pick`了。
 
@@ -555,7 +555,7 @@ Git自动给dev分支做了一次提交，注意这次提交的commit是1d4b803�
 就在此时，接到上级命令，因经费不足，新功能必须取消！
 
 虽然白干了，但是这个包含机密资料的分支还是必须就地销毁：
- 
+
 ``` bash
 git branch -d feature-vulcan
 error: The branch 'feature-vulcan' is not fully merged.
