@@ -1729,6 +1729,123 @@ route还可以添加路由、删除路由、设置路由规则等等。例：
 
 
 
+
+### `curl`
+
+在Linux中curl是一个利用URL规则在命令行下工作的文件传输工具，可以说是一款很强大的http命令行工具。它支持文件的上传和下载，是综合传输工具，但按传统，习惯称url为下载工具。（在windows下也可以用）
+
+```sh
+语法：# curl [option] [url]
+
+常用参数
+-A/--user-agent <string>              设置用户代理发送给服务器
+-b/--cookie <name=string/file>    cookie字符串或文件读取位置
+-c/--cookie-jar <file>                    操作结束后把cookie写入到这个文件中
+-C/--continue-at <offset>            断点续转
+-D/--dump-header <file>              把header信息写入到该文件中
+-e/--referer                                  来源网址
+-f/--fail                                     连接失败时不显示http错误
+-o/--output                                  把输出写到该文件中
+-O/--remote-name                        保留远程文件的文件名
+-r/--range <range>                      检索来自HTTP/1.1或FTP服务器字节范围
+-s/--silent                                    静音模式。不输出任何东西
+-T/--upload-file <file>                  上传文件
+-u/--user <user[:password]>      设置服务器的用户和密码
+-w/--write-out [format]                什么输出完成后
+-x/--proxy <host[:port]>              在给定的端口上使用HTTP代理
+-#/--progress-bar                        进度条显示当前的传送状态
+```
+
+1、基本用法
+
+```shell
+$ curl http://www.baidu.com
+<!DOCTYPE html>
+<!--STATUS OK--><html> <head><meta http-equiv=content-type content=text/html;charset=utf-8><meta http-equiv=X-UA-Compatible content=IE=Edge><meta content=always name=referrer><link rel=stylesheet type=text/css href=http://s1.bdstatic.com/r/www/cache/bdorz/baidu.min.css><title>百度一下，你就知道</title></head> <body link=#0000cc>............................
+```
+
+2、保存访问的网页
+
+2.1:使用linux的重定向功能保存
+
+```shell
+$ curl http://www.linux.com >> linux.html
+```
+
+2.2:可以使用curl的内置option:-o(小写)保存网页
+
+```shell
+$ curl -o linux.html http://www.linux.com
+```
+
+2.3:可以使用curl的内置option:-O(大写)保存网页中的文件
+
+要注意这里后面的url要**具体到某个文件**，不然抓不下来
+
+```shell
+$ curl -O http://www.linux.com/hello.sh
+```
+
+3、测试网页返回值
+
+```shell
+$ curl -o /dev/null -s -w %{http_code} www.linux.com
+```
+
+Ps:在脚本中，这是很常见的测试网站是否正常的用法
+
+4、指定proxy服务器以及其端口
+很多时候上网需要用到代理服务器(比如是使用代理服务器上网或者因为使用curl别人网站而被别人屏蔽IP地址的时候)，幸运的是curl通过使用内置option：-x来支持设置代理
+
+```shell
+$ curl -x 192.168.100.100:1080 http://www.linux.com
+```
+
+5、cookie
+有些网站是使用cookie来记录session信息。对于chrome这样的浏览器，可以轻易处理cookie信息，但在curl中只要增加相关参数也是可以很容易的处理cookie
+5.1:保存http的response里面的cookie信息。内置option:-c（小写）
+
+```shell
+$ curl -c cookiec.txt  http://www.linux.com
+```
+
+执行后cookie信息就被存到了cookiec.txt里面了
+
+5.2:保存http的response里面的header信息。内置option: -D
+
+```shell
+$ curl -D cookied.txt http://www.linux.com
+```
+
+执行后cookie信息就被存到了cookied.txt里面了
+
+注意：-c(小写)产生的cookie和-D里面的cookie是不一样的。
+
+5.3:使用cookie
+很多网站都是通过监视你的cookie信息来判断你是否按规矩访问他们的网站的，因此我们需要使用保存的cookie信息。内置option: -b
+
+```shell
+$ curl -b cookiec.txt http://www.linux.com
+```
+
+6、模仿浏览器
+有些网站需要使用特定的浏览器去访问他们，有些还需要使用某些特定的版本。curl内置option:-A可以让我们指定浏览器去访问网站
+
+```shell
+$ curl -A "Mozilla/4.0 (compatible; MSIE 8.0; Windows NT 5.0)" http://www.linux.com
+```
+
+这样服务器端就会认为是使用IE8.0去访问的
+
+[更多curl操作](http://www.linuxdiyf.com/linux/2800.html)
+
+
+
+
+
+
+
+
 ## 进程管理
 
 
