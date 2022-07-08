@@ -279,7 +279,7 @@ Fast-forward
 - 切换分支：`git switch dev`或`git checkout dev`
 - 创建并切换分支：`git switch -c dev`或`git checkout -b dev`，切换分支后进行相应的修改和提交commit
 - 将指定分支合并到**当前分支**： `git merge <分支名>`
-- 删除分支：`git checkout -b dev`
+- 删除分支：`git branch -d dev` , `-D`表示强制刪除
 
 注：在dev分支上修改了文件，但是并没有执行git add. git commit命令，然后切换到master分支，仍然能看到dev分支的改动。只是因为所有的修改还只是在工作区，连暂存区都不是，git都还不知道有任何的修改。
 
