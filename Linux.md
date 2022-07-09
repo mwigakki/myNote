@@ -1,4 +1,4 @@
-Linux 教程 | 菜鸟教程 (runoob.com)](https://www.runoob.com/linux/linux-tutorial.html)
+[Linux 命令大全 | 菜鸟教程 (runoob.com)](https://www.runoob.com/linux/linux-command-manual.html)
 
 [【linux】最常用 150 个Linux命令汇总 - 腾讯云开发者社区-腾讯云 (tencent.com)](https://cloud.tencent.com/developer/article/1540697)
 
@@ -1397,6 +1397,8 @@ ps [options] [--help]
 
 ps 的参数非常多, 在此仅列出几个常用的参数并大略介绍含义
 -A 列出所有的进程
+-e 显示所有进程
+-u 显示进程的归属用户及内存的使用情况；
 -w 显示加宽可以显示较多的资讯
 -au 显示较详细的资讯
 -aux 显示所有包含其他使用者的进程
@@ -1584,8 +1586,6 @@ swap space 是磁盘上的一块区域，可以是一个分区，也可以是一
 
 
 
-
-
 ## 基础网络操作命令
 
 查询自己的公网地址：`curl ifconfig.me`，Linux和windows下都可以用。
@@ -1644,7 +1644,7 @@ sudo ifconfig enp0s3 arp
 sudo ifconfig enp0s3 -arp
 ```
 
-还可以设置（临时的）网卡的IPv4地址和子网掩码，配置网卡的虚拟接口，设置网卡的MAC地址，设置网卡的最大传输单元，增加及删除网卡的IPv6地址，等等操作。再次不赘述了。
+还可以设置（临时的）网卡的IPv4地址和子网掩码，配置网卡的虚拟接口，设置网卡的MAC地址，设置网卡的最大传输单元，增加及删除网卡的IPv6地址，等等操作。在此不赘述了。
 
 ### netstat 
 
@@ -1662,7 +1662,7 @@ Proto RefCnt Flags       Type       State         I-Node   Path
 unix  2      [ ]         DGRAM                    23956582 /run/user/1000/systemd/notify
 ```
 
-结果的第一条就是xshell连接服务的TCP连接，可以看到本机IP为 223.72.72.137
+结果的第一条就是xshell连接服务的TCP连接，可以看到远端连接的IP为 223.72.72.137
 
 选项：
 
@@ -1732,18 +1732,192 @@ route还可以添加路由、删除路由、设置路由规则等等。例：
 
 ### tcpdump
 
+**tcpdump**：dump the traffic on a network，根据使用者的定义**对网络上的数据包进行截获的包分析**工具。
+
+tcpdump可以将网络中传送的数据包的“头”完全截获下来提供分析。它支持针对网络层、协议、主机、网络或端口的过滤，并提供and、or、not等逻辑语句来帮助你去掉无用的信息。
+
+- 普通情况下，直接启动tcpdump将监视第一个网络接口上所有流过的数据包。
+
+```bash
+root@VM-8-17-ubuntu:/home/ubuntu# tcpdump
+...
+```
+
+- **监听指定网络接口的数据包**
+
+此处以docker 的 nginx容器为例，将其开启，并指定监听 docker0 接口
+
+``` bash
+root@VM-8-17-ubuntu:/home/ubuntu# tcpdump -i docker0
+```
+
+浏览器访问此nginx服务器，可以看到 `tcpdump` 抓到的包
+
+``` shell
+root@VM-8-17-ubuntu:/home/ubuntu# tcpdump -i docker0
+tcpdump: verbose output suppressed, use -v or -vv for full protocol decode
+listening on docker0, link-type EN10MB (Ethernet), capture size 262144 bytes
+17:48:57.574838 IP 219.242.112.67.64511 > 172.17.0.2.http: Flags [S], seq 1830528148, win 64240, options [mss 1412,nop,wscale 8,nop,nop,sackOK], length 0
+17:48:57.575319 IP 172.17.0.2.http > 219.242.112.67.64511: Flags [S.], seq 1769917238, ack 1830528149, win 64240, options [mss 1460,nop,nop,sackOK,nop,wscale 7], length 0
+17:48:57.575362 IP 219.242.112.67.64512 > 172.17.0.2.http: Flags [S], seq 3193273513, win 64240, options [mss 1412,nop,wscale 8,nop,nop,sackOK], length 0
+17:48:57.575370 IP 172.17.0.2.http > 219.242.112.67.64512: Flags [S.], seq 2415067009, ack 3193273514, win 64240, options [mss 1460,nop,nop,sackOK,nop,wscale 7], length 0
+17:48:57.577913 IP 219.242.112.67.64511 > 172.17.0.2.http: Flags [.], ack 1, win 1025, length 0
+17:48:57.578011 IP 219.242.112.67.64512 > 172.17.0.2.http: Flags [.], ack 1, win 1025, length 0
+^C
+6 packets captured
+6 packets received by filter
+0 packets dropped by kernel
+```
+
+可以看到抓到的出包和入包，内容有时间，处理进程，协议(IP、ARP等)，源IP，目的IP，等等信息
+
+- **监视指定主机的数据包**
+
+打印所有进入或离开sundown的数据包.
+
+```
+tcpdump host sundown
+```
+
+也可以指定ip,例如截获所有210.27.48.1 的主机收到的和发出的所有的数据包
+
+```
+tcpdump host 210.27.48.1 
+```
+
+- **监视指定端口的数据包**
+
+如果想要获取主机210.27.48.1接收或发出的telnet包，使用如下命令
+
+```
+tcpdump tcp port 23 and host 210.27.48.1
+```
+
+对本机的udp 123 端口进行监视 123 为ntp的服务端口
+
+```
+tcpdump udp port 123 
+```
+
+更多见：[Linux tcpdump命令详解](https://www.cnblogs.com/ggjucheng/archive/2012/01/14/2322659.html)
+
+
+
 
 
 ### traceroute
+
+显示数据包到主机间的路径,traceroute命令用于**追踪数据包在网络上的传输时的全部路径**，它默认发送的数据包大小是40字节。
+
+通过traceroute我们可以知道信息从你的计算机到互联网另一端的主机是走的什么路径。当然每次数据包由某一同样的出发点（source）到达某一同样的目的地(destination)走的路径可能会不一样，但基本上来说大部分时候所走的路由是相同的。
+
+traceroute通过发送小的数据包到目的设备直到其返回，来测量其需要多长时间。一条路径上的每个设备traceroute要测3次。输出结果中包括每次测试的时间(ms)和设备的名称（如有的话）及其ip地址。
+
+**工作原理**
+
+1. **UDP 和 ICMP Traceroute**
+
+Traceroute 的基本原理是向外发送带有逐次递增 TTL 的数据包从而获取的路径中每一跳的信息。
+
+![Traceroute 的基本原理](https://pic3.zhimg.com/80/v2-74885a1db8afe172a8c801affe067172_720w.jpg)
+
+> UDP 和 ICMP traceroute 的区别就在于向外发送的数据包（上图中红色标明的 packet）和最后的 final reply。
+
+- UDP 向外发送的是一个 UDP 数据包，final reply 是 ICMP Destination Unreachable
+- ICMP 向外发送的是一个 ICMP Echo Request，final reply 是 ICMP Echo Reply
+
+2. **TCP traceroute **
+
+TCP traceroute 同样利用了 TTL 来探测网络路径但是它向外发送的是 TCP SYN 数据包，这样做最大的好处就是穿透防火墙的几率更大因为 TCP SYN 看起来是试图建立一个正常的 TCP 连接。
+
+**Traceroute 的实现**一共有三种方法，分别是：
+
+- TCP traceroute（使用 tracetcp 程序可以实现）
+- UDP traceroute（Cisco 和 Linux 默认情况下使用）
+- ICMP traceroute ( MS Windows 默认情况下使用）
+
+**命令格式**
+
+```bash
+traceroute [选项] [参数]
+```
+
+**命令选项**
+
+- -d：使用Socket层级的排错功能；
+- -f<存活数值>：设置第一个检测数据包的存活数值TTL的大小；
+- -F：设置勿离断位；
+- -g<网关>：设置来源路由网关，最多可设置8个；
+- -i<网络界面>：使用指定的网络界面送出数据包；
+- -I：使用ICMP回应取代UDP资料信息；
+- **-m <存活数值>：设置检测数据包的最大存活数值TTL的大小**；
+- -n：直接使用IP地址而非主机名称；
+- -p<通信端口>：设置UDP传输协议的通信端口；
+- -r：忽略普通的Routing Table，直接将数据包送到远端主机上。
+- -s<来源地址>：设置本地主机送出数据包的IP地址；
+- -t<服务类型>：设置检测数据包的TOS数值；
+- -v：详细显示指令的执行过程；
+- **-w <超时秒数>：设置等待远端主机回报的时间**；
+- -x：开启或关闭数据包的正确性检验。
+
+``` bash
+root@VM-8-17-ubuntu:/var/www/html# traceroute www.baidu.com
+traceroute to www.baidu.com (110.242.68.3), 30 hops max, 60 byte packets
+ 1  * * *
+ 2  9.102.251.50 (9.102.251.50)  0.680 ms * *
+ 3  * 10.196.67.9 (10.196.67.9)  0.881 ms 10.196.66.249 (10.196.66.249)  0.983 ms
+ 4  10.200.47.1 (10.200.47.1)  2.590 ms  2.571 ms 10.196.89.105 (10.196.89.105)  0.722 ms
+ 5  61.49.142.145 (61.49.142.145)  2.568 ms 61.49.142.149 (61.49.142.149)  0.950 ms 61.49.142.145 (61.49.142.145)  2.569 ms
+ 6  123.126.0.217 (123.126.0.217)  2.207 ms  2.130 ms 61.148.7.157 (61.148.7.157)  1.982 ms
+ 7  * 61.49.214.13 (61.49.214.13)  2.333 ms 124.65.194.165 (124.65.194.165)  3.377 ms
+ 8  * 219.158.11.90 (219.158.11.90)  5.947 ms *
+ 9  110.242.66.182 (110.242.66.182)  9.208 ms 110.242.66.186 (110.242.66.186)  9.993 ms 110.242.66.190 (110.242.66.190)  9.575 ms
+10  221.194.45.134 (221.194.45.134)  9.784 ms * 221.194.45.130 (221.194.45.130)  10.644 ms
+11  * * *
+12  * * *
+```
 
 
 
 ### nslookup
 
+全称 name server lookup，用于**查询DNS的记录，查看域名解析是否正常，在网络故障的时候用来诊断网络问题。**
+
+``` bash
+root@VM-8-17-ubuntu:/var/www/html# nslookup baidu.com
+Server:		127.0.0.53
+Address:	127.0.0.53#53
+
+Non-authoritative answer:
+Name:	baidu.com
+Address: 220.181.38.251
+Name:	baidu.com
+Address: 220.181.38.148
+```
+
+nslookup 有两种工作模式，交互模式和非交互模式。在交互模式下，用户可以向域名服务器查询各类主机、域名的信息，或者输出域名中的主机列表。在非交互模式下，针对一个主机或域名仅仅获取特定的名称或所需信息。
+
+进入交互模式有两种方式： （1）直接输入 nslookup 命令，不加任何参数，此时 nslookup 会连接到默认的域名服务器（/etc/resolv.conf的第一个DNS地址）； （2）第一个参数是连字符（-），第二个参数是域名服务器的主机名或IP，即`nslookup - SERVER|IP`。
+
+其他方式则进入非交互模式，比如`nslookup NAME`查询域名对应的IP。
+
+反向解析，通过 IP 查询对应的域名。
+
+```bash
+$ nslookup 209.132.183.105
+Server:		10.123.119.98
+Address:	10.123.119.98#53
+
+Non-authoritative answer:
+105.183.132.209.in-addr.arpa	name = redirect.redhat.com.
+
+Authoritative answers can be found from:
+```
 
 
 
-### `curl`
+
+### curl
 
 在Linux中curl是一个利用URL规则在命令行下工作的文件传输工具，可以说是一款很强大的http命令行工具。它支持文件的上传和下载，是综合传输工具，但按传统，习惯称url为下载工具。（在windows下也可以用）
 
@@ -1851,17 +2025,6 @@ $ curl -A "Mozilla/4.0 (compatible; MSIE 8.0; Windows NT 5.0)" http://www.linux.
 这样服务器端就会认为是使用IE8.0去访问的
 
 [更多curl操作](http://www.linuxdiyf.com/linux/2800.html)
-
-
-
-
-
-
-
-
-## 进程管理
-
-
 
 
 
