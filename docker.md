@@ -30,7 +30,7 @@ https://www.w3cschool.cn/docker/docker-tutorial.html
   >
   > 这意味着只有一个操作系统消耗 CPU、RAM 和存储资源，只有一个操作系统需要授权，只有一个操作系统需要升级和打补丁。同时，只有一个操作系统面临被攻击的风险。简言之，就是只有一份 OS 损耗。
   >
-  > 在上述单台机器上只需要运行 4 个业务应用的场景中，也许问题尚不明显。但当需要运行成百上千应用的时候，就会引起质的变化。
+  > 在单台机器上只需要运行 4 个业务应用的场景中，也许问题尚不明显。但当需要运行成百上千应用的时候，就会引起质的变化。
   >
   > 同时，容器也保证了不同应用程序的相互隔离。
   >
@@ -57,7 +57,7 @@ https://www.w3cschool.cn/docker/docker-tutorial.html
 
 在下面的示例中，假设宿主机是一台需要运行 4 个业务应用的物理服务器。
 
-在**虚拟机模型**中，首先要开启物理机并启动 Hypervisor 引导程序。一旦 Hypervisor（虚拟机监控程序） 启动，就会占有机器上的全部物理资源，如 CPU、RAM、存储和 NIC。
+在 <u>***虚拟机模型***</u> 中，首先要开启物理机并启动 Hypervisor 引导程序。一旦 Hypervisor（虚拟机监控程序） 启动，就会占有机器上的全部物理资源，如 CPU、RAM、存储和 NIC。
 
 Hypervisor 接下来就会将这些物理资源划分为虚拟资源，并且看起来与真实物理资源完全一致。
 
@@ -68,7 +68,7 @@ Hypervisor 接下来就会将这些物理资源划分为虚拟资源，并且看
 <img src="http://c.biancheng.net/uploads/allimg/190417/4-1Z41G01336346.gif" style="zoom: 67%;" />
 
 
-而**容器模型**则略有不同。
+而 **<u>*容器模型*</u> ** 则略有不同。
 
 服务器启动之后，所选择的操作系统会启动。在 Docker 世界中可以选择 Linux，或者内核支持内核中的容器原语的新版本 Windows。
 
@@ -92,19 +92,19 @@ Hypervisor 接下来就会将这些物理资源划分为虚拟资源，并且看
 
 ## 2. Docker 架构
 
-**容器是一种通用技术，docker只是其中的一种实现**
+> **容器是一种通用技术，docker只是其中的一种实现**
 
 Docker 包括三个基本概念:
 
-- 镜像（Image）：Docker 镜像（Image），就相当于是一个 root 文件系统。比如官方镜像 ubuntu:16.04 就包含了完整的一套 Ubuntu16.04 最小系统的 root 文件系统。
-- 容器（Container）：镜像（Image）和容器（Container）的关系，就像是面向对象程序设计中的类和实例一样，镜像是静态的定义，容器是镜像运行时的实体。容器可以被创建、启动、停止、删除、暂停等。Docker Container 通过 Docker Image来创建。
-- 仓库（Repository）：仓库可看成一个代码控制中心，用来保存镜像。
+- **镜像（Image）**：Docker 镜像（Image），就相当于是一个 root 文件系统。比如官方镜像 ubuntu:16.04 就包含了完整的一套 Ubuntu16.04 最小系统的 root 文件系统。
+- **容器（Container）**：镜像（Image）和容器（Container）的关系，就像是面向对象程序设计中的**类和实例一样**，镜像是静态的定义，容器是镜像运行时的实体。容器可以被创建、启动、停止、删除、暂停等。Docker Container 通过 Docker Image来创建。
+- **仓库（Repository）**：仓库可看成一个代码控制中心，用来保存镜像。
 
 镜像可以理解为一种构建时（build-time）结构，而容器可以理解为一种运行时（run-time）结构，
 
 即可以简单的把**image**理解为**可执行程序**，**container**就是**运行起来的进程**。
 
-还有一个概念：`dockerfile`
+还有一个概念：`dockerfile`，其作用是构建自定义的image
 
 - 写程序需要源代码，那么“写”`image`就需要`dockerfile`，`dockerfile`就是`image`的源代码，docker就是"编译器"。
 
@@ -133,7 +133,9 @@ Docker Daemon可以认为是通过Docker Server模块接受Docker Client的请�
 
 
 
-## 3. Ubuntu Docker 安装
+## 3. Docker 安装
+
+> 本文档讲述Ubuntu Docker 的安装，其他系统安装请自行查阅
 
 **前提条件**
 
@@ -173,7 +175,7 @@ docker --version
 docker system info
 ```
 
-如果在 Linux 中遇到无权限访问的问题，需要确认当前用户是否属于本地 Docker UNIX 组。如果不是，可以通过`usermod -aG docker <user>`来添加，然后退出并重新登录 Shell，改动即可生效。
+如果在 Linux 中遇到无权限访问的问题（切换root用户可解决），需要确认当前用户是否属于本地 Docker UNIX 组。如果不是，可以通过`usermod -aG docker <user>`来添加，然后退出并重新登录 Shell，改动即可生效。
 
 ## 4. Docker 镜像 
 
@@ -442,7 +444,7 @@ $ docker image prune
 $ docker image ls -a
 ```
 
-这样会看到很多无标签的镜像，与之前的虚悬镜像不同，这些无标签的镜像很多都是中间层镜像，是其它镜像所依赖的镜像。这些无标签镜像不应该删除，否则会导致上层镜像因为依赖丢失而出错。实际上，这些镜像也没必要删除，因为之前说过，相同的层只会存一遍，而这些镜像是别的镜像的依赖，因此并不会因为它们被列出来而多存了一份，无论如何你也会需要它们。只要删除那些依赖它们的镜像后，这些依赖的中间层镜像也会被连带删除。
+这样会看到很多**无标签的镜像**，与之前的虚悬镜像不同，这些无标签的镜像很多都是中间层镜像，是**其它镜像所依赖的镜像**。这些无标签镜像不应该删除，否则会导致上层镜像因为依赖丢失而出错。实际上，这些镜像也没必要删除，因为之前说过，相同的层只会存一遍，而这些镜像是别的镜像的依赖，因此并不会因为它们被列出来而多存了一份，无论如何你也会需要它们。只要删除那些依赖它们的镜像后，这些依赖的中间层镜像也会被连带删除。
 
 ##### 以特定格式显示
 
@@ -492,9 +494,9 @@ $ docker image rm $(docker image ls -q -f before=mongo:3.2)
 
 <img src="http://c.biancheng.net/uploads/allimg/190417/4-1Z41G01016212.gif" alt="单个镜像启动多个容器的示意图" style="zoom: 80%;" />
 
-容器的实质是进程，但与直接在宿主执行的进程不同，容器进程运行于属于自己的独立的 [命名空间](https://en.wikipedia.org/wiki/Linux_namespaces)。
+**<u>容器的实质是进程</u>**，但与直接在宿主执行的进程不同，容器进程运行于属于自己的独立的 [命名空间](https://en.wikipedia.org/wiki/Linux_namespaces)。
 
-前面讲过镜像使用的是分层存储，容器也是如此。每一个容器运行时，是以镜像为基础层，在其上创建一个当前容器的存储层，我们可以称这个为容器运行时读写而准备的存储层为 **容器存储层**。
+前面讲过镜像使用的是分层存储，容器也是如此。每一个容器运行时，是以镜像为基础层，**在其上创建一个当前容器的存储层**，我们可以称这个为容器运行时读写而准备的存储层为 **容器存储层**。
 
 容器存储层的生存周期和容器一样，容器消亡时，容器存储层也随之消亡。因此，任何保存于容器存储层的信息都会随容器删除而丢失。
 
@@ -522,11 +524,14 @@ docker container run [OPTIONS] IMAGE [COMMAND] [ARG...]			# contianer可以省�
 
 OPTIONS说明：(常用)
 
-- -i: 以交互模式运行容器，通常与 -t 同时使用；
-- --name="xxx": 为容器指定一个名称；
-- -t: 为容器重新分配一个伪输入终端，通常与 -i 同时使用；
-- -d: 让 Docker 在后台运行而不是直接把执行命令的结果输出在当前宿主机下
-- -p: 指定映射到宿主机上的端口
+- `-i`: 以交互模式运行容器，通常与` -t `同时使用；
+- `-t`: 为容器重新分配一个伪输入终端，通常与` -i`同时使用；
+- `--name="xxx"`: 为容器指定一个名称；
+- `-d`: 让 Docker 在后台运行而不是直接把执行命令的结果输出在当前宿主机下
+- `-p`: 指定映射到宿主机上的端口
+- `-P`:  (大写P)随机端口映射，容器内部端口**随机**映射到主机的端口
+- `-v 宿主机中的数据卷或目录:容器中的挂载位置`   :  --volume绑定一个数据卷
+- `--mount source=宿主机中的数据卷或目录 target=容器中的挂载位置 `： 挂载数据卷
 
 更多见：[Docker run 命令 | 菜鸟教程 (runoob.com)](https://www.runoob.com/docker/docker-run-command.html)
 
@@ -543,8 +548,6 @@ docker container run -it ubuntu /bin/bash
 ```
 
 则会启动某个 Ubuntu Linux 容器，并运行 Bash Shell 作为其应用。会发现 Shell 提示符发生了变化，说明目前已经位于容器内部了。若尝试在容器内执行一些基础命令，可能会发现某些指令无法正常工作。这是因为大部分容器镜像都是经过高度优化的。这意味着某些命令或者包可能没有安装。
-
-> -it 参数可以将当前终端连接到容器的 Shell 终端之上。
 
 如果想启动 PowerShell 并运行一个应用，则可以使用命令`docker container run -it microsoft- /powershell:nanoserver pwsh.exe`。
 
@@ -619,7 +622,7 @@ Ctrl+P+Q	# 这样退出就不会删除容器
 
 #### 导入和导出
 
-如果要导出本地某个容器，可以使用 `docker export` 命令。
+如果要**导出本地某个容器**，可以使用 `docker export` 命令。
 
 ``` bash
 root@VM-8-17-ubuntu:/home/ubuntu# docker container ls -a
@@ -636,7 +639,7 @@ myubuntu.tar  node_modules  package-lock.json  samples-server-master
 
 <hr/>
 
-可以使用 `docker import` 从容器快照文件中再导入为镜像，例如:
+可以使用 `docker import` 从**容器**快照文件中再**导入为镜像**，例如:
 
 ``` bash
 root@VM-8-17-ubuntu:/home/ubuntu# cat myubuntu.tar | docker import - test/myubuntu:v1.0
@@ -652,7 +655,7 @@ test/myubuntu   v1.0      d5de5ef0bb18   12 seconds ago   113MB
 $ docker import http://example.com/exampleimage.tgz example/imagerepo
 ```
 
-*注：用户既可以使用* `*docker load*` *来导入镜像存储文件到本地镜像库，也可以使用* `*docker import*` *来导入一个容器快照到本地镜像库。这两者的区别在于容器快照文件将丢弃所有的历史记录和元数据信息（即仅保存容器当时的快照状态），而镜像存储文件将保存完整记录，体积也要大。此外，从容器快照文件导入时可以重新指定标签等元数据信息。*
+*注：用户既可以使用* `docker load` *来导入**<u>镜像</u> 存储文件到本地镜像库**，也可以使用* `docker import` 来导入一个**<u>*容器*</u> 快照到本地镜像库**。这两者的区别在于容器快照文件将丢弃所有的历史记录和元数据信息（即仅保存容器当时的快照状态），而镜像存储文件将保存完整记录，体积也要大。此外，从容器快照文件导入时可以重新指定标签等元数据信息。
 
 #### 容器生命周期
 
@@ -672,7 +675,7 @@ $ docker import http://example.com/exampleimage.tgz example/imagerepo
 
 #### 使用dockerfile定制镜像
 
-在之前`docker commit`的学习中了解到，镜像的定制实际上就是定制每一层所添加的配置、文件。如果我们可以把每一层修改、安装、构建、操作的命令都写入一个脚本，用这个脚本来构建、定制镜像，那么之前提及的无法重复的问题、镜像构建透明性的问题、体积的问题就都会解决。这个脚本就是 Dockerfile。
+在之前`docker commit`的学习中了解到，**镜像的定制实际上就是定制每一层所添加的配置、文件**。如果我们可以把每一层修改、安装、构建、操作的命令都写入一个脚本，用这个脚本来构建、定制镜像，那么之前提及的无法重复的问题、镜像构建透明性的问题、体积的问题就都会解决。这个脚本就是 Dockerfile。
 
 Dockerfile 是一个文本文件，其内包含了一条条的 **指令(Instruction)**，每一条指令构建一层，因此每一条指令的内容，就是描述该层应当如何构建。
 
@@ -775,7 +778,7 @@ RUN echo '<h1>Hello, Docker!</h1>' > /usr/share/nginx/html/index.html
 在 `Dockerfile` 文件所在目录执行：
 
 ``` sh
-$ docker build -t nginx:v3 .
+$ docker build -t nginx:v3 .		# 最后有一个点.  指定了构建路径
 Sending build context to Docker daemon 2.048 kB
 Step 1 : FROM nginx
  ---> e43d811ce2f4
@@ -835,7 +838,7 @@ Sending build context to Docker daemon 2.048 kB
 
 当然，一般大家习惯性的会使用默认的文件名 `Dockerfile`，以及会将其置于镜像构建上下文目录中。
 
-##### 直接用git repo 进行构建
+**直接用git repo 进行构建**
 
 或许你已经注意到了，`docker build` 还支持从 URL 构建，比如可以直接从 Git repo 中构建：
 
@@ -858,9 +861,7 @@ Successfully built 038ad4142d2b
 
 这行命令指定了构建所需的 Git repo，并且指定分支为 `master`，构建目录为 `/amd64/hello-world/`，然后 Docker 就会自己去 `git clone` 这个项目、切换到指定分支、并进入到指定目录后开始构建。
 
-建。
-
-##### 用给定的 tar 压缩包构建
+**用给定的 tar 压缩包构建**
 
 ``` bash
 $ docker build http://server/context.tar.gz
@@ -868,7 +869,7 @@ $ docker build http://server/context.tar.gz
 
 如果所给出的 URL 不是个 Git repo，而是个 `tar` 压缩包，那么 Docker 引擎会下载这个包，并自动解压缩，以其作为上下文，开始构建。
 
-##### 从标准输入中读取 Dockerfile 进行构建
+**从标准输入中读取 Dockerfile 进行构建**
 
 ``` shell
 docker build - < Dockerfile
@@ -878,7 +879,7 @@ cat Dockerfile | docker build -
 
 如果标准输入传入的是文本文件，则将其视为 `Dockerfile`，并开始构建。这种形式由于直接从标准输入中读取 Dockerfile 的内容，它没有上下文，因此不可以像其他方法那样可以将本地文件 `COPY` 进镜像之类的事情。
 
-##### 从标准输入中读取上下文压缩包进行构建
+**从标准输入中读取上下文压缩包进行构建**
 
 ``` shell
 $ docker build - < context.tar.gz
@@ -928,12 +929,15 @@ DRIVER              VOLUME NAME
 local               my-vol
 ```
 
+在宿主机中新建的数据卷所在的位置：`/var/lib/docker/volumes/`
+
 在主机里使用以下命令可以查看指定 `数据卷` 的信息
 
 ``` bash
 $ docker volume inspect my-vol
 [
     {
+        "CreatedAt": "2022-06-23T09:56:04+08:00",
         "Driver": "local",
         "Labels": {},
         "Mountpoint": "/var/lib/docker/volumes/my-vol/_data",
@@ -943,14 +947,6 @@ $ docker volume inspect my-vol
     }
 ]
 ```
-
-**启动一个挂载数据卷的容器**
-
-在用 `docker run` 命令的时候，使用 `--mount` 标记来将 `数据卷` 挂载到容器里。在一次 `docker run` 中可以挂载多个 `数据卷`。
-
-下面创建一个名为 `web` 的容器，并加载一个 `数据卷` 到容器的 `/usr/share/nginx/html` 目录。
-
-[数据卷 - Docker — 从入门到实践 (gitbook.io)](https://yeasy.gitbook.io/docker_practice/data_management/volume)
 
 **删除数据卷**
 
@@ -963,12 +959,121 @@ $ docker volume rm my-vol
 无主的数据卷可能会占据很多空间，要清理请使用以下命令
 
  ``` bash
- $ docker volume prune
+$ docker volume prune
  ```
+
+#### 启动一个挂载数据卷的容器
+
+在用 `docker run` 命令的时候，使用 `--mount` 标记来将 数据卷挂载到容器里。在一次 `docker run` 中可以挂载多个 `数据卷`。
+
+我们使用命令`docker volume create vol-1`来新建一个数据卷，并进入此数据卷的地址`cd /var/lib/docker/volumes/vol-1`，然后
+
+``` sh
+root@VM-8-17-ubuntu:/var/lib/docker/volumes/vol-1# ls
+_data
+```
+
+此`_data`目录才是真正放数据卷的数据的地方。`cd _data`进入其中，现在这里是空的。使用命令：
+
+``` shell
+root@VM-8-17-ubuntu:/var/lib/docker/volumes/vol-1/_data# echo "print('hello')" > test1.py
+```
+
+随便创建一个文件，之后看效果。
+
+下面创建一个名为 `web1` 的容器，并加载一个 `数据卷` 到容器的 `/usr/share/nginx/html` 目录。
+
+``` shell
+$ docker volume ls
+DRIVER    VOLUME NAME
+local     58f9c4434ba959cd0ef5c0749c1570c8081ef286e5c8a41fe8d79f0677b64f3d
+local     vol-1
+	
+$ docker run -d -p 8000:80 --name web1 --mount source=vol-1,target=/usr/share/nginx/html nginx
+e7c41e1a17642c6196209c128fa07a59e486b9c2c72bdc6913e2fef1411f307c
+```
+
+上述`--mount` 选项可以用`-v`代替：`-v vol-1:/usr/share/nginx/html `
+
+此时我们检查此容器，可以找到`Mounts`项
+
+``` shell
+"Mounts": [
+            {
+                "Type": "volume",
+                "Name": "vol-1",
+                "Source": "/var/lib/docker/volumes/vol-1/_data",
+                "Destination": "/usr/share/nginx/html",
+                "Driver": "local",
+                "Mode": "z",
+                "RW": true,
+                "Propagation": ""
+            }
+        ],
+```
+
+然后使用命令`docker exec -it e7 /bin/bash`进入此容器，并cd到`/usr/share/nginx/html`，`ls`一下
+
+``` shell
+root@e7c41e1a1764:/usr/share/nginx/html# ls
+test1.py
+```
+
+默认nginx容器的此目录下应该是有index.html的，但因为我们挂载了数据卷到此目录，此目录的内容就和数据卷`vol-1/_data`中的内容一致了。
+
+此时打开另一个终端cd到`vol-1`在宿主机中的目录并新建一个文件：
+
+``` shell
+root@VM-8-17-ubuntu:/var/lib/docker/volumes/vol-1/_data# echo "<h1> qqwweerr</h1>" > index.html
+root@VM-8-17-ubuntu:/var/lib/docker/volumes/vol-1/_data# ls
+index.html  test1.py
+```
+
+此时在原先 e7 这个容器的终端`ls`
+
+``` shell
+root@e7c41e1a1764:/usr/share/nginx/html# ls
+index.html  test1.py
+```
+
+可以看到，新建的文件瞬间同步到了容器了。（经测试，将容器关闭后再在vol-1中新建文件，容器打开后也该文件也存在）
+
+可见数据卷挂载会**将宿主机的一个目录作为容器的数据卷挂载到容器中，使宿主机和容器之间可以共享一个目录**。
 
 #### 挂载主机目录
 
-[挂载主机目录 - Docker — 从入门到实践 (gitbook.io)](https://yeasy.gitbook.io/docker_practice/data_management/bind-mounts)
+使用 `--mount` 不仅可以挂载数据卷，还可以指定挂载一个**本地主机的目录**到容器中去。
+
+``` shell
+root@VM-8-17-ubuntu:/home/ubuntu/mydocker/webapp# docker run -d -p 8003:80 \
+> --name web3 \
+> -v /home/ubuntu/mydocker/webapp:/usr/share/nginx/html/ \
+> nginx
+e45fabf63e3f664fba0b7e5a2d95ebed921b30b5d33c6a8cf6bb60e111617a8c
+```
+
+上述创建容器的命令还可以这样写: （主要要加`type=bind`）
+
+> `docker run -d -p 8003:80 --name web3 --mount type=bind,source=/home/ubuntu/mydocker/webapp,target=/usr/share/nginx/html nginx`
+
+Docker 挂载数据卷和主机目录的默认权限是 `读写`，用户也可以通过增加 `readonly` 指定为 `只读`。使用如下命令即可
+
+``` shell
+root@VM-8-17-ubuntu:/home/ubuntu/mydocker/webapp# docker run -d -p 8003:80 \
+> --name web3 \
+> -v /home/ubuntu/mydocker/webapp:/usr/share/nginx/html/:ro \
+# --mount type=bind,source=/home/ubuntu/mydocker/webapp,target=/usr/share/nginx/html,readonly \
+> nginx
+```
+
+加了 `readonly` 之后，就挂载为 `只读` 了。如果你在容器内 `/usr/share/nginx/html` 目录新建文件，会显示如下错误
+
+``` shell
+/usr/share/nginx/html # touch new.txt
+touch: new.txt: Read-only file system
+```
+
+
 
 ## 9. 网络管理
 
@@ -1039,7 +1144,7 @@ ubuntu@VM-8-17-ubuntu:~$ docker port <container-ID>
 
 注意：
 
-- 容器有自己的内部网络和 ip 地址（使用 `docker inspect` 查看，Docker 还可以有一个可变的网络配置。）
+- 容器有自己的内部网络和 ip 地址（使用 `docker inspect <容器ID>` 查看，Docker 还可以有一个可变的网络配置。）
 - `-p` 标记可以多次使用来绑定多个端口
 
 例：

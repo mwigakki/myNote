@@ -2162,7 +2162,7 @@ $ curl -A "Mozilla/4.0 (compatible; MSIE 8.0; Windows NT 5.0)" http://www.linux.
 
 
 
-# #. 快捷键 
+# # 快捷键 
 
 **[Tab] 有『命令补全』与『文件补齐』的功能**
 
@@ -2323,7 +2323,7 @@ public class TestDemo  {
 
 `shutdown -r now`，`sudo reboot`， 这两个命令功能一样，**重启**，其中shutdown -r now的-r应当就是restart的意思。
 
-## 可能遇到的问题与解决
+# # 可能遇到的问题与解决
 
 - **swap file “*.swp”already exists！问题：**
     - 在其目录下详细显示所有文件 ls -al , 将.swp结尾的文件rm掉
@@ -2349,7 +2349,7 @@ public class TestDemo  {
 - **mysql连接jar包需要放在linux下的哪里呢？**
     - 该jar包应该被置于jdk安装路径下jre文件夹lib目录的ext文件夹下。例如我的JDK安装路径为`/usr/lib/jvm/java-8-openjdk-amd64`，则我的jar包位置应该是：`/usr/lib/jvm/java-8-openjdk-amd64/jre/lib/ext/mysql-connector-java-8.0.18.jar`（通过whereis java查看jdk路径）
 
-# #. 一些操作系统的知识
+# # 一些操作系统的知识
 
 ## CPU、内存、I/O设备速度差异
 
