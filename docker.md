@@ -1,4 +1,4 @@
-# docker
+# Docker
 
 https://www.w3cschool.cn/docker/docker-tutorial.html
 
@@ -10,13 +10,13 @@ https://www.w3cschool.cn/docker/docker-tutorial.html
 
 ## 1. 容器简介
 
-#### 为什么要用容器
+### 为什么要用容器
 
 - 传统的应用部署方式是通过插件或脚本来安装应用。这样做的缺点是应用的运行、配置、管理、所有生存周期将与当前操作系统绑定，这样做并不利于应用的升级更新/回滚等操作，当然也可以通过创建虚机的方式来实现某些功能，但是虚拟机非常重，并不利于移植。
 
 - 软件开发的一大目的就是隔离，应用程序在运行时相互独立互不干扰，这种隔离实现起来是很不容易的，其中一种解决方案就是虚拟机技术，通过将应用程序部署在不同的虚拟机中从而实现隔离，另一种就是**容器**技术。
 
-#### 容器相对虚拟机的优势
+### 容器相对虚拟机的优势
 
 - **每个虚拟机一套OS，而容器共享一个操作系统/内核**
   
@@ -51,7 +51,7 @@ https://www.w3cschool.cn/docker/docker-tutorial.html
 - 开发，测试和生产环境一致性：在本地或外网（生产环境）运行的一致性。
 - 资源隔离，且利用高效
 
-#### 容器和虚拟机模型
+### 容器和虚拟机模型
 
 容器和虚拟机都依赖于宿主机才能运行。宿主机可以是笔记本，是数据中心的物理服务器，也可以是公有云的某个实例。
 
@@ -206,7 +206,7 @@ Docker 主机安装之后，本地并没有镜像。
 
 镜像的唯一标识是其 ID 和摘要（DIGEST），而一个镜像可以有多个标签。
 
-#### 搜索镜像
+### 搜索镜像
 
 使用命令：
 
@@ -235,7 +235,7 @@ linuxserver/mysql              A Mysql container, brought to you by LinuxSe…  
 
 需要注意，上面返回的镜像中既有官方的也有非官方的（如后三个），可以使用 --filter "is-official=true"，使命令返回内容只显示官方镜像。
 
-#### 拉取镜像
+### 拉取镜像
 
 ``` bash
 docker image pull <repository>:<tag>
@@ -258,7 +258,7 @@ alpine       latest    e66264b98777   3 weeks ago   5.53MB
 
 可见`Alpine`的大小是非常小的。目前 Docker 官方已开始推荐使用 `Alpine` 替代之前的 `Ubuntu` 做为基础镜像环境。这样会带来多个好处。包括镜像下载速度加快，镜像安全性提高，主机之间的切换更方便，占用更少磁盘空间等。
 
-#### 删除镜像
+### 删除镜像
 
 当读者不再需要某个镜像的时候，可以通过命令从 Docker 主机删除该镜像。
 
@@ -266,12 +266,12 @@ alpine       latest    e66264b98777   3 weeks ago   5.53MB
 docker image rm <镜像ID>或<repository>:<tag>
 ```
 
-#### 推送镜像
+### 推送镜像
 
 首先需要登录docker的站点，在https://hub.docker.com/注册个账号，然后docker login，成功后使用docker tag修改测试运行过的image，然后再docker push 【账号】/【docker】：【tag】，如果没给tag，默认就是latest，如果制定了，以后pull镜像就需要指定tag
 
 
-#### 利用 commit 理解镜像构成
+### 利用 commit 理解镜像构成
 
 > 注意： `docker commit` 命令除了学习之外，还有一些特殊的应用场合，比如被入侵后保存现场等。但是，**不要使用 `docker commit` 定制镜像**，定制镜像应该使用 `Dockerfile` 来完成。
 
@@ -398,9 +398,9 @@ PING www.a.shifen.com (110.242.68.3) 56(84) bytes of data.
 
 
 
-#### 其他
+### 其他
 
-##### 分层存储
+#### 分层存储
 
 因为镜像包含操作系统完整的 `root` 文件系统，其体积往往是庞大的，因此在 Docker 设计时，就充分利用 [Union FS (opens new window)](https://en.wikipedia.org/wiki/Union_mount)的技术，将其设计为分层存储的架构。所以严格来说，镜像并非是像一个 `ISO` 那样的打包文件，镜像只是一个虚拟的概念，其实际体现并非由一个文件组成，而是由一组文件系统组成，或者说，由多层文件系统联合组成。
 
@@ -408,13 +408,13 @@ PING www.a.shifen.com (110.242.68.3) 56(84) bytes of data.
 
 分层存储的特征还使得镜像的复用、定制变的更为容易。甚至可以用之前构建好的镜像作为基础层，然后进一步添加新的层，以定制自己所需的内容，构建新的镜像。
 
-##### 镜像体积
+#### 镜像体积
 
 如果仔细观察，会注意到，这里标识的所占用空间和在 Docker Hub 上看到的镜像大小不同。比如，`ubuntu:18.04` 镜像大小，在这里是 `63.3MB`，但是在 [Docker Hub (opens new window)](https://hub.docker.com/layers/ubuntu/library/ubuntu/bionic/images/sha256-32776cc92b5810ce72e77aca1d949de1f348e1d281d3f00ebcc22a3adcdc9f42?context=explore)显示的却是 `25.47 MB`。这是因为 Docker Hub 中显示的体积是压缩后的体积。在镜像下载和上传过程中镜像是保持着压缩状态的，因此 Docker Hub 所显示的大小是网络传输中更关心的流量大小。而 `docker image ls` 显示的是镜像下载到本地后，展开的大小，准确说，是展开后的各层所占空间的总和，因为镜像到本地后，查看空间的时候，更关心的是本地磁盘空间占用的大小。
 
 另外一个需要注意的问题是，`docker image ls` 列表中的镜像体积总和并非是所有镜像实际硬盘消耗。由于 Docker 镜像是多层存储结构，并且可以继承、复用，因此不同镜像可能会因为使用相同的基础镜像，从而拥有共同的层。由于 Docker 使用 Union FS，相同的层只需要保存一份即可，因此实际镜像硬盘占用空间很可能要比这个列表镜像大小的总和要小的多。
 
-#####  虚悬镜像
+####  虚悬镜像
 
 上面的镜像列表中，还可以看到一个特殊的镜像，这个镜像既没有仓库名，也没有标签，均为 `<none>`。：
 
@@ -436,7 +436,7 @@ REPOSITORY          TAG                 IMAGE ID            CREATED             
 $ docker image prune
 ```
 
-##### 中间层镜像
+#### 中间层镜像
 
 为了加速镜像构建、重复利用资源，Docker 会利用 **中间层镜像**。所以在使用一段时间后，可能会看到一些依赖的中间层镜像。默认的 `docker image ls` 列表中只会显示顶层镜像，如果希望显示包括中间层镜像在内的所有镜像的话，需要加 `-a` 参数。	
 
@@ -446,7 +446,7 @@ $ docker image ls -a
 
 这样会看到很多**无标签的镜像**，与之前的虚悬镜像不同，这些无标签的镜像很多都是中间层镜像，是**其它镜像所依赖的镜像**。这些无标签镜像不应该删除，否则会导致上层镜像因为依赖丢失而出错。实际上，这些镜像也没必要删除，因为之前说过，相同的层只会存一遍，而这些镜像是别的镜像的依赖，因此并不会因为它们被列出来而多存了一份，无论如何你也会需要它们。只要删除那些依赖它们的镜像后，这些依赖的中间层镜像也会被连带删除。
 
-##### 以特定格式显示
+#### 以特定格式显示
 
 默认情况下，`docker image ls` 会输出一个完整的表格，但是我们并非所有时候都会需要这些内容。比如，刚才删除虚悬镜像的时候，我们需要利用 `docker image ls` 把所有的虚悬镜像的 ID 列出来，然后才可以交给 `docker image rm` 命令作为参数来删除指定的这些镜像，这个时候就用到了 `-q` 参数。
 
@@ -514,7 +514,7 @@ $ docker image rm $(docker image ls -q -f before=mongo:3.2)
 - 执行用户指定的应用程序
 - 执行完毕后容器被终止
 
-#### 创建并使用容器
+### 创建并使用容器
 
 创建一个新的容器并运行一个命令:
 
@@ -584,7 +584,7 @@ docker container run -it ubuntu /bin/bash
 - docker stop：支持“**优雅退出**”。先发送SIGTERM信号，在一段时间之后（10s）再发送SIGKILL信号。Docker内部的应用程序可以接收SIGTERM信号，然后做一些“退出前工作”，比如保存状态、处理当前请求等。
 - docker kill：发送SIGKILL信号，应用程序直接退出。
 
-#### docker进入、退出容器
+### docker进入、退出容器
 
 查看某一个进程的详细信息：
 
@@ -620,7 +620,7 @@ Ctrl+P+Q	# 这样退出就不会删除容器
 
 容器如果不运行任何进程则无法存在
 
-#### 导入和导出
+### 导入和导出
 
 如果要**导出本地某个容器**，可以使用 `docker export` 命令。
 
@@ -657,7 +657,7 @@ $ docker import http://example.com/exampleimage.tgz example/imagerepo
 
 *注：用户既可以使用* `docker load` *来导入**<u>镜像</u> 存储文件到本地镜像库**，也可以使用* `docker import` 来导入一个**<u>*容器*</u> 快照到本地镜像库**。这两者的区别在于容器快照文件将丢弃所有的历史记录和元数据信息（即仅保存容器当时的快照状态），而镜像存储文件将保存完整记录，体积也要大。此外，从容器快照文件导入时可以重新指定标签等元数据信息。
 
-#### 容器生命周期
+### 容器生命周期
 
 容器的生命周期，从**创建、运行、休眠，直至销毁**的整个过程。
 
@@ -673,7 +673,7 @@ $ docker import http://example.com/exampleimage.tgz example/imagerepo
 
 ## 6. Dockerfile
 
-#### 使用dockerfile定制镜像
+### 使用dockerfile定制镜像
 
 在之前`docker commit`的学习中了解到，**镜像的定制实际上就是定制每一层所添加的配置、文件**。如果我们可以把每一层修改、安装、构建、操作的命令都写入一个脚本，用这个脚本来构建、定制镜像，那么之前提及的无法重复的问题、镜像构建透明性的问题、体积的问题就都会解决。这个脚本就是 Dockerfile。
 
@@ -771,7 +771,7 @@ RUN echo '<h1>Hello, Docker!</h1>' > /usr/share/nginx/html/index.html
 
     此外，还可以看到这一组命令的最后添加了清理工作的命令，删除了为了编译构建所需要的软件，清理了所有下载、展开的文件，并且还清理了 `apt` 缓存文件。这是很重要的一步，我们之前说过，**镜像是多层存储，每一层的东西并不会在下一层被删除**，会一直跟随着镜像。因此镜像构建时，一定要确保每一层只添加真正需要添加的东西，**任何无关的东西都应该清理掉**。
 
-##### 构建镜像
+#### 构建镜像
 
 现在我们明白了这个 Dockerfile 的内容，那么让我们来构建这个镜像吧。
 
@@ -800,7 +800,7 @@ $ docker build [选项] <上下文路径/URL/->
 
 在这里我们指定了最终镜像的名称 `-t nginx:v3`，构建成功后，我们可以像之前运行 `nginx:v2` 那样来运行这个镜像，其结果会和 `nginx:v2` 一样。
 
-##### 构建镜像上下文（Context）
+#### 构建镜像上下文（Context）
 
 如果注意，会看到 `docker build` 命令最后有一个 `.`。`.` 表示当前目录，而 `Dockerfile` 就在当前目录，因此不少初学者以为这个路径是在指定 `Dockerfile` 所在路径，这么理解其实是不准确的。如果对应上面的命令格式，你可能会发现，这是在指定 **上下文路径**。那么什么是上下文呢？
 
@@ -903,7 +903,7 @@ $ docker build - < context.tar.gz
 
 ![数据管理](https://3503645665-files.gitbook.io/~/files/v0/b/gitbook-x-prod.appspot.com/o/spaces%2F-M5xTVjmK7ax94c8ZQcm%2Fuploads%2Fgit-blob-5950036bba1c30c0b1ab52a73a94b59bbdd5f57c%2Ftypes-of-mounts.png?alt=media)
 
-#### 数据卷
+### 数据卷
 
 `数据卷` 是一个可供一个或多个容器使用的特殊目录，它绕过 UFS，可以提供很多有用的特性：
 
@@ -962,7 +962,7 @@ $ docker volume rm my-vol
 $ docker volume prune
  ```
 
-#### 启动一个挂载数据卷的容器
+### 启动一个挂载数据卷的容器
 
 在用 `docker run` 命令的时候，使用 `--mount` 标记来将 数据卷挂载到容器里。在一次 `docker run` 中可以挂载多个 `数据卷`。
 
@@ -1040,7 +1040,7 @@ index.html  test1.py
 
 可见数据卷挂载会**将宿主机的一个目录作为容器的数据卷挂载到容器中，使宿主机和容器之间可以共享一个目录**。
 
-#### 挂载主机目录
+### 挂载主机目录
 
 使用 `--mount` 不仅可以挂载数据卷，还可以指定挂载一个**本地主机的目录**到容器中去。
 
@@ -1079,12 +1079,14 @@ touch: new.txt: Read-only file system
 
 Network Namespace 是 Linux 内核提供的功能，是实现网络虚拟化的重要功能，它能创建多个隔离的网络空间，它们有独自网络栈信息。不管是虚拟机还是容器，运行的时候仿佛自己都在独立的网络中。而且不同Network Namespace的资源相互不可见，彼此之间无法直接通信。
 
+**namespace 是 Linux 内核用来隔离内核资源的方式。**通过 namespace 可以让一些进程只能看到与自己相关的一部分资源，而另外一些进程也只能看到与它们自己相关的资源，这两拨进程根本就感觉不到对方的存在。具体的实现方式是把一个或多个进程的相关资源指定在同一个 namespace 中。
+
 
 每个新创建的 Network Namespace 默认有一个本地环回接口 lo，除此之外，所有的其他网络设备(物理/虚拟网络接口，网桥等)只能属于一个 Network Namespace。每个 socket 也只能属于一个 Network Namespace。
 
 可以为每个联网容器创建一个命名空间，当然这需要有足够的物理网卡。当物理网卡不足而需要多个网络容器时，就需要虚拟网卡设备。
 
-#### 外部访问容器
+### 外部访问容器
 
 在上文 **4. Docker镜像 - 利用 commit 理解镜像构成** 已有例子。命令例子如下：
 
@@ -1132,7 +1134,7 @@ $ docker run -d -p 127.0.0.1::80 nginx
 $ docker run -d -p 127.0.0.1:80:80/udp nginx
 ```
 
-#### 查看端口映射
+### 查看端口映射
 
 使用 `docker port` 来查看当前映射的端口配置，也可以查看到绑定的地址:
 
@@ -1153,17 +1155,185 @@ ubuntu@VM-8-17-ubuntu:~$ docker port <container-ID>
 $ docker run -d -p 80:80 -p 443:443 nginx
 ```
 
-#### 容器互联
+### 容器互联
 
-##### 新建网络
+#### 新建网络
 
 ``` shell
 $ docker network create -d bridge my-net
 ```
 
-`-d` 参数指定 Docker 网络类型，有 `bridge` `overlay`。其中 `overlay` 网络类型用于 [Swarm mode]()，在本小节中你可以忽略它。
+`-d` 参数指定 Docker 网络类型，有 `bridge` ，`overlay`。其中 `overlay` 网络类型用于 [Swarm mode]()，在本小节中你可以忽略它。
 
-##### 连接容器
+接着使用命令查看新建的网络：
+
+``` shell
+$ docker network ls
+NETWORK ID     NAME      DRIVER    SCOPE
+faadf3dd8877   bridge    bridge    local
+024dcca956bd   host      host      local
+59f052e5d856   my-net    bridge    local
+501876cfc392   none      null      local
+```
+
+可以看到我们新建的`my-net`的 `NETWORK ID` 是`59f0`，还能看到一个名为`bridge`的网络，它就是开启一个容器默认连接的网络，使用`docker inspect <containerID>`可以在显示的信息最后`Networks`字段中查看。（剩下两个就不知道是啥了）
+
+使用`inspect`还可以查看具体的网络信息，先查看我们新建的`59f0`
+
+``` shell
+ubuntu@VM-8-17-ubuntu:/etc/docker$ docker network inspect 59f0	
+[
+    {
+        "Name": "my-net",
+        "Id": "59f052e5d85648227a7152c497399ef6a6908e1f4238589c1f448e07c3f98d4a",
+        "Created": "2022-06-23T19:25:25.820003272+08:00",
+        "Scope": "local",
+        "Driver": "bridge",
+        "EnableIPv6": false,
+        "IPAM": {
+            "Driver": "default",
+            "Options": {},
+            "Config": [
+                {
+                    "Subnet": "172.18.0.0/16",
+                    "Gateway": "172.18.0.1"
+                }
+            ]
+        },
+        "Internal": false,
+        "Attachable": false,
+        "Ingress": false,
+        "ConfigFrom": {
+            "Network": ""
+        },
+        "ConfigOnly": false,
+        "Containers": {},
+        "Options": {},
+        "Labels": {}
+    }
+]
+```
+
+可以看到网络号为`172.18.0.0/16`，网关为`172.18.0.1`，没有容器。
+
+再查看默认的`bridge`:
+
+``` shell
+ubuntu@VM-8-17-ubuntu:~$ docker network inspect faa
+[
+    {
+        "Name": "bridge",
+        "Id": "faadf3dd887757f96d2e5422c1502115307d1b6bd93e00697513eb0a273d3036",
+        "Created": "2022-06-23T19:49:35.987683344+08:00",
+        "Scope": "local",
+        "Driver": "bridge",
+        "EnableIPv6": false,
+        "IPAM": {
+            "Driver": "default",
+            "Options": null,
+            "Config": [
+                {
+                    "Subnet": "172.17.0.0/16",
+                    "Gateway": "172.17.0.1"
+                }
+            ]
+        },
+        "Internal": false,
+        "Attachable": false,
+        "Ingress": false,
+        "ConfigFrom": {
+            "Network": ""
+        },
+        "ConfigOnly": false,
+        "Containers": {
+            "454a0a226921dad70c77e977c5a092a2f8c653f6edbf54203320b3dba7fac0d3": {
+                "Name": "web2",
+                "EndpointID": "e1539c5082870417314d159d5554e0b4f061902aeeda33644032c4e23e1deaeb",
+                "MacAddress": "02:42:ac:11:00:02",
+                "IPv4Address": "172.17.0.2/16",
+                "IPv6Address": ""
+            },
+            "e45fabf63e3f664fba0b7e5a2d95ebed921b30b5d33c6a8cf6bb60e111617a8c": {
+                "Name": "web3",
+                "EndpointID": "ed7248c7c022e7b990d63a4ef4f27d13ce8766eec4bd92f29779503289691016",
+                "MacAddress": "02:42:ac:11:00:03",
+                "IPv4Address": "172.17.0.3/16",
+                "IPv6Address": ""
+            },
+            "e7c41e1a17642c6196209c128fa07a59e486b9c2c72bdc6913e2fef1411f307c": {
+                "Name": "web1",
+                "EndpointID": "9e6c787e2117f65ccfd12fe5b251447bd48a96521f517920f9e62cbadc7c3fb7",
+                "MacAddress": "02:42:ac:11:00:04",
+                "IPv4Address": "172.17.0.4/16",
+                "IPv6Address": ""
+            }
+        },
+        "Options": {
+            "com.docker.network.bridge.default_bridge": "true",
+            "com.docker.network.bridge.enable_icc": "true",
+            "com.docker.network.bridge.enable_ip_masquerade": "true",
+            "com.docker.network.bridge.host_binding_ipv4": "0.0.0.0",
+            "com.docker.network.bridge.name": "docker0",
+            "com.docker.network.driver.mtu": "1500"
+        },
+        "Labels": {}
+    }
+]
+```
+
+可以看到默认的网络内容就很多了，网络号是`172.17.0.0/16`，网关是`172.17.0.1`，因为我之前就开启了三个容器，所以此时也能在这里看到使用了默认网路的容器们，在字段`Containers`中，它们的IP地址和MAC地址按序分配。同时，在字段`Options`中，可以看到此网路被设置为默认网桥网络`default_bridge`，同时还有外部的名称为`docker0`，以及等等其他信息。
+
+此时使用`ifconfig`：
+
+``` shell
+ubuntu@VM-8-17-ubuntu:/etc/docker$ ifconfig
+br-59f052e5d856: flags=4099<UP,BROADCAST,MULTICAST>  mtu 1500
+        inet 172.18.0.1  netmask 255.255.0.0  broadcast 172.18.255.255
+        inet6 fe80::42:2ff:fea6:feb1  prefixlen 64  scopeid 0x20<link>
+        ether 02:42:02:a6:fe:b1  txqueuelen 0  (Ethernet)
+        RX packets 1  bytes 28 (28.0 B)
+        RX errors 0  dropped 0  overruns 0  frame 0
+        TX packets 5  bytes 526 (526.0 B)
+        TX errors 0  dropped 0 overruns 0  carrier 0  collisions 0
+docker0: flags=4163<UP,BROADCAST,RUNNING,MULTICAST>  mtu 1500
+        inet 172.17.0.1  netmask 255.255.0.0  broadcast 172.17.255.255
+        inet6 fe80::42:88ff:fed9:a67d  prefixlen 64  scopeid 0x20<link>
+        ether 02:42:88:d9:a6:7d  txqueuelen 0  (Ethernet)
+        RX packets 70290  bytes 21754199 (21.7 MB)
+        RX errors 0  dropped 0  overruns 0  frame 0
+        TX packets 82941  bytes 69019296 (69.0 MB)
+        TX errors 0  dropped 0 overruns 0  carrier 0  collisions 0
+... # 本机唯一网卡eth0和回环地址lo就不写了
+veth57e6ad0: flags=4163<UP,BROADCAST,RUNNING,MULTICAST>  mtu 1500
+        inet6 fe80::d4bb:20ff:fedb:6063  prefixlen 64  scopeid 0x20<link>
+        ether d6:bb:20:db:60:63  txqueuelen 0  (Ethernet)
+        RX packets 244  bytes 32819 (32.8 KB)
+        RX errors 0  dropped 0  overruns 0  frame 0
+        TX packets 386  bytes 36321 (36.3 KB)
+        TX errors 0  dropped 0 overruns 0  carrier 0  collisions 0
+veth5f0448c: flags=4163<UP,BROADCAST,RUNNING,MULTICAST>  mtu 1500
+        inet6 fe80::8cca:cff:fe17:9386  prefixlen 64  scopeid 0x20<link>
+        ether 8e:ca:0c:17:93:86  txqueuelen 0  (Ethernet)
+        RX packets 4316  bytes 306934 (306.9 KB)
+        RX errors 0  dropped 0  overruns 0  frame 0
+        TX packets 5427  bytes 9587712 (9.5 MB)
+        TX errors 0  dropped 0 overruns 0  carrier 0  collisions 0
+vethdd162aa: flags=4163<UP,BROADCAST,RUNNING,MULTICAST>  mtu 1500
+        inet6 fe80::d0cb:12ff:fee8:f50b  prefixlen 64  scopeid 0x20<link>
+        ether d2:cb:12:e8:f5:0b  txqueuelen 0  (Ethernet)
+        RX packets 11701  bytes 828632 (828.6 KB)
+        RX errors 0  dropped 0  overruns 0  frame 0
+        TX packets 12388  bytes 18597297 (18.5 MB)
+        TX errors 0  dropped 0 overruns 0  carrier 0  collisions 0
+```
+
+第一部分是我们新建的网络`my-net`（从其ip地址可以看出），但其名称就不是`my-net`了，而是`br(idge)-NETWORK ID`的形式。
+
+第二部分是`docker0`，除了ip地址，还可以看到收发包的个数。
+
+后三部分是连到`docker0`的三个容器，它们的命名格式为`veth<ContainerID>`。
+
+#### 连接容器
 
 运行一个容器并连接到新建的 `my-net` 网络
 
@@ -1206,7 +1376,7 @@ PING busybox2 (172.18.0.3): 56 data bytes
 
 如果你有多个容器之间需要互相连接，推荐使用 [Docker Compose]()。
 
-#### 配置DNS
+### 配置DNS
 
 如何自定义配置容器的主机名和 DNS 呢？秘诀就是 Docker 利用虚拟文件来挂载容器的 3 个相关配置文件。
 
@@ -1221,7 +1391,7 @@ tmpfs on /etc/resolv.conf type tmpfs ...
 
 这种机制可以让宿主主机 DNS 信息发生更新后，所有 Docker 容器的 DNS 配置通过 `/etc/resolv.conf` 文件立刻得到更新。
 
-配置全部容器的 DNS ，也可以在 `/etc/docker/daemon.json` 文件中增加以下内容来设置。
+配置全部容器的 DNS ，也可以在宿主机 `/etc/docker/daemon.json` 文件中增加以下内容来设置。
 
 ``` json
 {
@@ -1259,15 +1429,7 @@ nameserver 8.8.8.8
 
 
 
-
-
-
-
-
-
-
-
-#### Docker网络类型
+### Docker网络类型
 
 Docker提供了5种网络类型，其中常见的两种：bridge及host
 
@@ -1288,7 +1450,7 @@ docker0: flags=4163<UP,BROADCAST,RUNNING,MULTICAST>  mtu 1500
 
   Host模式下，容器的网络接口不与宿主机网络隔离。**在容器中监听相应端口的应用能够直接被从宿主机访问，即不需要做端口映射**。host网络仅支持Linux，host网络没有与宿主机网络隔离，可能引发**安全隐患或端口冲突**
 
-#### 宿主机访问容器应用
+### 宿主机访问容器应用
 
 这种是最常见的场景，使用容器部署应用，给其他机器提供服务，此时**容器和宿主机IP是通的，可以直接使用容器的虚拟IP+端口进行访问容器服务**，如果想**使用宿主机的IP访问到容器服务，需要将宿主机的某端口映射到容器的服务端口**，即对外暴露端口供宿主机和其他机器访问，**如果不发布端口，外界将无法访问这些容器**
 
@@ -1325,7 +1487,7 @@ veth18f4d1d: flags=4163<UP,BROADCAST,RUNNING,MULTICAST>  mtu 1500
 
 接下来的部分将介绍在一些场景中，Docker 所有的网络定制配置。以及通过 Linux 命令来调整、补充、甚至替换 Docker 默认的网络配置。
 
-#### 快速配置指南
+### 快速配置指南
 
 下面是一个跟 Docker 网络相关的命令列表。
 
@@ -1339,7 +1501,7 @@ veth18f4d1d: flags=4163<UP,BROADCAST,RUNNING,MULTICAST>  mtu 1500
 - `--iptables=true|false` 是否允许 Docker 添加 iptables 规则
 - `--mtu=BYTES` 容器网络中的 MTU
 
-下面2个命令选项既可以在启动服务时指定，也可以在启动容器时指定。在 Docker 服务启动的时候指定则会成为默认值，后**面执行 `docker run` 时**可以覆盖设置的默认值。
+下面2个命令选项既可以在启动服务时指定，也可以在启动容器时指定。在 Docker 服务启动的时候指定则会成为默认值，后面**执行 `docker run` 时可以覆盖设置的默认值**。
 
 - `--dns=IP_ADDRESS...` 使用指定的DNS服务器
 - `--dns-search=DOMAIN...` 指定DNS搜索域
@@ -1352,7 +1514,7 @@ veth18f4d1d: flags=4163<UP,BROADCAST,RUNNING,MULTICAST>  mtu 1500
 - `-p SPEC` 或 `--publish=SPEC` 映射容器端口到宿主主机
 - `-P or --publish-all=true|false` 映射容器所有端口到宿主主机
 
-#### 容器访问控制
+### 容器访问控制
 
 容器的访问控制，主要通过 Linux 上的 `iptables` 防火墙来进行管理和实现。`iptables` 是 Linux 上默认的防火墙软件，在大部分发行版中都自带。
 
@@ -1371,20 +1533,20 @@ $sysctl -w net.ipv4.ip_forward=1
 
 如果在启动 Docker 服务的时候设定 `--ip-forward=true`, Docker 就会自动设定系统的 `ip_forward` 参数为 1。
 
-##### 容器之间访问
+#### 容器之间访问
 
 容器之间相互访问，需要两方面的支持。
 
 - 容器的网络拓扑是否已经互联。默认情况下，所有容器都会被连接到 `docker0` 网桥上。
 - 本地系统的防火墙软件 -- `iptables` 是否允许通过。
 
-##### 访问所有端口
+#### 访问所有端口
 
 当启动 Docker 服务（即 dockerd）的时候，默认会添加一条转发策略到本地主机 iptables 的 FORWARD 链上。策略为通过（`ACCEPT`）还是禁止（`DROP`）取决于配置`--icc=true`（缺省值）还是 `--icc=false`。当然，如果手动指定 `--iptables=false` 则不会添加 `iptables` 规则。
 
 可见，默认情况下，不同容器之间是允许网络互通的。如果为了安全考虑，可以在 `/etc/docker/daemon.json` 文件中配置 `{"icc": false}` 来禁止它。
 
-##### 访问指定端口
+#### 访问指定端口
 
 在通过 `-icc=false` 关闭网络访问后，还可以通过 `--link=CONTAINER_NAME:ALIAS` 选项来访问容器的开放端口。
 
