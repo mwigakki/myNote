@@ -1086,6 +1086,62 @@ Network Namespace 是 Linux 内核提供的功能，是实现网络虚拟化的�
 
 可以为每个联网容器创建一个命名空间，当然这需要有足够的物理网卡。当物理网卡不足而需要多个网络容器时，就需要虚拟网卡设备。
 
+### 网络模型分析
+
+- **当应用是部署在物理主机上时：**
+
+<img src="/img/docker3.png" alt="img" style="zoom: 50%;" />
+
+> 所有应用共享Linux系统网络协议栈， socket 中存储了特定的四元组： 源ip+port，目的ip+port；
+
+- **当应用部署在虚拟机上时：**
+
+<img src="/img/docker4.png" alt="img" style="zoom: 50%;" />
+
+- **当应用部署在Docker容器时：**
+
+<img src="/img/docker5.png" alt="img" style="zoom: 50%;" />
+
+Docker容器的**本质是 共享内核，资源隔离、资源限制、文件系统rootfs。**
+
+同一台宿主机上的Docker容器**共享内核中传输层和网络层的处理流程以及设备驱动，共享硬件资源**，但是**socket套接字和虚拟网络设备相互独立**，需要进行隔离和限制。
+
+**Docker网络的实现主要就是如何在共享内核的基础上，实现socket的隔离，虚拟设备的隔离和通信.、**
+
+Docker的网络实现是站在巨人的肩膀上的，Docker主要是利用的操作系统的虚拟化技术，来实现不同容器的网络隔离和通信。
+
+- **<u>*虚拟网络接口*</u>**
+
+Linux网络协议栈中，IP层不与物理网络设备（网络驱动）直接通信，而是和抽象的网络接口（lo、eth0、eth1等）交互。这为Docker不同容器中能够模拟网络环境提供的基础。
+
+- **<u>*namespace*</u>**
+
+Docker是轻量级的虚拟化，他和虚拟机的一个主要区别是不同的Docker容器共享Linux内核。
+
+共享内核就会存在资源可见性的问题。为此，Linux支持为不同资源设置不同的namespace，不同namespace的资源相互隔离、相互不可见。
+
+有了namespace的概念，不同容器虚拟出独立的网络环境就变为可行。（比如我们可以在不同的容器中创建网络接口eth0.
+
+<img src="/img/docker6.png" alt="img" style="zoom: 67%;" />
+
+- **<u>*veth*</u>**
+
+namespace用于实现网络资源的隔离，但是Docker容器与宿主机经常需要进行通信，这就需要Linux系统中veth-pair技术的支持。
+
+veth是虚拟网络设备接口，它总是成对出现，用于连通两个namespace。从其中一个端口发出的数据包，可以直接出现在与它对应的另一个端口上。
+
+<img src="/img/docker7.png" alt="img" style="zoom: 67%;" />
+
+- **<u>*bridge*</u>**
+
+veth-pair解决了不同命名空间两两通信的问题（容器与容器、容器与宿主机），但是一台宿主机上可以启动大量的容器，这些容器的数据包需要汇聚到同一个网络接口才能与宿主机以外的设备通信。如果仅仅是基于veth-pair来进行数据转发配置，就过于繁琐。
+
+Linux网络内核引入网桥bridge来实现多个网络接口之间的通信，可以将一台机器上的若干接口连通起来。在OSI网络模型中，网桥属于数据链路层。
+
+<img src="/img/docker8.png" alt="img" style="zoom: 67%;" />
+
+
+
 ### 外部访问容器
 
 在上文 **4. Docker镜像 - 利用 commit 理解镜像构成** 已有例子。命令例子如下：
@@ -1335,6 +1391,8 @@ vethdd162aa: flags=4163<UP,BROADCAST,RUNNING,MULTICAST>  mtu 1500
 
 #### 连接容器
 
+连接到同一个网络的容器就是连通的，可以ping试试。
+
 运行一个容器并连接到新建的 `my-net` 网络
 
 ``` shell
@@ -1427,11 +1485,19 @@ nameserver 8.8.8.8
 
 > 注意：如果在容器启动时没有指定最后两个参数，Docker 会默认用主机上的 `/etc/resolv.conf` 来配置容器
 
-
-
 ### Docker网络类型
 
-Docker提供了5种网络类型，其中常见的两种：bridge及host
+Docker提供了多种网络类型：
+
+- **bridge：** Docker容器有自己的Network-Namesapce，通过veth-pair和Linux-Bridge技术实现容器与宿主机的网络通信。**brige模式是Docker的默认网络模式。**
+- **host：** Docker容器与宿主机共享网络，容器不会有自己的Network-Namesapce，与宿主机不进行网络隔离。
+- **overlay：** 将多个Docker Daemon连接到一起。
+- **IPvlan：** 用户可以完全控制IPv4和IPv6寻址。支持对二层VLAN tag和三层网络路由的完全控制。
+- **macvlan:** 支持为容器设置mac地址，让Docker daemon能够基于Mac地址路由流量。
+- **none:** 这种模式下的容器禁用所有网络。
+- **Network plugins:** 安装使用第三方的Docker网络插件。
+
+其中常见的两种：bridge及host
 
 - **Bridge**
 
@@ -1446,7 +1512,7 @@ docker0: flags=4163<UP,BROADCAST,RUNNING,MULTICAST>  mtu 1500
         inet6 fe80::42:88ff:fed9:a67d  prefixlen 64  scopeid 0x20<link>
 ```
 
-- Host
+- **Host**
 
   Host模式下，容器的网络接口不与宿主机网络隔离。**在容器中监听相应端口的应用能够直接被从宿主机访问，即不需要做端口映射**。host网络仅支持Linux，host网络没有与宿主机网络隔离，可能引发**安全隐患或端口冲突**
 
@@ -1579,4 +1645,77 @@ DROP       all  --  0.0.0.0/0            0.0.0.0/0
 
 注意：`--link=CONTAINER_NAME:ALIAS` 中的 `CONTAINER_NAME` 目前必须是 Docker 分配的名字，或使用 `--name` 参数指定的名字。主机名则不会被识别。
 
-更多见：[端口映射实现 - Docker — 从入门到实践 (gitbook.io)](https://yeasy.gitbook.io/docker_practice/advanced_network/port_mapping)
+### 配置 docker0 网桥
+
+Docker 服务默认会创建一个 `docker0` 网桥（其上有一个 `docker0` 内部接口），它在内核层连通了其他的物理或虚拟网卡，这就将所有容器和本地主机都放到同一个物理网络。
+
+Docker 默认指定了 `docker0` 接口 的 IP 地址和子网掩码，让主机和容器之间可以通过网桥相互通信，它还给出了 MTU（接口允许接收的最大传输单元），通常是 1500 Bytes，或宿主主机网络路由上支持的默认值。这些值都可以在服务启动的时候进行配置。
+
+- `--bip=CIDR` IP 地址加掩码格式，例如 192.168.1.5/24
+- `--mtu=BYTES` 覆盖默认的 Docker mtu 配置
+
+也可以在配置文件中配置 DOCKER_OPTS，然后重启服务。
+
+由于目前 Docker 网桥是 Linux 网桥，用户可以使用 `brctl show` 来查看网桥和端口连接信息。
+
+``` shell
+ubuntu@VM-8-17-ubuntu:~$ sudo brctl show
+bridge name			bridge id			STP enabled	interfaces
+br-59f052e5d856		8000.024202a6feb1	no		
+docker0				8000.024288d9a67d	no			veth57e6ad0
+													veth5f0448c
+													vethdd162aa
+```
+
+> 注：`brctl` 命令在 Debian、Ubuntu 中可以使用 `sudo apt-get install bridge-utils` 来安装。
+
+每次创建一个新容器的时候，Docker 从可用的地址段中选择一个空闲的 IP 地址**分配给容器的 eth0 端口**。使用本地主机上 **`docker0` 接口的 IP 作为所有容器的默认网关**。
+
+### 自定义网桥
+
+除了默认的 `docker0` 网桥，用户也可以指定网桥来连接各个容器。
+
+在启动 Docker 服务的时候，使用 `-b BRIDGE`或`--bridge=BRIDGE` 来指定使用的网桥。
+
+如果服务已经运行，那需要先停止服务，并删除旧的网桥
+
+``` shell
+$ sudo systemctl stop docker
+$ sudo ip link set dev docker0 down
+$ sudo brctl delbr docker0
+```
+
+然后创建一个网桥 `bridge0`。
+
+``` shell
+$ sudo brctl addbr bridge0
+$ sudo ip addr add 192.168.5.1/24 dev bridge0
+$ sudo ip link set dev bridge0 up
+```
+
+查看确认网桥创建并启动。
+
+``` shell
+$ ip addr show bridge0
+4: bridge0: <BROADCAST,MULTICAST> mtu 1500 qdisc noop state UP group default
+    link/ether 66:38:d0:0d:76:18 brd ff:ff:ff:ff:ff:ff
+    inet 192.168.5.1/24 scope global bridge0
+       valid_lft forever preferred_lft forever
+```
+
+在 Docker 配置文件 `/etc/docker/daemon.json` 中添加如下内容，即可将 Docker 默认桥接到创建的网桥上。
+
+``` shell
+{
+  "bridge": "bridge0",
+}
+```
+
+启动 Docker 服务。
+
+新建一个容器，可以看到它已经桥接到了 `bridge0` 上。
+
+可以继续用 `brctl show` 命令查看桥接的信息。另外，在容器中可以使用 `ip addr` 和 `ip route` 命令来查看 IP 地址配置和路由信息。
+
+
+
