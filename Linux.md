@@ -2383,3 +2383,31 @@ Buffer的核心作用是用来缓冲，缓和冲击，每当buffer满或者主�
 
   大部分的死锁都和资源有关，在进程对设备、文件具有独占性（排他性）时会产生死锁。我们把这类需要排他性使用的对象称为资源(resource)。资源主要分为 可抢占资源和不可抢占资源
 
+# # 用SSH工具XShell连接云服务器 root用户 
+
+登录普通用户后：（普通用户的密码在云服务器提供商的控制台设定，普通用户想要用密码登录也需要如下`2`中的设定。当然，此时可能还没法用xshell登录修改，那么就使用云服务器提供商提供的服务器交互界面设置）
+
+1. 切换到root角色
+    `sudo -i`
+
+2. 修改SSH配置文件 /etc/ssh/sshd_config
+    `vi /etc/ssh/sshd_config`
+
+    修改PermitRootLogin和PasswordAuthentication为yes
+
+    ``` shell
+    #Authentication:
+    PermitRootLogin yes # 默认为no，需要开启root用户访问改为yes
+    
+    # Change to no to disable tunnelled clear text passwords
+    PasswordAuthentication yes # 默认为no，改为yes开启密码登陆，普通用户想要使用密码登录也需要yes此字段
+    ```
+
+3. 给root用户设置密码
+    `passwd root`，然后根据提示输入密码。
+
+4. 重启SSH服务使修改生效
+    `/etc/init.d/ssh restart`
+
+5. 登录
+    在xshell中，直接使用root账号密码登录。

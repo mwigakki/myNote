@@ -657,6 +657,36 @@ $ docker import http://example.com/exampleimage.tgz example/imagerepo
 
 *注：用户既可以使用* `docker load` *来导入**<u>镜像</u> 存储文件到本地镜像库**，也可以使用* `docker import` 来导入一个**<u>*容器*</u> 快照到本地镜像库**。这两者的区别在于容器快照文件将丢弃所有的历史记录和元数据信息（即仅保存容器当时的快照状态），而镜像存储文件将保存完整记录，体积也要大。此外，从容器快照文件导入时可以重新指定标签等元数据信息。
 
+### 查看容器状态
+
+使用命令 `docker stats` ：可以查看打开的docker容器所占的CPU内存等信息。
+
+``` shell
+root@VM-8-17-ubuntu:~# docker stats
+
+CONTAINER ID   NAME      CPU %     MEM USAGE / LIMIT     MEM %     NET I/O         BLOCK I/O         PIDS
+e45fabf63e3f   web3      0.00%     20.28MiB / 1.936GiB   1.02%     18.8MB / 1MB    2.33MB / 41.8MB   3
+e7c41e1a1764   web1      0.00%     22.58MiB / 1.936GiB   1.14%     10MB / 785kB    31.6MB / 41.8MB   3
+454a0a226921   web2      0.00%     4.152MiB / 1.936GiB   0.21%     285kB / 293kB   1.56MB / 8.19kB   3
+
+CONTAINER ID   NAME      CPU %     MEM USAGE / LIMIT     MEM %     NET I/O         BLOCK I/O         PIDS
+e45fabf63e3f   web3      0.00%     20.28MiB / 1.936GiB   1.02%     18.8MB / 1MB    2.33MB / 41.8MB   3
+e7c41e1a1764   web1      0.00%     22.58MiB / 1.936GiB   1.14%     10MB / 785kB    31.6MB / 41.8MB   3
+454a0a226921   web2      0.00%     4.152MiB / 1.936GiB   0.21%     285kB / 293kB   1.56MB / 8.19kB   3
+
+CONTAINER ID   NAME      CPU %     MEM USAGE / LIMIT     MEM %     NET I/O         BLOCK I/O         PIDS
+e45fabf63e3f   web3      0.00%     20.28MiB / 1.936GiB   1.02%     18.8MB / 1MB    2.33MB / 41.8MB   3
+e7c41e1a1764   web1      0.00%     22.58MiB / 1.936GiB   1.14%     10MB / 785kB    31.6MB / 41.8MB   3
+454a0a226921   web2      0.00%     4.152MiB / 1.936GiB   0.21%     285kB / 293kB   1.56MB / 8.19kB   3
+
+CONTAINER ID   NAME      CPU %     MEM USAGE / LIMIT     MEM %     NET I/O         BLOCK I/O         PIDS
+e45fabf63e3f   web3      0.00%     20.28MiB / 1.936GiB   1.02%     18.8MB / 1MB    2.33MB / 41.8MB   3
+e7c41e1a1764   web1      0.00%     22.58MiB / 1.936GiB   1.14%     10MB / 785kB    31.6MB / 41.8MB   3
+454a0a226921   web2      0.00%     4.152MiB / 1.936GiB   0.21%     285kB / 293kB   1.56MB / 8.19kB   3
+```
+
+数据每秒刷新一次。
+
 ### 容器生命周期
 
 容器的生命周期，从**创建、运行、休眠，直至销毁**的整个过程。
