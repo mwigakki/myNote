@@ -1531,7 +1531,7 @@ Docker提供了多种网络类型：
 
 - **Bridge**
 
-    **Bridge（网桥）是Docker默认使用的网络类型**，用于**同一主机上**的docker容器相互通信，**网络中的所有容器可以通过IP互相访问，连接到同一个网桥的docker容器可以相互通信**。Bridge网络通过网络接口`docker0` 与主机桥接，启动docke时就会自动创建，新创建的容器默认都会自动连接到这个网络，可以在主机上通过`ifconfig docker0`查看到该网络接口的信息
+    **Bridge（网桥）是Docker默认使用的网络类型**，用于**同一主机上**的docker容器相互通信，**网络中的所有容器可以通过IP互相访问，连接到同一个网桥的docker容器可以相互通信**。Bridge网络通过网络接口`docker0` 与主机桥接，启动docker时就会自动创建，新创建的容器默认都会自动连接到这个网络，可以在主机上通过`ifconfig docker0`查看到该网络接口的信息
 
     ![](https://upload-images.jianshu.io/upload_images/22206660-0386dd7d38199d27.png?imageMogr2/auto-orient/strip)
 
