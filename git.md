@@ -12,11 +12,13 @@
 
 # 安装与常用操作
 
-### 安装git（windows）
+### 安装git
+
+#### windows
 
 官网下载后，一直下一步就行。只有把默认编辑器从vim改成VScode需要注意
 
-### 安装git（linux ubuntu20.04）
+#### linux （Ubuntu 20.04）
 
 安装非常直接，仅仅以 sudo 权限用户身份运行下面的命令：
 
@@ -32,7 +34,6 @@ git --version
 ```
 
 ### 配置git
-
 安装git完成后，需要在命令行设置：
 
 > `git config --global user.name "Your Name"`
@@ -42,6 +43,10 @@ git --version
 相当于自报家门
 
 然后还要给github加上一个ssh key以便方便地使用github，见后面。
+
+查看`git`的`user.name` 的命令：`git config user.name`
+
+查看`git`的`user.email` 的命令：`git config user.email`
 
 ### 初始化
 
@@ -169,14 +174,24 @@ nothing to commit, working tree clean
 
   你需要把邮件地址换成你自己的邮件地址，然后一路回车，使用默认值即可，无需密码
   如果一切顺利的话，可以在用户主目录里找到.ssh目录，里面有id_rsa和id_rsa.pub两个文件，这两个就是SSH Key的秘钥对，**id_rsa是私钥**，不能泄露出去，id_rsa.pub是公钥，可以放心地告诉任何人。
-
-第2步：登陆[GitHub](https://github.com/)，打开“`Account settings`”，“`SSH and GPG Keys`”页面：然后，点“`New SSH Key`”，填上任意Title，在Key文本框里粘贴`id_rsa.pub`文件的内容，最后add即可
+  
+- 第一步（2）：在linux下：
+  
+  - 首先 `cd /root`
+  - 查看是否已经存在SSH-Key【其实就是查看.ssh这个隐藏目录是否存在】` ls -al ~/.ssh`
+  - 如果没有就新建，如果有，建议删除再新建，
+  - 删除命令【其实就是删除.ssh这个隐藏目录目录】 `rm -rf .ssh`
+  - 新生成SSH-key【替换成你自己的邮箱】`ssh-keygen -t rsa -C "xxx@xx.com"`
+  - 键入命令后，会让你输入密码用来保护你的密钥等，总共三次需要输入的，你都直接三次回车就好！！
+  - 生成后，会在 /root 目录下，也就是当前用户的目录下，生成一个.ssh隐藏目录，目录中会有【id_rsa】和【id_rsa.pub】两个文件，一个是私钥，一个是公钥。你现在就可以复制使用了
+  
+- 第2步：登陆[GitHub](https://github.com/)，点击头像`setting`，“`SSH and GPG Keys`”页面：然后，点“`New SSH Key`”，填上任意Title，在Key文本框里粘贴`id_rsa.pub`文件的内容，最后add即可
 
 为什么GitHub需要SSH Key呢？因为GitHub需要识别出你推送的提交确实是你推送的，而不是别人冒充的，而Git支持SSH协议，所以，GitHub只要知道了你的公钥，就可以确认只有你自己才能推送。
 当然，GitHub允许你添加多个Key。假定你有若干电脑，你一会儿在公司提交，一会儿在家里提交，只要把每台电脑的Key都添加到GitHub，就可以在每台电脑上往GitHub推送了。
 
 ### 添加远程仓库
-登陆GitHub，然后，在右上角找到“Create a new repo”按钮，然后...，创建一个新的仓库。
+登陆GitHub，然后，在右上角找到`Create a new repo`按钮，然后...，创建一个新的仓库。
 
 目前，在GitHub上的这个learngit仓库还是空的，可以看看github给了很多的提示（包括从命令行创建一个新的仓库，或者从已有的仓库push），GitHub告诉我们，可以从这个仓库克隆出新的仓库，也可以把一个已有的本地仓库与之关联，然后，把本地仓库的内容推送到GitHub仓库。
 
