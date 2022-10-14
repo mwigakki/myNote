@@ -168,7 +168,10 @@ nothing to commit, working tree clean
 2. 使用命令：`git rm <file>`删除了文件，此时删除的操作已经被提交到暂存区staged了。此时需要先使用命令`git restore --staged <file>` 将暂存区的删除恢复到工作区，再使用命令：`git restore <file>` 恢复文件
 
 # 远程仓库
+> 查看远程仓库地址：`git remote -v`;
+
 自行注册GitHub账号。由于你的本地Git仓库和GitHub仓库之间的传输是通过SSH加密的，所以，需要一点设置：
+
 - 第1步：创建SSH Key。在用户主目录（windows的.ssh目录c盘：/user(或者是用户)/你的用户名(你自己之前起过的)/.ssh）下，看看有没有.ssh目录，如果有，再看看这个目录下有没有id_rsa和id_rsa.pub这两个文件，如果已经有了，可直接跳到下一步。如果没有，打开Shell（Windows下打开Git Bash或CMD），创建SSH Key：
   > ssh-keygen -t rsa -C "youremail@example.com"
 
