@@ -1103,9 +1103,16 @@ Ken Thompson 的 sh 是第一种 Unix Shell，Windows Explorer 是一个典型�
 
 **#!** 告诉系统其后路径所指定的程序即是解释此脚本文件的 Shell 程序。
 
-更多shell语法需要时查询即可：[Shell 教程 | 菜鸟教程 (runoob.com)https://www.runoob.com/linux/linux-shell.html)
+一个简单实例：
 
-### 运行 Shell 脚本有两种方法：
+``` shell
+#!/bin/bash
+echo "Hello World !"
+```
+
+
+
+更多shell语法需要时查询即可：[Shell 教程 | 菜鸟教程 (runoob.com)https://www.runoob.com/linux/linux-shell.html)运行 Shell 脚本有两种方法：
 
 **1、作为可执行程序**（需要 "执行权限"）
 
@@ -1225,8 +1232,6 @@ myweb
 
 [Linux 命令大全 | 菜鸟教程 (runoob.com)](https://www.runoob.com/linux/linux-command-manual.html)
 
-
-
 [【linux】最常用 150 个Linux命令汇总 - 腾讯云开发者社区-腾讯云 (tencent.com)](https://cloud.tencent.com/developer/article/1540697)
 
 ## 基础命令
@@ -1258,6 +1263,10 @@ myweb
 ## 文件操作
 
 见 4. Linux 文件与目录管理，vim相关见：7. Linux vi/vim
+
+## 后台执行
+
+对于会占用命令行的命令，可以在命令开头加上 `nohup` 使命令后台运行，此命令行即可关闭了。
 
 ## 查找命令
 
@@ -2443,3 +2452,4 @@ Buffer的核心作用是用来缓冲，缓和冲击，每当buffer满或者主�
 4. 然后连接-输密码就完事儿了
 
 ![image-20221014172300103](img/image-20221014172300103.png)
+
