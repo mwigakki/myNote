@@ -891,3 +891,101 @@ Github总是连不上？gitee私有仓库有人数限制？那就只能自己搭
 搭建Git服务器需要准备一台运行Linux的机器，强烈推荐用Ubuntu或Debian，这样，通过几条简单的`apt`命令就可以完成安装。
 
 [搭建Git服务器 - 廖雪峰的官方网站 (liaoxuefeng.com)](https://www.liaoxuefeng.com/wiki/896043488029600/899998870925664)
+
+搭建Git服务器需要准备一台运行Linux的机器，强烈推荐用Ubuntu或Debian，这样，通过几条简单的`apt`命令就可以完成安装。
+
+假设你已经有`sudo`权限的用户账号，下面，正式开始安装。
+
+#### 1、安装`git`：
+
+```bash
+sudo apt-get install git
+```
+
+#### 2、创建勇敢
+
+创建一个`git`用户组和用户，用来运行`git`服务：
+
+```bash
+sudo groupadd git
+sudo useradd git -g git
+passwd git	# 给git设置密码 按照提示设置为1就行
+```
+
+更多：[Ubuntu 创建、管理用户、组和git库、项目_bon_ami的博客-CSDN博客_ubuntu创建bendi新用户](https://blog.csdn.net/bon_ami/article/details/45538777)
+
+#### 3、创建证书登录：
+
+收集所有需要登录的用户的公钥，就是他们自己的`id_rsa.pub`文件，把所有公钥导入到`/home/git/.ssh/authorized_keys`文件里，如果没有该文件创建它，一行一个。
+
+```bash
+touch authorized_keys
+chmod 644 authorized_keys
+```
+
+`id_rsa.pub`文件位置如下：
+
+> id_rsa[私钥](https://so.csdn.net/so/search?q=私钥&spm=1001.2101.3001.7020)，id_rsa.pub公钥
+>
+> - windows：C:\Users\ \[当前用户] \\.ssh
+>
+> - Linux：/root/.ssh
+
+#### 4、初始化Git仓库
+
+首先我们选定一个目录作为Git仓库，假定是`/home/gitrepo/runoob.git`，在`/home/gitrepo`目录下输入命令:
+
+```bash
+cd /home
+mkdir gitrepo
+chown git:git gitrepo/
+cd gitrepo
+```
+
+接着使用命令初始化一个空仓库。服务器上的Git仓库通常都以`.git`结尾。
+
+``` bash
+sudo git init --bare mwigakki.git
+
+Initialized empty Git repository in /home/gitrepo/mwigakki.git/
+```
+
+然后，把仓库所属用户改为git：
+
+```bash
+sudo chown -R git:git mwigakki.git
+```
+
+#### 5、克隆仓库
+
+最后在自己的电脑运行：
+
+```bash
+$ git clone git@[自己的ip]:/home/gitrepo/mwigakki.git
+Cloning into 'mwigakki'...
+warning: You appear to have cloned an empty repository.
+Checking connectivity... done.
+```
+
+这样我们的 Git 服务器安装就完成。
+
+接下来的工作就是推送拉取之类的，和之前的一样，只是可能要输密码。
+
+#### 6、推送到远端
+
+对于本地已有的仓库准备推送到自己的git服务器，先在服务器上建一个相应的仓库（不要直接mkdir，需要像上面第4步初始化一个仓库），再添加远程仓库地址即可。（远程仓库和本地仓库名字可以不一样）
+
+可能需要先将github的地址删掉再加上自己的，命令如下：
+
+``` bash
+git remote rm origin
+git remote add origin [url]
+```
+
+之后第一次推送需要
+
+``` bash
+git push -u origin master
+```
+
+之后的修改直接 `git push` 就行了。
