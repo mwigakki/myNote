@@ -2168,7 +2168,128 @@ $ curl -A "Mozilla/4.0 (compatible; MSIE 8.0; Windows NT 5.0)" http://www.linux.
 
 [更多curl操作](http://www.linuxdiyf.com/linux/2800.html)
 
+# 11. Linux 防火墙
 
+在Ubuntu系统进行安装的时候默认安装了ufw防火墙
+
+### 查看防火墙的状态
+
+命令：  **`sudo ufw status`**
+
+> 系统提示： “Status: inactive”状态：不活跃
+
+上面提示表示没有开启防火墙，并不是没有安装防火墙
+
+### 如果没有安装可以使用命令安装
+
+命令：   **` sudo sudo apt-get install ufw`**
+
+### Ubuntu开启防火墙
+
+[Ubuntu系统中防火墙的使用和开放端口_Aaron_Run的博客-CSDN博客_ubuntu开放端口命令](https://blog.csdn.net/qq_36938617/article/details/95234909)
+
+# 12. Linux内核CC算法修改
+
+[Linux TCP/IP调优-Linux内核参数注释 - Michael_Tong唐唐 - 博客园 (cnblogs.com)](https://www.cnblogs.com/tcicy/p/10196457.html)
+
+[Linux TCP内核参数设置与调优(详细)！_breeze10000的博客-CSDN博客_linux tcp 参数优化设置](https://blog.csdn.net/weixin_46622350/article/details/119417243)
+
+### 内核参数位置
+
+- Linux内核中的TCP参数位于 `/proc/sys/net/ipv4/`
+
+TCP的若干参数都是以各个文件的形式保存的。例如，IP的默认跳数64保存在文件`ip_default_ttl`中，我们可以使用命令：`sudo sysctl net.ipv4.ip_default_ttl=32`修改为32。
+
+TCP可以使用的拥塞控制算法保存在`tcp_available_congestion_control`里。
+
+TCP正在使用的拥塞控制算法保存在`tcp_congestion_control`里。
+
+| 参数名                        | 描述                                                   | 默认值                                       |
+| ----------------------------- | ------------------------------------------------------ | -------------------------------------------- |
+| `tcp_wmem`(min  default  max) | 为TCP socket预留用于发送缓冲的内存最小值/默认值/最大值 | `10240	87380	16777216(10KB 80KB 16MB)` |
+| `tcp_rmem`(min  default  max) | 接收缓存设置。同`tcp_wmem`                             | `10240	87380	16777216`                 |
+|                               |                                                        |                                              |
+
+
+
+- `/proc/sys/net/core/`目录中包括许多设置用来控制Linux内核与网络层的交互，即当网络有什么动作时，内核做出什么样的相应反应。
+
+| 参数名         | 描述                              | 默认值           |
+| -------------- | --------------------------------- | ---------------- |
+| `rmem_default` | 默认的TCP数据接收窗口大小（字节） | 212992（208KB）  |
+| `rmem_max`     | 最大的TCP数据接收窗口（字节）     | 16777216（16MB） |
+| `wmem_default` | 默认的TCP数据发送窗口大小（字节） | 212992（208KB）  |
+| `wmem_max`     | 最大的TCP数据发送窗口（字节）     | 16777216（16MB） |
+
+
+
+### 修改内核参数的方法
+
+- **临时修改**：使用 `echo value` 方式直接追加到文件中。 如 `echo "1" > /proc/sys/net/ipv4/tcp_syn_retries` ，但是这种方式设备重启后，会恢复成默认值。
+- 永久修改：把参数添加到 `/etc/sysctl.conf` 中，然后执行 `sysctl -p` 使参数生效。这种方式是永久有效的。
+- 使用`systcl`命令进行修改，例如修改SYN重传次数`sysctl net.ipv4.tcp_syn_retries=n`
+
+
+
+### 修改linux内核CC算法为BBR
+
+[How to enable TCP BBR to improve network speed on Linux | TechRepublic](https://www.techrepublic.com/article/how-to-enable-tcp-bbr-to-improve-network-speed-on-linux/)
+
+
+
+### **TCP 抓包常见错误**
+
+> **tcp out-of-order（tcp有问题）          #多数是网络拥塞引起的**
+>
+> **tcp segment of a reassembled PDU         #TCP 分片标识**
+>
+> **Tcp previous segment lost（tcp先前的分片丢失）**
+>
+> **Tcp acked lost segment（tcp应答丢失）**
+>
+> **Tcp window update（tcp窗口更新）**
+>
+> **Tcp dup ack（tcp重复应答）**
+>
+> **Tcp keep alive（tcp保持活动）**
+>
+> **Tcp retransmission（tcp 重传）**
+
+常见拥塞控制算法：
+
+> **reno是最基本的拥塞控制算法，也是TCP协议的实验原型。**
+>
+> **bic适用于rtt较高但丢包极为罕见的情况，比如北美和欧洲之间的线路，这是2.6.8到2.6.18之间的Linux内核的默认算法。**
+>
+> **cubic是修改版的bic，适用环境比bic广泛一点，它是2.6.19之后的linux内核的默认算法。**
+>
+> **hybla适用于高延时、高丢包率的网络，比如卫星链路。**
+
+
+
+# 13. 自定义配置编译linux内核
+
+linux内核在该目录下：`/usr/src`，发行版Ubuntu系统不会带有linux源码，需要自己去 [The Linux Kernel Archives](https://www.kernel.org/) 这里下载，下载后再重新编译，具体见：[Ubuntu linux下重新编译内核_lu0sifen的博客-CSDN博客_ubuntu 重新编译内核](https://blog.csdn.net/weixin_43145961/article/details/115376427)
+
+官方是强调编译linux内核是强烈不建议以root身份来进行编译的，因为这样有可能在编译过程中改掉当前编译系统的重要配置而影响当前系统，而应该建议使用普通用户的身份来编译内核，这样该普通用户如果在编译过程中要修改系统重要的配置文件也会因为没有权限而报错。
+
+对于源代码的阅读，要想比较顺利，事先最好对源代码的知识背景有一定的了解。对于linux内核源代码来讲，我认为，基本要求是: 1、操作系统的基本知识; 2、对C语言比较熟悉，最好要有汇编语言的知识和GNU C对标准C的扩展的知识的了解。另外在阅读之前，还应该知道Linux内核源代码的整体分布情况。我们知道现代的操作系统一般由进程管理、内存管理、文件系统、驱动程序、网络等组成。看一下Linux内核源代码就可看出，各个目录大致对应了这些方面。Linux内核源代码的组成如下(假设相对于linux目录): 
+
+| 文件夹        | 描述                                                         |
+| ------------- | ------------------------------------------------------------ |
+| arch          | 这个子目录包含了此核心源代码所支持的硬件体系结构相关的核心代码。如对于X86平台就是i386。 |
+| include       | 这个目录包括了核心的大多数include文件。另外对于每种支持的体系结构分别有一个子目录。 |
+| init          | 此目录包含核心启动代码。                                     |
+| mm            | 此目录包含了所有的内存管理代码。与具体硬件体系结构相关的内存管理代码位于arch/*/mm目录下，如对应于X86的就是arch/i386/mm/fault.c 。 |
+| drivers       | 系统中所有的设备驱动都位于此目录中。它又进一步划分成几类设备驱动，每一种也有对应的子目录，如声卡的驱动对应于drivers/sound。 |
+| ipc           | 此目录包含了核心的进程间通讯代码。                           |
+| modules       | 此目录包含已建好可动态加载的模块。                           |
+| fs Linux      | 支持的文件系统代码。不同的文件系统有不同的子目录对应，如ext2文件系统对应的就是ext2子目录。 |
+| kernel        | 主要核心代码。同时与处理器结构相关代码都放在arch/*/kernel目录下。 |
+| net           | 核心的网络部分代码。里面的每个子目录对应于网络的一个方面。   |
+| lib           | 此目录包含了核心的库代码。与处理器结构相关库代码被放在arch/*/lib/目录下。 |
+| scripts       | 此目录包含用于配置核心的脚本文件。                           |
+| Documentation | 此目录是一些文档，起参考作用。                               |
 
 
 # # 快捷键 

@@ -902,14 +902,14 @@ Github总是连不上？gitee私有仓库有人数限制？那就只能自己搭
 sudo apt-get install git
 ```
 
-#### 2、创建勇敢
+#### 2、创建用户
 
 创建一个`git`用户组和用户，用来运行`git`服务：
 
 ```bash
 sudo groupadd git
 sudo useradd git -g git
-passwd git	# 给git设置密码 按照提示设置为1就行
+passwd git	# 给git设置密码 按照提示设置为1就行，比较方便
 ```
 
 更多：[Ubuntu 创建、管理用户、组和git库、项目_bon_ami的博客-CSDN博客_ubuntu创建bendi新用户](https://blog.csdn.net/bon_ami/article/details/45538777)
@@ -979,13 +979,15 @@ Checking connectivity... done.
 
 ``` bash
 git remote rm origin
-git remote add origin [url]
+git remote add origin git@[自己的ip]:/home/gitrepo/mwigakki.git
 ```
 
 之后第一次推送需要
 
 ``` bash
 git push -u origin master
+# 或
+git push --set-upstream origin master
 ```
 
 之后的修改直接 `git push` 就行了。
