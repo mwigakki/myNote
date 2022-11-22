@@ -976,6 +976,28 @@ Linux系统是一个多用户多任务的分时操作系统，任何一个要使
 
 详见：[Linux 用户和用户组管理 | 菜鸟教程 (runoob.com)](https://www.runoob.com/linux/linux-user-manage.html)
 
+**修改用户密码：**
+
+-  给XXX用户设置密码:`passwd XXX`，然后根据提示输入密码。
+
+**查看用户名和密码：**
+
+**在linux系统中，用户名被存放在了/etc/passwd这个文件中；密码存放在/etc/shadow中。**
+
+如果我们要查看某个用户的密码，我们得先登陆为超级用户才可查看：
+
+> su root
+
+然后输入超级用户的登陆密码，紧接着，我们需要查看/etc/[shadow](https://so.csdn.net/so/search?q=shadow&spm=1001.2101.3001.7020)中对应用户的密码：
+
+> **cat /etc/shadow | grep \**\*        #注意，我这里的\**\*为用户名，即需要查看哪个用户名，这里就替换为该用户名**
+
+但是出来的结果是加密后的：
+
+`**:$6$ZDevYbG/W1ip0vp6$0Jaab7t82Sf9QlHNS5xOfrxXDJuaSY18PHXA/5noqKO7BGvJXGckTfoqP8bgWxVoQqODZmZduW3tvKyc1sLnw1:19306:0:99999:7:::`
+
+可以在网上搜一个在线MD5解密工具解密查看。
+
 # 6. Linux 磁盘管理
 
 Linux 磁盘管理好坏直接关系到整个系统的性能问题。
@@ -1362,8 +1384,6 @@ myweb
 
 ## 磁盘管理
 
-
-
 ### `stat`
 
 以文字的格式来显示 inode 的内容。
@@ -1379,8 +1399,6 @@ Modify: 2022-07-04 16:50:11.360509583 +0800
 Change: 2022-07-04 16:50:11.364509583 +0800
  Birth: -
 ```
-
-
 
 ### `du`
 
@@ -1943,10 +1961,6 @@ tcpdump udp port 123
 
 更多见：[Linux tcpdump命令详解](https://www.cnblogs.com/ggjucheng/archive/2012/01/14/2322659.html)
 
-
-
-
-
 ### traceroute
 
 显示数据包到主机间的路径,traceroute命令用于**追踪数据包在网络上的传输时的全部路径**，它默认发送的数据包大小是40字节。
@@ -2168,6 +2182,16 @@ $ curl -A "Mozilla/4.0 (compatible; MSIE 8.0; Windows NT 5.0)" http://www.linux.
 
 [更多curl操作](http://www.linuxdiyf.com/linux/2800.html)
 
+### wget
+
+GNU Wget(常常简称为wget）是一个**网络上进行下载**的简单而强大的自由软件， 其本身也是GNU计划的一部分。 它的名字是"World Wide Web" 和 "Get"的结合， 同时也隐含了软件的主要功能。 目前它支持HTTP、HTTPS，月以及FTP这三个常见的的TCP/IP协议下载。
+
+简单用法如下：
+
+`wget [网络下载地址]`
+
+如下载linux内核(在相应的目录下)：`sudo wget https://cdn.kernel.org/pub/linux/kernel/v5.x/linux-5.4.224.tar.xz`
+
 # 11. Linux 防火墙
 
 在Ubuntu系统进行安装的时候默认安装了ufw防火墙
@@ -2188,11 +2212,19 @@ $ curl -A "Mozilla/4.0 (compatible; MSIE 8.0; Windows NT 5.0)" http://www.linux.
 
 [Ubuntu系统中防火墙的使用和开放端口_Aaron_Run的博客-CSDN博客_ubuntu开放端口命令](https://blog.csdn.net/qq_36938617/article/details/95234909)
 
-# 12. Linux内核CC算法修改
+# 12. Linux内核CC算法
 
 [Linux TCP/IP调优-Linux内核参数注释 - Michael_Tong唐唐 - 博客园 (cnblogs.com)](https://www.cnblogs.com/tcicy/p/10196457.html)
 
 [Linux TCP内核参数设置与调优(详细)！_breeze10000的博客-CSDN博客_linux tcp 参数优化设置](https://blog.csdn.net/weixin_46622350/article/details/119417243)
+
+### 基础知识
+
+[linux内核协议栈 TCP拥塞控制之多算法支持_老王不让用的博客-CSDN博客](https://blog.csdn.net/wangquan1992/article/details/109076072)
+
+Linux内核是支持多种拥塞控制算法并存的，而且支持为不同的TCP流使用不同的拥塞控制算法。
+
+每一种拥塞控制算法必须提供一个`struct tcp_congestion_ops`结构，然后向系统注册，系统将所有注册的拥塞控制算法组织成一个单链表。
 
 ### 内核参数位置
 
@@ -2208,9 +2240,6 @@ TCP正在使用的拥塞控制算法保存在`tcp_congestion_control`里。
 | ----------------------------- | ------------------------------------------------------ | -------------------------------------------- |
 | `tcp_wmem`(min  default  max) | 为TCP socket预留用于发送缓冲的内存最小值/默认值/最大值 | `10240	87380	16777216(10KB 80KB 16MB)` |
 | `tcp_rmem`(min  default  max) | 接收缓存设置。同`tcp_wmem`                             | `10240	87380	16777216`                 |
-|                               |                                                        |                                              |
-
-
 
 - `/proc/sys/net/core/`目录中包括许多设置用来控制Linux内核与网络层的交互，即当网络有什么动作时，内核做出什么样的相应反应。
 
@@ -2221,21 +2250,21 @@ TCP正在使用的拥塞控制算法保存在`tcp_congestion_control`里。
 | `wmem_default` | 默认的TCP数据发送窗口大小（字节） | 212992（208KB）  |
 | `wmem_max`     | 最大的TCP数据发送窗口（字节）     | 16777216（16MB） |
 
-
-
 ### 修改内核参数的方法
 
+- **临时修改**：使用`systcl`命令进行修改，例如修改SYN重传次数`sysctl net.ipv4.tcp_syn_retries=n`
 - **临时修改**：使用 `echo value` 方式直接追加到文件中。 如 `echo "1" > /proc/sys/net/ipv4/tcp_syn_retries` ，但是这种方式设备重启后，会恢复成默认值。
-- 永久修改：把参数添加到 `/etc/sysctl.conf` 中，然后执行 `sysctl -p` 使参数生效。这种方式是永久有效的。
-- 使用`systcl`命令进行修改，例如修改SYN重传次数`sysctl net.ipv4.tcp_syn_retries=n`
-
-
+- **永久修改**：把参数添加到 `/etc/sysctl.conf` 中，然后执行 `sysctl -p` 使参数生效。这种方式是永久有效的。如修改默认CC算法为reno，在文件中添加：`net.ipv4.tcp_congestion_control=reno`
 
 ### 修改linux内核CC算法为BBR
 
 [How to enable TCP BBR to improve network speed on Linux | TechRepublic](https://www.techrepublic.com/article/how-to-enable-tcp-bbr-to-improve-network-speed-on-linux/)
 
+### linux内核CC算法理解（5.4.224版本）
 
+TCP头部字段`tcphdr`定义位置：`usr/src/linux-x.x.xxx/include/uapi/tcp.h`
+
+机器收到数据包后的处理过程都在 `usr/src/linux-x.x.xxx/net/ipv4/tcp_input.c/tcp_rcv_state_process()`中，6306行，将发送窗口改为接收到的包的cwnd。
 
 ### **TCP 抓包常见错误**
 
@@ -2265,11 +2294,213 @@ TCP正在使用的拥塞控制算法保存在`tcp_congestion_control`里。
 >
 > **hybla适用于高延时、高丢包率的网络，比如卫星链路。**
 
-
-
 # 13. 自定义配置编译linux内核
 
-linux内核在该目录下：`/usr/src`，发行版Ubuntu系统不会带有linux源码，需要自己去 [The Linux Kernel Archives](https://www.kernel.org/) 这里下载，下载后再重新编译，具体见：[Ubuntu linux下重新编译内核_lu0sifen的博客-CSDN博客_ubuntu 重新编译内核](https://blog.csdn.net/weixin_43145961/article/details/115376427)
+linux内核在该目录下：`/usr/src`，发行版Ubuntu系统不会带有linux源码，需要自己去 [The Linux Kernel Archives](https://www.kernel.org/) 或[这里版本更多更细](https://mirrors.edge.kernel.org/pub/linux/kernel/)下载，下载后再重新编译，具体见：[Ubuntu linux下重新编译内核_lu0sifen的博客-CSDN博客_ubuntu 重新编译内核](https://blog.csdn.net/weixin_43145961/article/details/115376427) 
+
+这个博客也可参考[【硬核】手摸手教你修改编译安装linux内核_吃代码的喵酱-i的博客-CSDN博客_linux修改内核](https://blog.csdn.net/weixin_44179892/article/details/110677089)
+
+（对已经编译过的系统使用相同的内核代码重新编译时，从链接文章的第5步开始，并且使用下面的方法加快编译）
+
+### 自己整理的编译内核的步骤：
+
+#### 0.准备工作
+
+给Ubuntu分配内存要至少大于40GB，不然编译过程中会因内存不足，提前终止报错（- -血的教训）
+
+对于virtuabox下的Ubuntu虚拟机，先在virtualbox软件中给相应虚拟机分配更多磁盘，再去虚拟机中使用`gparted`挂载空磁盘。
+
+详见教程：[技术|如何在 VirtualBox 中增加现有虚拟机的磁盘大小 (linux.cn)](https://linux.cn/article-12869-1.html)
+
+[GParted Linux磁盘扩展工具的使用_你的小可爱已下线的博客-CSDN博客](https://blog.csdn.net/jx1605/article/details/80624599)
+
+#### **1.官网下载内核源码**
+
+官网内核源码地址：https://www.kernel.org/ （尽量选择稳定的内核版本）或[这里版本更多更细](https://mirrors.edge.kernel.org/pub/linux/kernel/)
+
+查看自己内核版本号：
+
+```sh
+uname -a
+```
+
+![image-20221118170959781](img/image-20221118170959781.png)
+
+记住此内核编号，之后要用。
+
+#### 2.安装编译内核需要的程序
+
+建议安装之前先更新一下软件来源，不然可能会出现安装失败的情况（来源更换为国内镜像速度更快些）
+
+更新操作：
+
+```sh
+sudo apt-get upgrade 
+sudo apt-get update
+```
+
+然后就是下载安装一系列的软件，为编译内核做准备
+
+``` sh
+sudo apt-get install libncurses5-dev openssl libssl-dev 
+sudo apt-get install build-essential openssl 
+sudo apt-get install pkg-config 
+sudo apt-get install libc6-dev 
+sudo apt-get install bison 
+sudo apt-get install flex 
+sudo apt-get install libelf-dev 
+sudo apt-get install zlibc minizip 
+sudo apt-get install libidn11-dev libidn11
+sudo apt-get install dwarves
+```
+
+#### 3.解压内核到指定位置
+
+内核版本为自行下载准备编译的版本 （此实验准备的是linux-5.4.224.tar.xz）
+
+（要去内核的下载到的目录下去解压，不然会找不到文件）
+
+``` sh
+sudo wget https://cdn.kernel.org/pub/linux/kernel/v5.x/linux-5.4.224.tar.xz
+# 随便在哪个位置下载此包
+sudo tar -xavf linux-5.4.224.tar.xz -C /usr/src
+# 解压 一定要解压到 /usr/src
+```
+
+#### 4.进入到解压位置
+
+后面的操作都是默认**在这个目录下执行**。
+
+```bash
+cd /usr/src/linux-5.4.224
+```
+
+#### 5.净化源码
+
+对已编译过内核的虚拟机**再次编译**时就从这一步开始就行了。
+
+得到源代码后,将其净化。
+
+```sh
+sudo make mrproper 
+sudo make clean
+```
+
+#### 6.修改配置文件
+
+得到内核之后要对其进行配置，配置的办法: 将现有内核的配置选项复制到要编译的新内核上去。这句话的意思是将我现有的内核（4.15.0-45）版本的config配置信息复制到现在目录下的 .config里面
+
+注意此处版本要填写第一次查询的现有内核版本
+
+``` sh
+sudo cp /boot/config-5.4.0-42-generic .config
+```
+
+然后修改它。
+
+打开`.config`文件查看`CONFIG_SYSTEM_TRUSTED_KEYS`字段的位置，记住其行数。如图所示。
+
+![image-20221118172351653](img/image-20221118172351653.png)
+
+使用vim修改该字段值。（图中展示的时已修改后的结果，一半来说该字段是不为空的）
+
+``` sh
+sudo vim .config
+```
+
+使用 `:行数`  跳转到此行，并对其进行修改为如图的空值。
+
+![image-20221118172635154](img/image-20221118172635154.png)
+
+最后`:wq` 保存退出。
+
+#### 7.对内核选项进行配置
+
+对内核选项进行配置，这个是一个图形化配置
+
+``` sh
+sudo make menuconfig
+```
+
+使用小键盘的上下左右键和enter即可。选择 **load→OK→Save→OK→EXIT→EXIT** 注意看load后默认.config。
+
+直接上下键，跳转至"Exit"，即所有都为默认选项
+
+![image-20221118173304085](img/image-20221118173304085.png)
+
+> 如果已经安装了已经安装了sudo apt-get install libncurses5-dev库
+>
+> 还是报错出现/opt/linux/linux-3.5/scripts/kconfig/Makefile:21: recipe for target 'menuconfig' failed错误
+>
+> 原因是客户端窗口太小，把terminal变大整个屏幕大小就可以显示。
+
+#### 8.开始编译
+
+在此步之前要完成所有的内核源码修改。
+
+然后接着输入指令，进行编译以及安装模块
+
+```sh
+sudo make -j 4	# 其后参数自己调整
+sudo make modules 
+sudo make modules_install
+```
+
+**注1**： `sudo make -j 4`后的数字是调用多个CPU来加快构建。因为内核的编译工作量特别大，我使用`make -j 4进行编译工作。`make -j 4是指make编译过程使用我的2个处理器核同时进行工作，每个处理器上开两个线程。因此，你可以输入`lscpu`查看当前操作系统使用的cpu核心数，每个核心开一个或两个线程（通常是这样，我每核心开两个线程cpu已经跑满了）。
+
+![image-20221118183621927](img/image-20221118183621927.png)
+
+**注2**：自己对源代码的修改**可能报错**，代码出错可能会在第二步 `make modules `才暴露出来。此时对代码修改之后，必须**再次从make开始**才行。
+
+**注3**：因此，在修改代码后，直接先`sudo make modules `检查代码中的错误，没错后，才从第5步重新开始编译。
+
+编译过程需要很久，make输出如下：
+
+![image-20221118181524513](img/image-20221118181524513.png)
+
+没报错的`sudo make modules`输出如下：
+
+![image-20221118184830075](img/image-20221118184830075.png)
+
+`sudo make modules_install`输出如下：
+
+![image-20221118185122425](img/image-20221118185122425.png)
+
+#### 9.安装
+
+接着输入一下命令进行安装，此时目录要在自己编译的内核目录下`/usr/src/linux-5.4.224/`
+
+```sql
+sudo make install 
+sudo mkinitramfs -o /boot/initrd.img-5.4.224
+sudo update-initramfs -c -k 5.4.224
+sudo update-grub2
+```
+
+#### 10.检验成果
+
+重启 可以看到新的内核版本，成功编译
+
+```css
+reboot 
+uname -a
+```
+
+![image-20221118182515648](img/image-20221118182515648.png)
+
+> 注：
+>
+> **加快make编译：**
+>
+> 内核的编译工作量特别大，我使用`make -j8`进行编译工作。`make -j8`是指make编译过程使用我的8个处理器核同时进行工作，每个处理器上开两个线程。因此，你可以输入`lscpu`查看当前操作系统使用的cpu核心数，每个核心开一个或两个线程（通常是这样，我每核心开两个线程cpu已经跑满了）。
+>
+> **编译内核时报错：**
+>
+> 1. `内核错误: No rule to make target ‘debian/canonical-certs.pem‘, needed by ‘certs/x509_certificate_list‘`，解决：[内核错误: No rule to make target ‘debian/canonical-certs.pem‘, needed by ‘certs/x509_certificate_list‘_Imagine Miracle的博客-CSDN博客_no rule to make target 'debian/canonical-certs.pem](https://blog.csdn.net/qq_36393978/article/details/118157426)
+>
+> 2. `内核错误：BTF: .tmp_vmlinux.btf: pahole (pahole) is not available`，解决：[内核错误：BTF: .tmp_vmlinux.btf: pahole (pahole) is not available_Imagine Miracle的博客-CSDN博客](https://blog.csdn.net/qq_36393978/article/details/124274364)
+>
+> 
 
 官方是强调编译linux内核是强烈不建议以root身份来进行编译的，因为这样有可能在编译过程中改掉当前编译系统的重要配置而影响当前系统，而应该建议使用普通用户的身份来编译内核，这样该普通用户如果在编译过程中要修改系统重要的配置文件也会因为没有权限而报错。
 
@@ -2291,8 +2522,60 @@ linux内核在该目录下：`/usr/src`，发行版Ubuntu系统不会带有linux
 | scripts       | 此目录包含用于配置核心的脚本文件。                           |
 | Documentation | 此目录是一些文档，起参考作用。                               |
 
+### 切换内核版本的方法
 
-# # 快捷键 
+[linux切换内核版本_木可木可❀的博客-CSDN博客_linux切换内核](https://blog.csdn.net/weixin_44260459/article/details/123723356)
+
+### printk内核打印
+
+printk 在内核源码中用来记录日志信息的函数，只能在内核源码范围内使用，用法类似于 printf 函数。
+
+printk 函数主要做两件事情：
+
+1. 将信息记录到 log 中；
+2. 调用控制台驱动来将信息输出。
+
+#### printk 介绍
+
+printk 将内核信息输出到内核信息缓冲区中，内核缓冲区在 kernel/printk/printk.c 中定义：
+
+```c
+static char __log_buf[__LOG_BUF_LEN] __aligned(LOG_ALIGN);
+```
+
+内核信息缓冲区是一个环形缓冲区（Ring Buffer），因此，如果塞入的消息过多，则就会将之前的消息冲刷掉。
+
+例如：`printk(KERN_INFO"mac_header =%x \n", skb->mac_header  );`
+
+注意：c语言类型检查很严格，数字类型一定要用 %d 来占位，不要想当然的用 %s。
+
+详见：[printk 内核打印 – 人人都懂物联网 (getiot.tech)](https://getiot.tech/linux-kernel/linux-kernel-printk.html#)
+
+简单来说，跑数据后，在命令行中输入 `dmesg`即可。
+
+#### pr_xxx
+
+除了直接使用 printk 加消息级别的方式，在 `<linux/printk.h>` 中还定义了 pr_notice、pr_info、pr_warn、pr_err 等接口。使用这些 pr_xxx 接口，就可以省去指定消息级别的麻烦。
+
+```c
+#define pr_emerg(fmt, ...)     printk(KERN_EMERG pr_fmt(fmt), ##__VA_ARGS__)
+#define pr_alert(fmt, ...)     printk(KERN_ALERT pr_fmt(fmt), ##__VA_ARGS__)
+#define pr_crit(fmt, ...)      printk(KERN_CRIT pr_fmt(fmt), ##__VA_ARGS__)
+#define pr_err(fmt, ...)       printk(KERN_ERR pr_fmt(fmt), ##__VA_ARGS__)
+#define pr_warning(fmt, ...)   printk(KERN_WARNING pr_fmt(fmt), ##__VA_ARGS__)
+#define pr_warn pr_warning
+#define pr_notice(fmt, ...)    printk(KERN_NOTICE pr_fmt(fmt), ##__VA_ARGS__)
+#define pr_info(fmt, ...)      printk(KERN_INFO pr_fmt(fmt), ##__VA_ARGS__)
+
+#define pr_devel(fmt, ...)     printk(KERN_DEBUG pr_fmt(fmt), ##__VA_ARGS__)
+#define pr_debug(fmt, ...)     printk(KERN_DEBUG pr_fmt(fmt), ##__VA_ARGS__)
+```
+
+需要注意的是，其他 `pr_XXX()` 函数能无条件地打印，但 `pr_debug()` 却不能。因为默认情况下它不会被编译，除非定义了 `DEBUG` 或设定了 `CONFIG_DYNAMIC_DEBUG`
+
+
+
+# # 快捷键
 
 **[Tab] 有『命令补全』与『文件补齐』的功能**
 
