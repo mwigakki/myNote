@@ -2890,10 +2890,32 @@ public class TestDemo  {
 - **使用服务器ssh连接交换机时出现Permission denied, please try again错误，无法连接；而使用交换机连交换机就可以连接**
     - **原因**：服务器的用户都是普通用户，而交换机的用户都是root
     - **解决**：使用服务器连接时要把用户带上，即ssh root@192.168.199.151
+    
 - **navicat连接出现1251 client does not support authentication问题时**
     -  https://minsonlee.github.io/2021/11/mysql-client-not-support-authentication  
+    
 - **mysql连接jar包需要放在linux下的哪里呢？**
     - 该jar包应该被置于jdk安装路径下jre文件夹lib目录的ext文件夹下。例如我的JDK安装路径为`/usr/lib/jvm/java-8-openjdk-amd64`，则我的jar包位置应该是：`/usr/lib/jvm/java-8-openjdk-amd64/jre/lib/ext/mysql-connector-java-8.0.18.jar`（通过whereis java查看jdk路径）
+    
+- **将python命令默认映射为python3**
+
+    安装ubuntu20.4版本默认安装python3.8，没有安装python2。
+
+    - 备份系统自带python2的软链接（可不做）：
+
+    ```shel
+    mv /usr/bin/python /usr/bin/python.bak
+    ```
+
+    - 创建python3软链接：
+
+    （安装python一般会自动生成软链接/usr/bin/python3，如果没有，请将“/usr/bin/python3”改为你安装的python3的位置）
+
+    ```bash
+    sudo ln -s /usr/bin/python3 /usr/bin/python
+    ```
+
+
 
 # # 一些操作系统的知识
 
