@@ -1,4 +1,4 @@
-[Linux 命令大全 | 菜鸟教程 (runoob.com)](https://www.runoob.com/linux/linux-command-manual.html)
+Linux 命令大全 | 菜鸟教程 (runoob.com)](https://www.runoob.com/linux/linux-command-manual.html)
 
 [【linux】最常用 150 个Linux命令汇总 - 腾讯云开发者社区-腾讯云 (tencent.com)](https://cloud.tencent.com/developer/article/1540697)
 
@@ -1364,7 +1364,7 @@ myweb
     - **解压文件示例**：(解压到当前目录，并且会覆盖掉同名文件，需注意)
 
     - ``` shell
-        ubuntu@VM-8-17-ubuntu:~/test$ tar -xzvf a.tar.gz
+        ubuntu@VM-8-17-ubuntu:~/test$ tar -zxvf a.tar.gz
             qwer/
             qwer/tt.py
             qwer/readme.md
@@ -1386,7 +1386,7 @@ myweb
 
 ### `stat`
 
-以文字的格式来显示 inode 的内容。
+以文字的格式来显示文件 inode 的内容。
 
 ``` shell
 $ stat test.py 
@@ -1412,7 +1412,6 @@ ubuntu@VM-8-17-ubuntu:~/test$ du -h
 12K	./www
 56K	.
 ```
-
 
 `du -h` ： 显示当前目录及所有子目录的大小，`-h`是以人类易读的形式显示
 
@@ -1482,6 +1481,12 @@ ubuntu@VM-8-17-ubuntu:~$ du -h mynginx/
 ### `systemctl` 
 
  以管理nginx服务器为例
+
+查看服务状态：
+
+``` bash
+sudo systemctl status nginx
+```
 
 要停止Web服务器，输入：(systemctl: system control)
 
@@ -1888,11 +1893,9 @@ route还可以添加路由、删除路由、设置路由规则等等。例：
 
 - 格式：`route add -net {NETWORK-ADDRESS} netmask {NETMASK} reject `  ：设置到指定网络为不可达，避免在连接到这个网络的地址时程序过长时间的等待，直接就知道该网络不可达。
 
-
-
 ### tcpdump
 
-**tcpdump**：dump the traffic on a network，根据使用者的定义**对网络上的数据包进行截获的包分析**工具。
+**tcpdump**：dump the traffic on a network，根据使用者的定义**对网络上的数据包进行截获的包分析工具**。
 
 tcpdump可以将网络中传送的数据包的“头”完全截获下来提供分析。它支持针对网络层、协议、主机、网络或端口的过滤，并提供and、or、not等逻辑语句来帮助你去掉无用的信息。
 
@@ -1960,6 +1963,136 @@ tcpdump udp port 123
 ```
 
 更多见：[Linux tcpdump命令详解](https://www.cnblogs.com/ggjucheng/archive/2012/01/14/2322659.html)
+
+- **tcpdump抓包并保存成cap文件**
+
+``` bash
+tcpdump -i [抓包的端口] -w [保存文件的位置]   # 其他条件自己写
+```
+
+
+
+### mtr
+
+- MTR工具将ping和traceroute命令的功能并入了同一个工具中，实现更强大的功能。
+- Linux版本的mtr命令默认发送ICMP数据包进行链路探测。可以通过“-u”参数来指定使用UDP数据包用于探测。
+- 相对于traceroute命令只会做一次链路跟踪测试，**mtr命令会对到达指定地址的链路上的所有节点做持续探测并给出相应的统计信息（主要看时延和丢包率）**。所以，mtr命令能避免节点波动对测试结果的影响，所以其测试结果更正确，建议优先使用。
+
+**安装**
+
+``` bash
+apt-get install  mtr -y
+```
+
+**用法说明**
+
+```bash
+mtr [-hvrctglspni46] [-help] [-version] [-report] [-report-cycles=COUNT] [-curses] [-gtk] [-raw] [-split] [-no-dns] [-address interface] [-psize=bytes/-s bytes] [-interval=SECONDS] HOSTNAME [PACKETSIZE]
+```
+
+**常见可选参数说明：**
+
+- -r 或 -report：以报告模式显示输出，以发送10个包得到的数据生成报告。默认则是实时展示。
+
+- -p 或 -split：将每次追踪的结果分别列出来。
+
+- -s 或 -psize：指定ping数据包的大小。
+
+- -n 或 -no-dns：不对IP地址做域名反解析。
+- -c : 设置发送的包数。
+
+- -a 或 -address：设置发送数据包的IP地址。用于主机有多个IP时。
+
+- -4：只使用IPv4协议。
+
+- -6：只使用IPv6协议。
+
+另外，也可以在mtr命令运行过程中，输入相应字母来快速切换模式。
+
+- ？或 h：显示帮助菜单。
+
+- d：切换显示模式。
+
+- n：切换启用或禁用DNS域名解析。
+
+- u：切换使用ICMP或UDP数据包进行探测。
+
+**示例输出**
+
+远程服务器 mtr 测试google DNS的连通性，输出结果如下（以下时间单位皆是毫秒）：
+
+``` sh
+root@VM-8-17-ubuntu:~# mtr 8.8.8.8
+```
+
+![image-20221126122740801](img/image-20221126122740801.png)
+
+mtr 测试百度的地址，一共发7个包，非实时展示，已报告形式展现：
+
+![image-20221126123227871](img/image-20221126123227871.png)
+
+
+
+**返回结果**
+
+默认配置下，返回结果中各数据列的说明如下。
+
+- 第一列（Host）：节点IP地址和域名。如前面所示，按n键可以切换显示。
+
+- 第二列（Loss%）：节点丢包率。
+
+- 第三列（Snt）：每秒发送数据包数。默认值是10，可以通过参数“-c”指定。
+
+- 第四列（Last）：最近一次的探测延迟值。
+
+- 第五、六、七列（Avg、Best、Wrst）：分别是探测延迟的平均值、最小值和最大值。
+- 第八列（StDev）：标准偏差。越大说明相应节点越不稳定。
+
+其中，IP地址显示为 ??? 表示连接此地址超时，这可能是家用路由器或者运营商的路由器没有正确配置导致的，也可能是因为某些路由器拒绝回复ICMP报文或ICMP优先级设置的很低导致被丢弃，但是数据还是正常传递的，看最后跳，丢包率为 0%，说明数据包全部到达目标主机。
+
+完整版参数说明：
+
+``` bash
+ -F, --filename FILE        read hostname(s) from a file
+ -4                         use IPv4 only
+ -6                         use IPv6 only
+ -u, --udp                  use UDP instead of ICMP echo
+ -T, --tcp                  use TCP instead of ICMP echo
+ -a, --address ADDRESS      bind the outgoing socket to ADDRESS
+ -f, --first-ttl NUMBER     set what TTL to start
+ -m, --max-ttl NUMBER       maximum number of hops
+ -U, --max-unknown NUMBER   maximum unknown host
+ -P, --port PORT            target port number for TCP, SCTP, or UDP
+ -L, --localport LOCALPORT  source port number for UDP
+ -s, --psize PACKETSIZE     set the packet size used for probing
+ -B, --bitpattern NUMBER    set bit pattern to use in payload
+ -i, --interval SECONDS     ICMP echo request interval
+ -G, --gracetime SECONDS    number of seconds to wait for responses
+ -Q, --tos NUMBER           type of service field in IP header
+ -e, --mpls                 display information from ICMP extensions
+ -Z, --timeout SECONDS      seconds to keep probe sockets open
+ -r, --report               output using report mode
+ -w, --report-wide          output wide report
+ -c, --report-cycles COUNT  set the number of pings sent
+ -j, --json                 output json
+ -x, --xml                  output xml
+ -C, --csv                  output comma separated values
+ -l, --raw                  output raw format
+ -p, --split                split output
+ -t, --curses               use curses terminal interface
+     --displaymode MODE     select initial display mode
+ -n, --no-dns               do not resove host names
+ -b, --show-ips             show IP numbers and host names
+ -o, --order FIELDS         select output fields
+ -y, --ipinfo NUMBER        select IP information in output
+ -z, --aslookup             display AS number
+ -h, --help                 display this help and exit
+ -v, --version              output version information and exit
+```
+
+
+
+
 
 ### traceroute
 
@@ -2254,7 +2387,7 @@ TCP正在使用的拥塞控制算法保存在`tcp_congestion_control`里。
 
 - **临时修改**：使用`systcl`命令进行修改，例如修改SYN重传次数`sysctl net.ipv4.tcp_syn_retries=n`
 - **临时修改**：使用 `echo value` 方式直接追加到文件中。 如 `echo "1" > /proc/sys/net/ipv4/tcp_syn_retries` ，但是这种方式设备重启后，会恢复成默认值。
-- **永久修改**：把参数添加到 `/etc/sysctl.conf` 中，然后执行 `sysctl -p` 使参数生效。这种方式是永久有效的。如修改默认CC算法为reno，在文件中添加：`net.ipv4.tcp_congestion_control=reno`
+- **永久修改**：把参数添加到 `sudo vim /etc/sysctl.conf` 中，然后执行 `sudo sysctl -p` 使参数生效。这种方式是永久有效的。如修改默认CC算法为reno，在文件中添加：`net.ipv4.tcp_congestion_control=reno`
 
 ### 修改linux内核CC算法为BBR
 
@@ -2377,7 +2510,7 @@ cd /usr/src/linux-5.4.224
 
 #### 5.净化源码
 
-对已编译过内核的虚拟机**再次编译**时就从这一步开始就行了。
+对已编译过内核的虚拟机**再次编译**时就从这一步开始就行了（当然需要先进行相关内核代码的修改）。
 
 得到源代码后,将其净化。
 
@@ -2755,7 +2888,7 @@ public class TestDemo  {
         	例：sshpass -p 'onl' ssh -o StrictHostKeyChecking=no 192.168.199.151
 
 - **使用服务器ssh连接交换机时出现Permission denied, please try again错误，无法连接；而使用交换机连交换机就可以连接**
-    - **原因**：服务器的用户都是sinet，而交换机的用户都是root
+    - **原因**：服务器的用户都是普通用户，而交换机的用户都是root
     - **解决**：使用服务器连接时要把用户带上，即ssh root@192.168.199.151
 - **navicat连接出现1251 client does not support authentication问题时**
     -  https://minsonlee.github.io/2021/11/mysql-client-not-support-authentication  
@@ -2856,4 +2989,208 @@ Buffer的核心作用是用来缓冲，缓和冲击，每当buffer满或者主�
 4. 然后连接-输密码就完事儿了
 
 ![image-20221014172300103](img/image-20221014172300103.png)
+
+# # linux 安装高版本（3.8）的python
+
+Ubuntu16.04默认安装了Python2.7和3.5，请注意，系统自带的python千万不能卸载！
+
+使用命令 `python3 -V` 查看当前python3 版本: `Python 3.5.2`
+
+如果直接使用 `sudo apt-get install python3.8` 安装的话会报错如下
+
+``` sh
+Reading package lists... Done
+Building dependency tree       
+Reading state information... Done
+E: Unable to locate package python3.8
+E: Couldn't find any package by glob 'python3.8'
+E: Couldn't find any package by regex 'python3.8'
+```
+
+这是因为使用的ppa为旧版本，需要将ppa 更新：
+
+``` bash
+sudo add-apt-repository ppa:jonathonf/python-3.8
+
+sudo add-apt-repository ppa:deadsnakes/ppa
+```
+
+然后系统更新：
+
+``` sh
+sudo apt-get update
+```
+
+最后安装python3.8
+
+``` sh
+sudo apt-get install python3.8
+```
+
+然后，我们希望默认的python3 的版本应该就是新安装的python3.8而不是之前的3.5，于是先将默认配置改为Python3.8：
+
+``` sh
+sudo update-alternatives --install /usr/bin/python python /usr/bin/python3.8 200
+```
+
+取消原本的Python 3.5 , 并将 Python3 链接到最新的python3.8 上：
+
+```sh
+sudo mv /usr/bin/python3 /usr/bin/python3-old
+sudo ln -s /usr/bin/python3.8 /usr/bin/python3
+```
+
+`python3 --version` 查看Python的默认版本已经更改至了3.8。
+
+并且可以进一步将python设置默认是python3.8版本，如下：
+
+``` sh
+sudo update-alternatives --install /usr/bin/python python /usr/bin/python2.7 1
+# 这条命令用来从设置2.7的优先级，值得注意的是数字越小优先级越低
+ 
+sudo update-alternatives --install /usr/bin/python python /usr/bin/python3.8 2
+```
+
+# # linux下使用pip报错
+
+使用的pip版本
+
+``` sh
+$ pip --version
+pip 22.3.1 from /home/p4/.local/lib/python3.8/site-packages/pip (python 3.8)
+```
+
+当使用`pip install XXX` 安装某个包时出现错误如下：
+
+![image-20230103120402410](img/image-20230103120402410.png)
+
+一般可以断定是网络代理出的问题。测试curl可以看出就是代理出的问题。
+
+![image-20230103120453866](img/image-20230103120453866.png)
+
+于是使用命令：查看端口使用情况
+
+```bash
+env | grep -i proxy
+```
+
+然后将自己报错的端口号占用进行一个移除操作，每个都要移除。
+
+```bash
+unset FTP_PROXY 
+unset HTTP_PROXY 
+unset HTTPS_PROXY 
+unset ALL_PROXY 
+unset NO_PROXY 
+unset no_proxy 
+unset all_proxy 
+unset ftp_proxy 
+unset http_proxy 
+unset https_proxy 
+```
+
+然后pip就可以用了。
+
+
+
+
+
+# # ECN
+
+simple_switch_CLI --thrift-port 9091
+
+register_read max_cwnd_reg
+
+
+
+ecn_timer
+
+register_read threshold
+
+sudo sysctl net.ipv4.tcp_congestion_control=
+
+ tcp_rmem=10240	87380	16777216
+
+sudo tcpdump -i s1-eth1 -w s1-eth1.pcap
+
+
+
+sudo tcpdump -i s1-eth1 -w renoi_modified_s1-eth1.pcap
+
+sudo tcpdump -i s1-eth2 -w renoi_modified_s1-eth2.pcap
+
+sudo tcpdump -i s1-eth3 -w renoi_modified_s1-eth3.pcap
+
+
+
+INT收端：python ./receive.py
+
+INT发端：python ./send.py
+
+
+
+iperf -c 10.0.4.4 -i 1 -t 100 > renoi_modified_h1.txt
+
+iperf -c 10.0.5.5 -i 1 -t 60 > renoi_modified_h2.txt
+
+iperf -c 10.0.6.6 -i 1 -t 20 > renoi_modified_h3.txt
+
+iperf -s -i 1
+
+
+
+| CC算法         | 默认发包比例 | 带宽比 | queue_rate | 带宽(波动，100s均值) |
+| -------------- | ------------ | ------ | ---------- | -------------------- |
+| reno(改内核了) | 1 ：1：1     | 0      | 0          | 62.6                 |
+| cubic          | 1:1:1        | 0      | 0          | 50~100, 74.9         |
+| bbr            | 1:1:1        | 0      | 0          | 66~86                |
+|                |              |        |            |                      |
+|                |              |        |            |                      |
+
+把参数添加到 `sudo vim /etc/sysctl.conf` 中，然后执行 `sudo sysctl -p` 使参数生效
+
+
+
+# # quic python实现
+
+### HTTP/3 server
+
+You can run the example server, which handles both HTTP/0.9 and HTTP/3:
+
+```sh
+python examples/http3_server.py --certificate tests/ssl_cert.pem --private-key tests/ssl_key.pem
+```
+
+### HTTP/3 client
+
+You can run the example client to perform an HTTP/3 request:
+
+```sh
+python examples/http3_client.py --ca-certs tests/pycacert.pem https://localhost:4433/
+```
+
+
+
+首先使用命令：查看端口使用情况
+
+```bash
+env | grep -i proxy
+```
+
+然后将自己报错的端口号占用进行一个移除操作，每个都要移除。
+
+```bash
+unset FTP_PROXY 
+unset HTTP_PROXY 
+unset HTTPS_PROXY 
+unset ALL_PROXY 
+unset NO_PROXY 
+unset no_proxy 
+unset all_proxy 
+unset ftp_proxy 
+unset http_proxy 
+unset https_proxy 
+```
+
+然后pip就可以用了。
 
