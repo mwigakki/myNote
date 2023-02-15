@@ -1069,9 +1069,11 @@ apt 命令执行需要超级管理员权限(root)。
 
 ## apt 常用命令
 
+对于**`apt`**和**`apt-get`**的区别，**`apt`** 是**`apt-get`**等一系列相关名列的集合，所以一般来说都优先使用 **`apt`**
+
 - 列出所有可更新的软件清单命令：**sudo apt update**
 
-- 升级软件包：**sudo apt upgrade**
+- 升级所有已安装的软件包：**sudo apt upgrade** ， 一般在`upgrade`之前要先`update` ，这样才能保证下载的软件是最新版本。
 
   列出可更新的软件包及版本信息：**apt list --upgradeable**
 
@@ -2705,6 +2707,14 @@ static char __log_buf[__LOG_BUF_LEN] __aligned(LOG_ALIGN);
 ```
 
 需要注意的是，其他 `pr_XXX()` 函数能无条件地打印，但 `pr_debug()` 却不能。因为默认情况下它不会被编译，除非定义了 `DEBUG` 或设定了 `CONFIG_DYNAMIC_DEBUG`
+
+# 14. vmware 安装ubuntu虚拟机
+
+[(4条消息) 虚拟机（VMware）安装Linux（Ubuntu）安装教程_Brights_Stars_的博客-CSDN博客_虚拟机安装ubuntu](https://blog.csdn.net/qq_39657434/article/details/112252844)
+
+- 解决VMware安装Ubuntu时界面显示不全问题：
+
+  在虚拟机桌面按Ctrl+Alt+T，出现终端窗口，然后在终端中输入命令`xrandr -s 1280x800`（这里是x 诶刻斯），暂时改变虚拟机的分辨率。
 
 
 
