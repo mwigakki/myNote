@@ -2766,7 +2766,7 @@ public class TestDemo  {
     
 - **将python命令默认映射为python3**
 
-    安装ubuntu20.4版本默认安装python3.8，没有安装python2。
+    安装ubuntu18.4版本默认安装python3.6.9，安装ubuntu20.4版本默认安装python3.8，没有安装python2。
 
     - 备份系统自带python2的软链接（可不做）：
 
@@ -2781,6 +2781,28 @@ public class TestDemo  {
     ```bash
     sudo ln -s /usr/bin/python3 /usr/bin/python
     ```
+
+- **vmware安装ubuntu18，该虚拟机分辨率，使虚拟机与宿主机之间能复制粘贴**
+
+    ``` shell
+    sudo apt-get autoremove open-vm-tools
+    
+    # Install VMware Tools by following the usual method (Virtual Machine --> Reinstall VMWare Tools)
+    
+    # 重启Ubuntu虚拟机
+    
+    sudo apt-get install open-vm-tools-desktop
+    
+    # 重启Ubuntu虚拟机
+    ```
+
+    
+
+    
+
+    
+
+     
 
 
 
