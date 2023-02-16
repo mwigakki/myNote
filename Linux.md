@@ -2925,6 +2925,11 @@ public class TestDemo  {
     sudo ln -s /usr/bin/python3 /usr/bin/python
     ```
 
+- **vmware 虚拟机使用桥接模式联网**
+
+  首先将对应虚拟机的网配置改成桥接模式，然后vmware主页左上角 **编辑** - **虚拟网络编辑器** - **更改设置**(可能没有) - **选好桥接到的网卡，不要选错了**。无线有线网卡都可以。
+
+
 - **vmware安装ubuntu18，该虚拟机分辨率，使虚拟机与宿主机之间能复制粘贴**
 
     ``` shell
