@@ -2708,7 +2708,129 @@ static char __log_buf[__LOG_BUF_LEN] __aligned(LOG_ALIGN);
 
 需要注意的是，其他 `pr_XXX()` 函数能无条件地打印，但 `pr_debug()` 却不能。因为默认情况下它不会被编译，除非定义了 `DEBUG` 或设定了 `CONFIG_DYNAMIC_DEBUG`
 
-# 14. vmware 安装ubuntu虚拟机
+# 14. Linux配置文件与环境变量
+
+### 环境配置文件的区别
+
+配置文件 : **/etc/profile**、 **/etc/bashrc**、**~/.bash_profile**、 **~/.bashrc**介绍
+
+bash会在用户登录时，读取下列四个环境配置文件：
+
+```tex
+全局环境变量设置文件：/etc/profile、/etc/bashrc。 
+用户环境变量设置文件：~/.bash_profile、~/.bashrc。
+```
+
+读取顺序：〇：`/etc/enviroment `、① `/etc/profile`、② `~/.bash_profile`、③` ~/.bashrc`、④ `/etc/bashrc`。
+
+>0. `/etc/environment`: 是设置**整个系统的环境变量**，其中的环境变量权限最高。
+>
+>1. `/etc/profile`: 此文件为系统的**每个用户设置环境变量**，系统中**每个用户登录时**都要执行这个脚本，如果系统管理员希望某个设置对所有用户都生效，可以写在这个脚本里，该文件也会从`/etc/profile.d`目录中的配置文件中搜集shell的设置。
+>2. `~/.bash_profile`: **每个用户**都可使用该文件设置专用于自己的shell信息，**当用户登录时，该文件仅执行一次**。默认情况下，他仅执行一次，设置一些环境变量，执行用户的`.bashrc`文件。 
+>3. ` ~/.bashrc`: 该文件包含**专用于自己这个用户**的shell信息，当**登录时以及每次打开新shell时**，该文件被读取。（每个用户都有一个.bashrc文件，在用户目录下）
+>4.  `/etc/bashrc`: 为每一个运行bash shell的用户执行此文件，**每当bash shell被打开时**，该文件被读取。
+>
+>~/.bash_profile是交互式、login 方式进入 bash 运行的 。
+>
+>~/.bashrc 是交互式 non-login 方式进入 bash 运行的。通常二者设置大致相同，所以通常前者会调用后者。
+>
+>~/.bash_logout：当每次退出系统(退出bash shell)时，执行该文件。
+
+### Linux环境变量分类
+
+**按生命周期分：**
+
+- 永久的：需要用户修改配置文件使变量永久生效
+
+- 暂时的：用户使用`export`命令，在当前终端下声明环境变量，关闭Shell终端失效。
+
+**按作用域分：**
+
+- 系统环境变量：系统环境变量对该系统中所有用户都有效。
+- 用户环境变量：顾名思义，这种类型的环境变量只对特定的用户有效。
+
+### 设置Linux环境变量的方法
+
+1. 在`/etc/profile`或`/etc/bashrc`文件中添加变量 **对所有用户生效（永久的）**
+
+用vim在文件`/etc/profile`文件中增加变量，该变量将会对Linux下所有用户有效，并且是“永久的”。
+
+例如：编辑/etc/profile文件，添加CLASSPATH变量
+
+```bash
+  vim /etc/profile    
+  export CLASSPATH=./JAVA_HOME/lib;$JAVA_HOME/jre/lib
+```
+
+注：修改文件后要想马上生效还要运行`source /etc/profile`不然只能在下次重进此用户时生效。
+
+2. 在用户目录下的`.bash_profile`或 `.bashrc`文件中增加变量 **【对单一用户生效（永久的）】**
+
+用`vim ~/.bash_profile`文件中增加变量，改变量仅会对当前用户有效，并且是“永久的”。
+
+```bash
+vim ~/.bash_profile
+export CLASSPATH=./JAVA_HOME/lib;$JAVA_HOME/jre/lib
+```
+
+注：修改文件后要想马上生效还要运行` source ~/.bash_profile`不然只能在下次重进此用户时生效。
+
+3. 直接运行export命令定义变量 **【只对当前shell（BASH）有效（临时的）】**
+
+
+在shell的命令行下直接使用 **`export 变量名=变量值`** 定义变量，该变量只在当前的shell（BASH）或其子shell（BASH）下是有效的，
+
+shell关闭了，变量也就失效了，再打开新shell时就没有这个变量，需要使用的话还需要重新定义。
+
+### Linux环境变量使用
+
+- PATH：指定命令的搜索路径
+
+> **PATH声明用法：**
+>
+>  PATH=$PAHT:<PATH 1>:<PATH 2>:<PATH 3>:--------:< PATH  n >
+>
+>  export PATH
+>
+>  你可以自己加上指定的路径，中间用冒号隔开。环境变量更改后，在用户下次登陆时生效。
+>
+>  可以利用`echo $PATH`查看当前当前系统PATH路径。
+
+-  **常用的环境变量**
+
+> $BASH Bash : Shell的全路径
+>
+> $CDPATH    用于快速进入某个目录。
+>
+> $PATH    决定了shell将到哪些目录中寻找命令或程序
+>
+> $HOME    当前用户主目录
+>
+> $HISTSIZE    历史记录数
+>
+> $LOGNAME    当前用户的登录名
+>
+> $HOSTNAME    指主机的名称
+>
+> $SHELL    当前用户Shell类型
+>
+> $LANGUGE    语言相关的环境变量，多语言可以修改此环境变量
+>
+> $MAIL    当前用户的邮件存放目录
+>
+> $PS1    基本提示符，对于root用户是#，对于普通用户是$
+
+- **修改和查看环境变量的命令**
+  - echo         显示某个环境变量值 echo $PATH
+  - export   设置一个新的环境变量 export HELLO="hello" (可以无引号)
+  - env      显示所有环境变量
+  - set      显示本地定义的shell变量
+  - unset        清除环境变量 unset HELLO
+  - readonly     设置只读环境变量 readonly HELLO
+
+
+
+# 15. vmware 安装ubuntu20虚拟机
 
 [(4条消息) 虚拟机（VMware）安装Linux（Ubuntu）安装教程_Brights_Stars_的博客-CSDN博客_虚拟机安装ubuntu](https://blog.csdn.net/qq_39657434/article/details/112252844)
 
@@ -2930,27 +3052,22 @@ public class TestDemo  {
   首先将对应虚拟机的网配置改成桥接模式，然后vmware主页左上角 **编辑** - **虚拟网络编辑器** - **更改设置**(可能没有) - **选好桥接到的网卡，不要选错了**。无线有线网卡都可以。
 
 
-- **vmware安装ubuntu18，该虚拟机分辨率，使虚拟机与宿主机之间能复制粘贴**
+- **vmware安装ubuntu18，自动设置虚拟机分辨率，使虚拟机与宿主机之间能复制粘贴以及拖拽文件**
 
-    ``` shell
-    sudo apt-get autoremove open-vm-tools
+    设置 -- 设备 -- display ： 可设置固定分辨率
     
-    # Install VMware Tools by following the usual method (Virtual Machine --> Reinstall VMWare Tools)
+    Install VMware Tools by following the usual method (Virtual Machine --> Reinstall VMWare Tools)
+    
+    ``` shell
+    sudo apt-get install open-vm-tools
     
     # 重启Ubuntu虚拟机
     
     sudo apt-get install open-vm-tools-desktop
     
-    # 重启Ubuntu虚拟机
+# 重启Ubuntu虚拟机
     ```
 
-    
-
-    
-
-    
-
-     
 
 
 
