@@ -1288,6 +1288,57 @@ myweb
 
 见 4. Linux 文件与目录管理，vim相关见：7. Linux vi/vim
 
+#### `tee`命令
+
+**`tee`**命令用于读取标准输入的数据，并将其内容输出成文件。
+
+tee指令会从标准输入设备读取数据，将其内容输出到标准输出设备，同时保存成文件。
+
+**参数**：
+
+- -a或--append 　附加到既有文件的后面，而非覆盖它．
+- -i或--ignore-interrupts 　忽略中断信号。
+- --help 　在线帮助。
+- --version 　显示版本信息
+
+如果想同时打印到屏幕和文件里，可以这么写：
+
+```bash
+ls -l | tee -a lsls.log
+
+ls -l > lsls.log # 这个命令就不会将输出打印到屏幕而是只打印到文件
+```
+
+#### `tree`命令
+
+**`tree`**命令用于以树状图列出目录的内容。
+
+执行tree指令，它会列出指定目录下的所有文件，包括子目录里的文件。
+
+配合`grep`查找文件：
+
+``` bash
+ubt@ubt-vm:~/tutorials$ tree | grep "basic"
+│   ├── basic
+│   │   ├── basic.p4
+│   │   │   └── basic0.p4
+│   ├── basic_tunnel
+│   │   ├── basic_tunnel.p4
+│   │   │   └── basic_tunnel.p4
+│   │   ├── basic.p4
+```
+
+**参数说明**：
+
+- -a 显示所有文件和目录。
+- -A 使用ASNI绘图字符显示树状图而非以ASCII字符组合。
+- -C 在文件和目录清单加上色彩，便于区分各种类型。
+- -d 显示目录名称而非内容。
+- -i **不以阶梯状**列出文件或目录名称。
+- -p 列出**权限标示**。
+- -s 列出文件或**目录大小**。
+- -t 用文件和目录的**更改时间排序**。
+
 ## 后台执行
 
 对于会占用命令行的命令，可以在命令开头加上 `nohup` 使命令后台运行，此命令行即可关闭了。
@@ -1304,7 +1355,7 @@ myweb
 
     - 按大小查找：`find / -size +500M` , 找出500M以上的文件，改成-就是以下
 
-- `whereis`: 
+- `whereis`:  查找二进制文件及文档等等。
 
     - ``` shell
         ubuntu@VM-8-17-ubuntu:~/mynginx$ whereis python
@@ -1318,7 +1369,7 @@ myweb
         # 找到vim所在的位置以及其手册页的位置等等
         ```
 
-- `which` : 在环境变量$PATH设置的目录里查找符合条件的文件。
+- `which` : 在环境变量$PATH设置的目录里查找符合条件的文件。查找 可执行文件 。
 
     - ``` shell
         ubuntu@VM-8-17-ubuntu:~/mynginx$ which python3
