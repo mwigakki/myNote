@@ -1,7 +1,17 @@
+这个模块将把发现的网络拓扑转换为图形G表示，以实现有效的管理目的。为此，我们使用了Networkx工具[58]，这是一个纯python包，具有一组用于操作网络图的强大函数。
+
+58] D.A. Schult , P. Swart , Exploring network structure, dynamics, and function using networkx, in: Proceedings of the 7th Python in Science Conferences (SciPy2008) (Vol. 2008, 2008, pp. 1 1–16 . 
+
 ## 流量预测
 
-**ResNet-GCN-LSTM模型**
+**ResNet-GCN-LSTM模型**，
 
+修改GCN，在其中加入ResNet
+
+> 基于短期流量预测的SDN网络智能调度
+>
+> 不要光写流量预测，要让它服务于调度
+>
 > 该论文中：
 >
 > 然而，已有研究表明，叠加多个GCN层不仅会导致反向传播过程中复杂度提高，而且会导致梯度消失[35]，[36]，从而降低更深层次GCN的性能。
@@ -16,7 +26,9 @@
 >
 > 在方法尺度上对比：与多种其他预测方法相比较，得到对比实验图。
 >
-> 在流量模型上对比：使用不同的流量模型对该预测模型的性能进行测试，得到对比实验图，反应该模型在各种流量模型下都具有有效的预测性能。
+> 在流量模型上对比：使用不同的流量模型（核心网，接入网，数据中心网）对该预测模型的性能进行测试，得到对比实验图，反应该模型在各种流量模型下都具有有效的预测性能。
+>
+> 但多个流量模型也不太好，审稿人可能更喜欢精细的场景
 >
 > 
 >
@@ -27,14 +39,6 @@
 > 提出残差学习的思想。传统的卷积网络或者全连接网络在信息传递的时候或多或少会存在信息丢失，损耗等问题，同时还有导致梯度消失或者梯度爆炸，导致很深的网络无法训练。ResNet在一定程度上解决了这个问题，通过直接将输入信息绕道传到输出，保护信息的完整性，整个网络只需要学习输入、输出差别的那一部分，简化学习目标和难度。
 
 
-
-
-
-
-
-Short-term traffic prediction based on fusion of multiple machine learning methods
-
-多种机器学习方法融合的短期流量预测
 
 
 
@@ -49,7 +53,7 @@ Short-term traffic prediction based on fusion of multiple machine learning metho
 
 **预 测 的 流 量 序 列与 网 络 链 路 拥 塞 风 险 的 关 系**： `基于机器学习的SDN流量调优系统.pdf`
 
-网 络 拥 塞 的 一 个 特 点 是丢 包 大 量 发 生 。 网 络 转 发 设 备 具 有 一 定 缓存 能 力 ， 因 此 短暂的 、 偶尔 的 突 发 流 量 并 不 会 造 成 丢 包 。 丢 包 的发 生 应 该 是 较 长时间 、 较多的 流 量 突 发 造 成的 。 因 此 通 过 预 测 流 量 序 列 得 到一 个 统 计 意义 上 的 预 测 流量峰值， 该 峰 值 表 征 未来一段时间  流 量突 发的 平 均 水 平 。 如 果预 测流量 峰 值 达 到 或 超 过 链 路 额 定带 宽的 一 定 比 例 ， 则 认 为 网 络 链 路 发 生 拥 塞的 风 险 较 高 。
+网 络 拥 塞 的 一 个 特 点 是丢 包 大 量 发 生 。 网 络 转 发 设 备 具 有 一 定 缓存 能 力 ， 因 此 短暂的 、 偶尔 的 突 发 流 量 并 不 会 造 成 丢 包 。 丢 包 的发 生 应 该 是 较 长时间 、 较多的 流 量 突 发 造 成的 。 因 此 通 过 预 测 流 量 序 列 得 到一 个 统 计 意义 上 的 预 测 流量峰值， 该 峰 值 表 征 未来一段时间  流 量突 发的 平 均 水 平 。 如 果预 测流量 峰 值 达 到 或 超 过 链 路 额 定带 宽的 一 定 比 例 ， 则 认 为 网 络 链 路 发 生 拥 塞的 风 险 较 高 。
 
 ![image-20230224101311456](img/image-20230224101311456.png)
 
@@ -122,15 +126,40 @@ TCM 图概要算法压缩流量矩阵
 
 ### **流量数据集**：
 
-美国 Abilene 骨干网络数据集[48]和无线 Mesh 网络 UCSB（University of California, Santa Barbara）数据集 [49]。
+
+
+本文使用的预训练网络流量数据选择的是由WIDE项目MAWI工作组维护的从日本到美国的某条骨干网络的网络流量，仅使用了其中某观测点2022年4月13日一天24小时的流量观测数据。
+
+[MAWI Working Group Traffic Archive (wide.ad.jp)](http://mawi.wide.ad.jp/mawi/)
+
+1. How can I cite the datasets in my paper?
+
+    Kenjiro Cho, Koushirou Mitsuya and Akira Kato.
+    "Traffic Data Repository at the WIDE Project".
+    USENIX 2000 FREENIX Track, San Diego, CA, June 2000.
+
+
+
+美国 Abilene 骨干网络数据集[48]和无线 Mesh 网络 UCSB（University of California, Santa Barbara）数据集 [49]，
 
 本实验采用 CAIDA passive 2016 数据集[55]，该数据集是来自 CAIDA 的 Equinix-Chicago 监视器的匿名被动流量 trace，是美国西雅图和芝加哥之间的高速主干链路流量数据，其数据 格式为 pcap 文件，此数据集可用于研究互联网流量的特征，包括流量的分布、流长以及流持 续时间等。
+
+可用：该数据集自美国纽约 Equinix 数据中心上 equinix-nyc 网络数据监视器[111]
+
+[111] [Passive Monitor: equinix-nyc - CAIDA](https://www.caida.org/catalog/datasets/monitors/passive-equinix-nyc/)
 
 [48] The Abilene Dataset 2004[EB/OL].http://www.cs.utexas.edu/~yzhang/research/AbileneTM/. 
 
 [49] The UCSB Dataset 2007[EB/OL].http://moment.cs.ucsb.edu/meshnet/datasets.
 
 [55] The CAIDA Anonymized Internet Traces 2016[EB/OL].http://www.caida.org.
+
+
+
+> When referencing this dataset, the use agreement requires inclusion of the following text: 
+>
+> The CAIDA UCSD Anonymized <YEAR> Internet Traces - <dates used>
+> https://www.caida.org/data/passive/passive\_<YEAR>\_dataset
 
 [50] Moore A. ， Zuev D., Crogan M., et al. Discriminators for use inflow-based classification [M]. London: Queen Mary Universityof London, 2005.
 
@@ -141,6 +170,10 @@ TCM 图概要算法压缩流量矩阵
 
 
 **流量生成**：
+
+**mininet生成流量**：基于机器学习的SDN流量调优系统.pdf 40页
+
+不同的理论模型： 基于机器学习的网络流量预测与应用研究.pdf
 
 SDN网络智能流量调度平台设计与实现_崔金鹏.pdf 中有相关的。
 
@@ -214,7 +247,7 @@ TCP流以FIN标志为结束，UDP以设置的flowtimeout时间为限制，超过
 
 - 针对链路拥塞风险的链路预测模型
 
-    鉴 于 链 路 拥 塞 风 险 判 断需 要 一 段 时间 的 流 量 预 测 序 列 ， 而 非 单 个 的流 量 预测  点 ， 使 用间 隔 采样 的 方 式 构 造 输 入 数 据 集。根 据 流 量 预 测序 列和 链 路 额 定 带 宽 判 断 链 路拥 塞 风 险 。考虑 链路 拥 塞 风 险 的 流 量 调 优 机 制能够 考 虑 到 网 络 链 路 动 态 信 息 及 变 化趋 势 ， 有 针 对 性的 对 高 拥 塞 风 险的链 路 分 流 ， 而 对 低 拥 塞 风 险的 链 路 保 留 最 小 通 信 开 销 的 流 量 分 配 方式 。 以 此 来 以 最小 的 额外 网 络 资 源 开 销 避 免拥塞 发 生 ， 因 此 具 有 重 要 的 现 实 意 义 和 理 论 意 义 。
+    鉴 于 链 路 拥 塞 风 险 判 断需 要 一 段 时间 的 流 量 预 测 序 列 ， 而 非 单 个 的流 量 预测  点 ， 使 用间 隔 采样 的 方 式 构 造 输 入 数 据 集。根 据 流 量 预 测序 列和 链 路 额 定 带 宽 判 断 链 路拥 塞 风 险 。考虑 链路 拥 塞 风 险 的 流 量 调 优 机 制能够 考 虑 到 网 络 链 路 动 态 信 息 及  变 化趋 势 ， 有 针 对 性的 对 高 拥 塞 风 险的链 路 分 流 ， 而 对 低 拥 塞 风 险的 链 路 保 留 最 小 通 信 开 销 的 流 量 分 配 方式 。 以 此 来 以 最小 的 额外 网 络 资 源 开 销 避 免拥塞 发 生 ， 因 此 具 有 重 要 的 现 实 意 义 和 理 论 意 义 。
 
     机器学习模型根据过往的链路数据学习当前网络的流量模型，并根据近期的流量数据预测未来一段时间的流量序列。
 
@@ -223,6 +256,41 @@ TCP流以FIN标志为结束，UDP以设置的flowtimeout时间为限制，超过
 
 
 ## 路径迁移
+
+流量预测后只是简单地根据各个链路的剩余带宽水平进行重新分配数据（这样就避免 了拥塞），然而重新分配的链路通常不是路径最短链路或者其他指标较好的链路了（因为网络时常在变化，并假设此时不会再触发链路预测后的调路了），为了提高链路利用率以及降低发生拥塞的概率（一般来说，流量转发经过的交换机越少，发生拥塞的概率越小），我们需要基于强化学习的路径迁移，并要防止出现下图的情况。（此图来自：Fast Lossless Traffic Migration for SDN Updates）
+
+![image-20230228171726592](img/image-20230228171726592.png)
+
+（一条流经过的交换机越多，占用的整体网络资源就越多。）
+
+
+
+总体要保证拥塞避免：
+
+在突发流量时：通过流量预测，根据预测的链路剩余带宽分配链路。【解决了局部拥塞】
+
+无突发流量但有链路冗余时：根据去除冗余分配链路。【减少了整体的拥塞风险】
+
+构建整体拥塞风险最小的最优化模型：![image-20230301163715468](img/image-20230301163715468.png)
+
+如何量化拥塞风险：建库，控制器记录每个流的流量信息的库（流信息：【源目IP，源目应用层端口，应用层协议】，峰值，平均值，峰值占比，当前经过的交换机，总持续时间），（为防止库快速膨胀，需要给每条记录设置超时时间），根据这些流库信息和网络信息判断每条路径的拥塞风险。（学习的方法）
+
+
+
+
+
+Flow Migrations : Flow Migrations in Software Defined Networks:
+Consistency, Feasibility, and Optimality
+
+我们探讨了网络流迁移的三个特性:**一致性、可行性和最优性**。一致性要求在整个迁移过程中满足所有流的带宽需求，更新过程中不存在拥塞和丢包。
+
+由于对丢包率的要求很高，一致性是流迁移最重要的特性。但是，由于带宽资源不足，可能不会一直存在一致的流迁移。因此，我们用可行性来指是否存在一致的流迁移。
+
+如果存在多次一致的流迁移，则会提高最优性。这意味着要找到占用最少空闲资源的计划来完成更新。本文探讨了SDN更新中一致性约束下流量迁移的可行性和最优性。
+
+
+
+
 
 方法：强化学习
 
@@ -282,7 +350,7 @@ SDN中数据包转发是基于流表的[33]！
 
 **网络拓扑**:  软件定义网络中拥塞最小化的路由更新策略研究.pdf
 
-网络拓扑选用微软公 司连接数据中心的广域网络，该拓扑被广泛用于 SDN 路由更新的研究中[10-12, 30-35]。
+网络拓扑选用微软公司连接数据中心的广域网络，该拓扑被广泛用于 SDN 路由更新的研究中[10-12, 30-35]。
 
 ![image-20230224180802679](img/image-20230224180802679.png)
 
@@ -306,13 +374,60 @@ SDN中数据包转发是基于流表的[33]！
 
 
 
+**面向无拥塞的路径迁移：软件定义网络中拥塞最小化的路由更新策略研究.pdf**
+
+为避免路径迁移过程中的拥塞，Dionysus[12]构建了 4 条数据流的路径迁移之间的依 赖关系图，如图 2.4 所示。依赖关系是指，一条数据流必须等待另一条数据流完成迁移 之后，才能开启迁移。如数据流 f2 需要在数据流 f3 迁移到目的路径后，才能开启迁移。控制器按照依赖关系图控制数据流的迁移次序，就可避免拥塞。由于设计不可分割数 据流的无拥塞的更新策略是 NP-Hard 的[27, 28]，为使问题可解，Dionysus 只考虑将数据 流从原路径直接迁移到目的路径，不考虑对数据流进行多次且来回反复地迁移。
+
+<img src="img/image-20230301101305894.png" alt="image-20230301101305894" style="zoom: 67%;" />
+
+[12]. Jin Xin, Liu Hongqiang Harry, Gandhi Rohan, et al. Dynamic scheduling of network updates. ACM SIGCOMM Computer Communication Review, 2014, 44(4): 539-550.
+
+[27]. Brandt Sebastian, Förster Klaus-Tycho, Wattenhofer Roger. On consistent migration of flows in SDNs. In: IEEE INFOCOM, 2016: 1-9. 
+
+[28]. Foerster Klaus-Tycho. On the consistent migration of unsplittable flows: Upper and lower complexity bounds. In: IEEE 16th International Symposium on Network Computing and Applications (NCA), 2017: 1-4.
+
+
+
+**总体而言**：利用深度学习（3秒循环1次，但执行强化学习时就不预测了）预测出网络流量峰值，当峰值大于瓶颈带宽的某个比例时，需要路由调整，此时，只是选择其中的某些多个大流进行调整，同时利用强化学习，保证整个网络具有较平稳的链路利用率等等指标。
 
 
 
 
-**总体而言**：利用深度学习（3秒循环1次，但执行强化学习时就不预测了）预测出网络流量矩阵峰值，当峰值大于瓶颈带宽的多少时，需要路由调整，此时，只是选择其中的某些多个大流进行调整，同时利用强化学习，保证整个网络具有较平稳的链路利用率等等指标。
+
+可直接用的介绍的话：
+
+> 在软件定义网络（SDN）中，逻辑中心化控制器具有网络状态的全局视图，并负责将控制决策传递到数据平面。控制器通过南向API（如Openflow）在交换机流表中安装、修改或删除转发规则来强制执行策略[22]
+>
+> [22] N. McKeown, T. Anderson, H. Balakrishnan, G. M. Parulkar, L. L. Peterson, J. Rexford, S. Shenker, and J. S. Turner. Openflow: enabling innovation in campus networks. Computer Communication Review, 38(2):69–74, 2008.
+>
+> 
 
 
 
 
 
+mininet [1]  : [1] N. Handigol el al., “Reproducible network experiments using containerbased emulation,” in CoNEXT, 2012, pp. 253–264
+
+
+
+网络拓扑使用
+
+![image-20230228201045094](img/image-20230228201045094.png)
+
+1、美国国家科学基金网络 NSF network
+
+[78] T. Lin, Z. Zhou, M. Tornatore, et al. Demand-aware network function placement[J]. Journal of Lightwave Technology, 2016, 34(11): 2590-2600
+
+[48] C. Colman-Meixner, F. Dikbiyik, M. F. Habib, M. Tornatore, C.-N. Chuah, and B. Mukherjee, “Disaster-survivable cloud-network mapping,” Photon. Netw. Commun., vol. 27, no. 3, pp. 141–153, 2014.
+
+2、微软公司连接数据中心的广域网
+
+
+
+3、B4: 软件定义网络中拥塞最小化的路由更新策略研究.pdf
+
+![image-20230228203016910](img/image-20230228203016910.png)
+
+4、4pod的fat-tree: 软件定义网络中拥塞最小化的路由更新策略研究.pdf
+
+![image-20230228203023913](img/image-20230228203023913.png)
