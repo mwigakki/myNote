@@ -1120,13 +1120,13 @@ Network Namespace 是 Linux 内核提供的功能，是实现网络虚拟化的�
 
 - **当应用是部署在物理主机上时：**
 
-<img src="/img/docker3.png" alt="img" style="zoom: 50%;" />
+<img src="img/docker3.png" alt="img" style="zoom: 50%;" />
 
 > 所有应用共享Linux系统网络协议栈， socket 中存储了特定的四元组： 源ip+port，目的ip+port；
 
 - **当应用部署在虚拟机上时：**
 
-<img src="/img/docker4.png" alt="img" style="zoom: 50%;" />
+<img src="img/docker4.png" alt="img" style="zoom: 50%;" />
 
 - **当应用部署在Docker容器时：**
 
