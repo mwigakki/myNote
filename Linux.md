@@ -2274,6 +2274,69 @@ tcpdump udp port 123
 tcpdump -i [抓包的端口] -w [保存文件的位置]   # 其他条件自己写
 ```
 
+### tcpreplay
+
+[tcpreplay命令使用详解 - 驴得水 - 博客园 (cnblogs.com)](https://www.cnblogs.com/lizhaoxian/p/11260396.html)
+
+tcpreplay用于重放保存在pcap文件中的网络流量，它支持按照捕获pcap文件时数据包的速度、或者指定速度去重放网络流量，只要在硬件承受的范围内即可。(默认是按收到包的时间戳发送，也就是按收到包的速度进行发送)
+
+- 格式：**tcpreplay** [**-flags**] [**-flag** [*value*]] [**--option-name**[[=| ]*value*]] <pcap_file(s)>
+
+- 命令参数：
+
+``` shell
+-d number, --dbug=number
+    启用调试输出。此选项最多可出现1次。此选项将整数作为参数。 number的值被限制为：在0到5的范围内
+    此选项的默认输入number为：0
+    如果使用--enable-debug进行配置，则可以为调试输出指定详细级别。数字越大，越详细。
+-q, --quiet
+	静默模式。除了运行结束时的统计数据外，不打印任何内容
+-T string, --timer=string
+    选择数据包计时模式：select，ioport，gtod，nano。此选项最多可出现1次。此选项的默认string是：gtod
+    允许您选择要使用的数据包计时方法：
+        nano - Use nanosleep() API
+        select - Use select() API
+        ioport - Write to the i386 IO Port 0x80
+        gtod [default] - Use a gettimeofday() loop
+--maxsleep=number
+    设置数据包之间休眠不超过X毫秒。此选项将整数作为参数。此选项的默认输入number为：0
+    设置tcpreplay在数据包之间休眠的最大毫秒数限制。有效防止数据包之间的长时间延迟，而不会影响大多数数据包。默认为禁用。
+-v, --verbose
+	通过tcpdump将解码后的数据包打印到标准输出。此选项最多可出现1次
+-i
+	指定重放的端口
+--listnics
+	列出所有可用的网卡并退出。
+--duration=number
+    限制发送的秒数。此选项最多可出现1次。此选项将整数作为输入参数。 number的值被限制为：大于或等于1，此选项的默认number为：-1
+    默认情况下，tcpreplay将发送所有数据包。或者手工指定要传输的最大秒数。
+
+# 修改重放速度的选项
+-x string, --multiplier=string
+    将重放速度修改为指定倍数。此选项最多可出现1次。此选项不得与以下任何选项一起出现：pps，mbps，oneatatime，topspeed。
+    指定一个值以修改数据包重放速度。例子：
+    2.0：将以捕获速度的两倍重放流量
+    0.7：将以捕获的速度的70％重放流量
+-p string, --pps=string
+    以给定的packets/sec重放数据包。此选项最多可出现1次。此选项不得与以下任何选项一起出现：multiplier, mbps, oneatatime, topspeed.。
+    指定一个值以将数据包重放调整为特定的packets/sec速率。例子：
+    200：将以每秒200个数据包重放流量
+    0.25：将以每分钟15个数据包重放流量
+-t, --topspeed
+	尽可能快地重放数据包。此选项不得与以下任何选项一起出现: mbps, multiplier, pps, oneatatime.
+-M string, --mbps=string
+    以给定的Mbps重放数据包。此选项最多可出现1次。此选项不得与以下任何选项一起出现：multiplier，pps，oneatatime，topspeed。
+    可为tcpreplay设定其发送数据包的Mbps速率，该值可以指定为浮点值
+    
+    
+-P, --pid
+	在启动时打印tcpreplay的PID
+```
+
+sudo tcpreplay -i ens49f1 -x 1 h8.pcap
+
+
+
 
 
 ### mtr
@@ -3216,7 +3279,7 @@ gateway x.x.x.x
 
 方括号[ ] 中的内容是**可选字符集**，表示某些字符允许在一个字符串中的某一特定位置。
 
-- `[ab]`：表示一个字符串有一个"a"或"b"（相当于"a¦b"）；
+- "[ab]"：表示一个字符串有一个"a"或"b"（相当于"a¦b"）；
 - "[a-d]"：表示一个字符串包含小写的'a'到'd'中的一个（相当于"a¦b¦c¦d"或者"[abcd]"）；
 - "^[a-zA-Z]"：表示一个以字母开头的字符串；
 - "[0-9]%"：表示一个百分号前有一位的数字；
