@@ -3011,9 +3011,11 @@ static char __log_buf[__LOG_BUF_LEN] __aligned(LOG_ALIGN);
 
 # 14. Linux配置文件与环境变量
 
+环境变量一般指在操作系统中用来指定操作系统运行环境的一些参数，是操作系统为了满足不同的应用场景预先在系统内设置的一大批全局变量。
+
 ### 环境配置文件的区别
 
-配置文件 : **/etc/profile**、 **/etc/bashrc**、**~/.bash_profile**、 **~/.bashrc**介绍
+配置文件 : **/etc/profile**、 **/etc/bashrc**、**~/.profile**、 **~/.bashrc**介绍( **/etc/bashrc可能在不同linux版本中叫 /etc/bash.bashrc，功能一样，下面不改了**)
 
 bash会在用户登录时，读取下列四个环境配置文件：
 
@@ -3022,13 +3024,18 @@ bash会在用户登录时，读取下列四个环境配置文件：
 用户环境变量设置文件：~/.bash_profile、~/.bashrc。
 ```
 
+``` txt
+用户登录机器时会执行的配置文件：/etc/profile, ~/.profile
+用户每次新开终端执行的配置文件：/etc/bashrc, ~/.bashrc
+```
+
 读取顺序：〇：`/etc/enviroment `、① `/etc/profile`、② `~/.bash_profile`、③` ~/.bashrc`、④ `/etc/bashrc`。
 
 >0. `/etc/environment`: 是设置**整个系统的环境变量**，其中的环境变量权限最高。
 >
 >1. `/etc/profile`: 此文件为系统的**每个用户设置环境变量**，系统中**每个用户登录时**都要执行这个脚本，如果系统管理员希望某个设置对所有用户都生效，可以写在这个脚本里，该文件也会从`/etc/profile.d`目录中的配置文件中搜集shell的设置。
->2. `~/.bash_profile`: **每个用户**都可使用该文件设置专用于自己的shell信息，**当用户登录时，该文件仅执行一次**。默认情况下，他仅执行一次，设置一些环境变量，执行用户的`.bashrc`文件。 
->3. ` ~/.bashrc`: 该文件包含**专用于自己这个用户**的shell信息，当**登录时以及每次打开新shell时**，该文件被读取。（每个用户都有一个.bashrc文件，在用户目录下）
+>2. `~/.profile`: **每个用户**都可使用该文件设置专用于自己的shell信息，**当用户登录时，该文件仅执行一次**。默认情况下，他仅执行一次，设置一些环境变量，执行用户的`.bashrc`文件。 
+>3. ` ~/.bashrc`: 该文件包含**专用于自己这个用户**的shell信息，当**登录时以及每次打开新shell时**，该文件被读取。（每个用户都有一个.bashrc文件，在用户目录下）（注意和.profile 的区别，执行次数不同）
 >4.  `/etc/bashrc`: 为每一个运行bash shell的用户执行此文件，**每当bash shell被打开时**，该文件被读取。
 >
 >~/.bash_profile是交互式、login 方式进入 bash 运行的 。
@@ -3052,7 +3059,7 @@ bash会在用户登录时，读取下列四个环境配置文件：
 
 ### 设置Linux环境变量的方法
 
-1. 在`/etc/profile`或`/etc/bashrc`文件中添加变量 **对所有用户生效（永久的）**
+1. 在**`/etc/profile`或`/etc/bashrc`文件**中添加变量 **对所有用户生效（永久的）**
 
 用vim在文件`/etc/profile`文件中增加变量，该变量将会对Linux下所有用户有效，并且是“永久的”。
 
@@ -3065,18 +3072,27 @@ bash会在用户登录时，读取下列四个环境配置文件：
 
 注：修改文件后要想马上生效还要运行`source /etc/profile`不然只能在下次重进此用户时生效。
 
-2. 在用户目录下的`.bash_profile`或 `.bashrc`文件中增加变量 **【对单一用户生效（永久的）】**
+2. 在**用户目录下的`.profile`或 `.bashrc`文件**中增加变量 **【对单一用户生效（永久的）】**
 
-用`vim ~/.bash_profile`文件中增加变量，改变量仅会对当前用户有效，并且是“永久的”。
+- 用`vim ~/.profile`文件中增加变量，改变量仅会对当前用户有效，并且是“永久的”。
 
 ```bash
-vim ~/.bash_profile
+vim ~/.profile
 export CLASSPATH=./JAVA_HOME/lib;$JAVA_HOME/jre/lib
 ```
 
-注：修改文件后要想马上生效还要运行` source ~/.bash_profile`不然只能在下次重进此用户时生效。
+注：修改文件后要想马上生效还要运行` source ~/.bash_profile`（source可能不生效，原因未知），不然只能在下次重进此用户时生效。 因为`~/.profile` 只在该用户登录时运行一遍。
 
-3. 直接运行export命令定义变量 **【只对当前shell（BASH）有效（临时的）】**
+- 用`vim ~/.bashrc`文件中增加变量，改变量仅会对当前用户有效，并且是“永久的”。
+
+``` shell
+#在该文件最后添加
+export test1=1
+```
+
+注：保存退出后，新开一个terminal，运行`echo $test1`，会打印`1`。因为每开一个终端都会执行该`~/.bashrc`文件。
+
+4. 直接运行export命令定义变量 **【只对当前shell（BASH）有效（临时的）】**
 
 
 在shell的命令行下直接使用 **`export 变量名=变量值`** 定义变量，该变量只在当前的shell（BASH）或其子shell（BASH）下是有效的，
@@ -3085,13 +3101,13 @@ shell关闭了，变量也就失效了，再打开新shell时就没有这个变�
 
 ### Linux环境变量使用
 
-- PATH：指定命令的搜索路径
+- **PATH：指定命令的搜索路径**（定义在 /etc/environment 中）
 
 > **PATH声明用法：**
 >
->  PATH=$PAHT:<PATH 1>:<PATH 2>:<PATH 3>:--------:< PATH  n >
+>  export  PATH=$PATH:<PATH 1>:<PATH 2>:<PATH 3>:--------:< PATH  n >
 >
->  export PATH
+>  < PATH  n > 就是自己需要添加到PATH中的路径。
 >
 >  你可以自己加上指定的路径，中间用冒号隔开。环境变量更改后，在用户下次登陆时生效。
 >
@@ -3139,12 +3155,6 @@ shell关闭了，变量也就失效了，再打开新shell时就没有这个变�
 
   在虚拟机桌面按Ctrl+Alt+T，出现终端窗口，然后在终端中输入命令`xrandr -s 1280x800`（这里是x 诶刻斯），暂时改变虚拟机的分辨率。
 
-# 16. 正则表达式
-
-
-
-
-
 
 
 # 16.Linux服务器配置静态网口IP地址
@@ -3167,6 +3177,8 @@ gateway x.x.x.x
 然后使用`sudo /etc/init.d/networking restart`重启生效。
 
 如果上述命令失败就重启机器。
+
+
 
 # 17.正则表达式
 
@@ -3332,6 +3344,7 @@ gateway x.x.x.x
     
     sudo apt-get install open-vm-tools-desktop
     
+
 <<<<<<< Updated upstream
 
 - linux下使用pip报错
