@@ -206,6 +206,7 @@ TCP流以FIN标志为结束，UDP以设置的flowtimeout时间为限制，超过
 
 
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
 本实验基于 P4 的可编程网络运行环境需要用到的工具有：protobuf、grpc、PI、behavioralmodel[58]、p4c 和 mininet。protobuf 是一种二进制的数据传输格式，效率和兼容性都很好。grpc 是一个通用、高性能的开源 RPC 框架。behavioral-model 简称 BMv2，是一款支持 P4 编程 的软件交换机。p4c 是 P4 语言推荐的编译器。mininet 是一个网络模拟器，用于搭建包含虚拟 主机、交换机、控制器和链路的网络拓扑。
 
 **流量重放工具 tcpreplay** 对 CAIDA 流量的 pcap 文件进行重放。
@@ -450,6 +451,8 @@ mininet [1]  : [1] N. Handigol el al., “Reproducible network experiments using
 
 ![image-20230228203023913](img/image-20230228203023913.png)
 =======
+=======
+>>>>>>> Stashed changes
 
 
 流量预测是一种用于预测网络或系统中流量变化的技术。它可以帮助网络管理员和运营商预测和管理流量，确保网络和系统的正常运行。在本文中，我们将探讨流量预测的概念、技术和应用。
@@ -490,5 +493,9 @@ mininet [1]  : [1] N. Handigol el al., “Reproducible network experiments using
 
 四、结论
 
+<<<<<<< Updated upstream
+流量预测是网络和系统管理中非常重要的一环。通过使用各种技术来预测流量，可以帮助网络管理员
+>>>>>>> Stashed changes
+=======
 流量预测是网络和系统管理中非常重要的一环。通过使用各种技术来预测流量，可以帮助网络管理员
 >>>>>>> Stashed changes

@@ -3218,6 +3218,12 @@ shell关闭了，变量也就失效了，再打开新shell时就没有这个变�
 
   在虚拟机桌面按Ctrl+Alt+T，出现终端窗口，然后在终端中输入命令`xrandr -s 1280x800`（这里是x 诶刻斯），暂时改变虚拟机的分辨率。
 
+# 16. 正则表达式
+
+
+
+
+
 
 
 # 16.Linux服务器配置静态网口IP地址
@@ -3407,6 +3413,7 @@ gateway x.x.x.x
     
     sudo apt-get install open-vm-tools-desktop
     
+<<<<<<< Updated upstream
 
 <<<<<<< Updated upstream
 
@@ -3450,6 +3457,8 @@ unset https_proxy
 
 然后pip就可以用了。
 =======
+=======
+>>>>>>> Stashed changes
     # 重启Ubuntu虚拟机
 
 - **Ubuntu18 git报错**
