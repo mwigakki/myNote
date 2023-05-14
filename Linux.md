@@ -3413,6 +3413,7 @@ gateway x.x.x.x
     
     sudo apt-get install open-vm-tools-desktop
     
+
 <<<<<<< Updated upstream
 
 <<<<<<< Updated upstream
@@ -3865,6 +3866,92 @@ public class TestDemo  {
     # 刷新配置：
     flush privileges;
     ```
+
+### 安装conda环境并安装pytorch
+
+##### 安装anaconda
+
+首先安装anaconda，版本选择不宜太新也不宜太旧，ubuntu18.04 自带python3.6，选择anaconda版本Anaconda3-5.3.0-Linux-x86_64即可。
+
+使用wget 下载相应文件，并运行此sh：
+
+``` shell
+wget https://repo.anaconda.com/archive/Anaconda3-5.3.0-Linux-x86_64.sh
+# 下载完成后运行此sh
+bash Anaconda3-5.3.0-Linux-x86_64.sh
+```
+
+根据提示，敲击enter，输入yes，敲击enter。
+
+安装完成后，会提示我们是否自动将anaconda加入当环境变量中，如下所示
+
+``` shell
+installing: anaconda-5.3.0-py37_0 ...
+installation finished.
+Do you wish the installer to initialize Anaconda3
+in your /home/[用户名]//.bashrc ? [yes|no]
+[no] >>> 
+```
+
+这里我们输入yes即可。
+
+如果错过了这里也可以自己手动去`/home/[用户名]/.bashrc`文件的最后添加环境变量。内容如下：
+
+``` shell
+export PATH=/home/[用户名]/anaconda3/bin:$PATH
+```
+
+然后使用 `source /home/[用户名]/.bashrc` 保存更改。
+
+至此，anaconda3会被安装在`/home/[用户名]/anaconda3`中
+
+##### **检测是否安装成功**
+
+打开新的终端后，进入自己的文件夹目录下，输入anaconda -V（注意a要小写，V要大写），conda -V ,显示版本信息，若显示则表示安装成功。
+
+如果显示未找到此命令就运行  `source /home/[用户名]/.bashrc` 保存更改。
+
+##### Anaconda安装Pytorch
+
+创建虚拟环境
+
+> conda create -n pytorch python=3.7 （pytorch 是我自己取的名字）
+
+激活环境
+
+使用下面这条命令，激活环境：
+
+> conda activate pytorch
+
+然后命令行开头都会带上`(pytorch)`了，表示在此虚拟环境中。
+
+（在该环境下，linux服务器的python/python3环境都被改成了conda的python3.7了）
+
+然后去选择适合自己的pytorch版本，点击下面那个链接:
+
+> https://pytorch.org/
+
+我只下载了：
+
+> conda install pytorch==1.13.1 torchvision==0.14.1  -c pytorch
+
+弹出提示，输入 y，即可完成安装，显示“done”。
+
+##### 测试torch安装成功
+
+在终端输入python，
+
+输入` import torch`，没有报错就是安装成功了。
+
+输入`torch.__version__`可查看安装的torch版本。
+
+
+
+conda命令：
+
+`conda activate pytorch` 进入该环境
+
+`conda deactivate` 退出虚拟环境
 
 
 

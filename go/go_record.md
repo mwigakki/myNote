@@ -44,13 +44,15 @@ https://www.kandaoni.com/news/19058.html#
      export PATH=$PATH:$GOROOT/bin:$GOPATH/bin
      ```
    
-5. 使添加的环境生效：使用：**`source /etc/profile`**
+5. 使添加的环境生效：使用：**`source /etc/profile`**，可能没有生效，此时重启即可
 
 6. 测试是否成功：使用：**`go version`**
 
 7. 添加模板和代理:
    - 模板：**`go env -w GO111MODULE=on`**
    - 代理：**`go env -w GOPROXY=http://goproxy.io,direct`**
+
+> vscode 编辑go代码时需要给当前的环境安装 gopls，使用命令`go install -v golang.org/x/tools/gopls@latest`安装 
 
 ### Windows
 
@@ -71,7 +73,7 @@ https://www.kandaoni.com/news/19058.html#
   - `bin` 放可执行文件
 - 将上面的 bin 也加入环境变量 `path` 中
 
-<img src="go_record.assets\image-20220417203735557.png" alt="image-20220417203735557" style="zoom: 80%;" />
+<img src="img\image-20220417203735557.png" alt="image-20220417203735557" style="zoom: 80%;" />
 
 配好了如何测试？ cmd 输入`go env`有一长串的set
 
@@ -93,7 +95,7 @@ go env -w GOPROXY=https://goproxy.cn,direct
 
 - 将 vs 的默认`terminal` 从`powershell` 改为 `cmd`
 
-<img src="D:\record\go\go_record.assets\image-20220503090152697.png" alt="image-20220503090152697" style="zoom:67%;" />
+<img src="img\image-20220503090152697.png" alt="image-20220503090152697" style="zoom:67%;" />
 
 ## 3. Hello world!
 
@@ -1482,7 +1484,7 @@ type slice struct{
 }
 ```
 
-<img src="go_record.assets\\image-20220429122039305.png" alt="image-20220429122039305" style="zoom:67%;" />
+<img src="img\\image-20220429122039305.png" alt="image-20220429122039305" style="zoom:67%;" />
 
 **对于切片的修改一律修改的是底层数组。**
 
@@ -1549,11 +1551,11 @@ fmt.Println(len(s3), cap(s3)) // 5 7
 
 举个例子，现在有一个数组`a := [8]int{0, 1, 2, 3, 4, 5, 6, 7}`，切片`s1 := a[:5]`，相应示意图如下。
 
-<img src="go_record.assets\image-20220418234533849.png" alt="image-20220418234533849" style="zoom:67%;" />
+<img src="img\image-20220418234533849.png" alt="image-20220418234533849" style="zoom:67%;" />
 
 `s2 := a[3:6]`，相应示意图如下：
 
-<img src="go_record.assets\image-20220418234626617.png" alt="image-20220418234626617" style="zoom: 67%;" />
+<img src="img\image-20220418234626617.png" alt="image-20220418234626617" style="zoom: 67%;" />
 
 ``` go
 var a = [8]int{0, 1, 2, 3, 4, 5, 6, 7}
@@ -2311,7 +2313,7 @@ func main() {
 
 我们来看一下`b := &a`的图示：
 
-<img src="go_record.assets\image-20220419231308163.png" alt="image-20220419231308163" style="zoom: 67%;" />
+<img src="img\image-20220419231308163.png" alt="image-20220419231308163" style="zoom: 67%;" />
 
 ### 指针取值
 
@@ -2928,7 +2930,7 @@ defer执行的时机就是**defer所在的函数返回的时刻**。
 
 在Go语言的函数中`return`语句在底层并不是原子操作，它分为给返回值赋值和RET指令两步。而`defer`语句执行的时机就在返回值赋值操作后，RET指令执行前。具体如下图所示：
 
-![image-20220425212616088](go_record.assets\image-20220425212616088.png)
+![image-20220425212616088](img\image-20220425212616088.png)
 
 **defer经典案例**
 
@@ -4745,7 +4747,7 @@ func main() {
 
 由于接口类型的值可以是任意一个实现了该接口的类型值，所以接口值除了需要记录具体**值**之外，还需要记录这个值属于的**类型**。也就是说**接口值由“类型”和“值”组成**，鉴于这两部分会根据存入值的不同而发生变化，我们称之为接口的`动态类型`和`动态值`
 
-<img src="go_record.assets\image-20220429173125507.png" alt="image-20220429173125507" style="zoom:50%;" />
+<img src="img\image-20220429173125507.png" alt="image-20220429173125507" style="zoom:50%;" />
 
 我们接下来通过一个示例来加深对接口值的理解。
 
@@ -4781,7 +4783,7 @@ var m Mover
 
 此时，接口变量`m`是接口类型的零值，也就是它的类型和值部分都是`nil`，就如下图所示。
 
-<img src="go_record.assets\image-20220429173410552.png" alt="image-20220429173410552" style="zoom:50%;" />
+<img src="img\image-20220429173410552.png" alt="image-20220429173410552" style="zoom:50%;" />
 
 我们可以使用`m == nil`来判断此时的接口值是否为空。
 
@@ -4803,7 +4805,7 @@ m = &Dog{Name: "旺财"}
 
 此时，接口值`m`的动态类型会被设置为`*Dog`，动态值为结构体变量的拷贝。
 
-<img src="go_record.assets\image-20220429173438339.png" alt="image-20220429173438339" style="zoom:50%;" />
+<img src="img\image-20220429173438339.png" alt="image-20220429173438339" style="zoom:50%;" />
 
 然后，我们给接口变量`m`赋值为一个`*Car`类型的值。
 
@@ -4813,7 +4815,7 @@ m = new(Car)
 
 这一次，接口值的动态类型为`*Car`，动态值为`nil`。
 
-<img src="go_record.assets\image-20220429173530651.png" alt="image-20220429173530651" style="zoom:50%;" />
+<img src="img\image-20220429173530651.png" alt="image-20220429173530651" style="zoom:50%;" />
 
 **注意： 此时接口变量`m`与`nil`并不相等**，因为它只是动态值的部分为`nil`，而动态类型部分保存着对应值的类型。
 
@@ -5087,11 +5089,57 @@ import _ "github.com/go-sql-driver/mysql"
 
 示例：
 
-<img src="go_record.assets\image-20220429194637409.png" alt="image-20220429194637409" style="zoom: 67%;" />
+<img src="img\image-20220429194637409.png" alt="image-20220429194637409" style="zoom: 67%;" />
 
-<img src="go_record.assets\image-20220429194707871.png" alt="image-20220429194707871" style="zoom:67%;" />
+<img src="img\image-20220429194707871.png" alt="image-20220429194707871" style="zoom:67%;" />
 
 虽然文件夹名和包名不要求完全一致，但最好还是写成一样的吧。
+
+### package使用总结
+
+- 包的位置应在 `<GOPATH>\src\`文件夹中。
+
+- import 后可跟别名alias，可自定义，调用时写`<alias>.函数名()`，对于自定义的包强烈推荐加别名，且建议和包名相同。
+
+- 别名设为` .`时， 相当于将该包中的函数和类型直接放在本文件中了。其中的函数可直接调用
+
+- **import包文件夹名**（而不是自己在go文件中写的package name），就会import此包文件夹下的所有*.go文件，即包文件夹中的所有可见的函数都可用。
+
+- 在同一包文件夹下的不同*.go文件中第一行的 package <包名> 必须相同，强烈建议和包文件夹名相同。
+
+- 只能 import包文件夹，不能以 `/` 结尾，也不能是具体的 go 文件
+
+- import 只会引用当前文件夹下的所有go文件，**不会递归引用其中的文件夹**。要引用其中的文件夹，需再次import
+
+``` go
+package main
+
+import (
+	"fmt"
+
+	bieming "github.com/learn1/test2"  // test2中package name就是test2，但我们在这里取一个别名bieming
+	"github.com/learn1/test2/t2_utils" // t2_utils中package name就是t2_utils
+	t3 "github.com/learn1/test3"       // 文件夹test3中的package name设为 t3，此处最好将别名也设为t3
+	. "github.com/learn1/test4"        // 别名设为 .时， 相当于将该包中的函数和类型直接放在本文件中了
+)
+
+func PH() {
+	fmt.Println("qwwq")
+}
+
+func main() {
+	fmt.Println("go go go")
+	bieming.F1_t2()        // 用**别名**调用相应包中的函数。
+	t2_utils.F1_t2_utils() // 用**包名**调用相应包中的函数。
+	t3.PH()
+	PH()
+	QQQ() // test4 中函数，别名为.时即可直接调用
+}
+```
+
+
+
+
 
 ### init初始化函数
 
@@ -5107,7 +5155,7 @@ func init(){
 
 一个包的初始化过程是按照代码中引入的顺序来进行的，所有在该包中声明的`init`函数都将被串行调用并且仅调用执行一次。每一个包初始化的时候都是先执行依赖的包中声明的`init`函数再执行当前包中声明的`init`函数。确保在程序的`main`函数开始执行时所有的依赖包都已初始化完成。
 
-<img src="go_record.assets\image-20220429195910037.png" alt="image-20220429195910037" style="zoom:50%;" />
+<img src="img\image-20220429195910037.png" alt="image-20220429195910037" style="zoom:50%;" />
 
 注意：本包中的全局变/常量的声明是要先于本包的init的执行的
 
@@ -6591,7 +6639,7 @@ hello
 
 这是因为在程序中创建 goroutine 执行函数需要一定的开销，而与此同时 main 函数所在的 goroutine 是继续执行的。
 
-<img src="go_record.assets\image-20220504143325227.png" alt="image-20220504143325227" style="zoom:50%;" />
+<img src="img\image-20220504143325227.png" alt="image-20220504143325227" style="zoom:50%;" />
 
 - **实例2**
 
@@ -6667,7 +6715,7 @@ goroutine对应的函数结束了，goroutine就结束了。main goroutine结束
 
 在经历数个版本的迭代之后，目前 Go 语言的调度器采用的**是 `GPM` 调度模型**。
 
-<img src=" go_record.assets\image-20220505091143557.png" alt="image-20220505091143557" style="zoom:67%;" />
+<img src=" img\image-20220505091143557.png" alt="image-20220505091143557" style="zoom:67%;" />
 
 其中：
 
@@ -7111,7 +7159,7 @@ ch5 = ch4          // 变量赋值时将ch4转为单向通道
 
 ### 通道总结
 
-![image-20220505223158853](go_record.assets\image-20220505223158853.png)
+![image-20220505223158853](img\image-20220505223158853.png)
 
 **注意：**对已经关闭的通道再执行 close 也会引发 panic。不能发送只能接收
 
@@ -8120,8 +8168,6 @@ func main() {
 	fmt.Println(people)
 }
 ```
-
-
 
 #### 针对任意切片的更方便的方法 
 

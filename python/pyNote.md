@@ -1,6 +1,6 @@
 [markwdown语法]([GitHub - younghz/Markdown: Markdown 基本语法。](https://github.com/younghz/Markdown))
 
-# 有基础 学python
+# 学python
 
 ## 1. python
 

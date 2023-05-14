@@ -14,7 +14,7 @@ https://www.topgoer.com/
 
 `Socket`是应用层与TCP/IP协议族通信的中间软件抽象层。在设计模式中，`Socket`其实就是一个门面模式，它把复杂的TCP/IP协议族隐藏在`Socket`后面，对用户来说只需要调用Socket规定的相关函数，让`Socket`去组织符合指定的协议数据然后进行通信。
 
-<img src="\go_plus.assets\image-20220508194119681.png" alt="image-20220508194119681" style="zoom:67%;" />
+<img src="img\image-20220508194119681.png" alt="image-20220508194119681" style="zoom:67%;" />
 
 ### Go语言实现TCP通信
 
@@ -1068,7 +1068,7 @@ func partition(nums []int, left, right int) int {
 
 归并排序就是不端地进行归并操作，
 
-![image-20220521204838520](\go_plus.assets\image-20220521204838520.png)
+![image-20220521204838520](\img\image-20220521204838520.png)
 
 ``` go
 // 自顶而下归并排序，排序范围是[begin, end)
