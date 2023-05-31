@@ -5098,18 +5098,13 @@ import _ "github.com/go-sql-driver/mysql"
 ### package使用总结
 
 - 包的位置应在 `<GOPATH>\src\`文件夹中。
-
 - import 后可跟别名alias，可自定义，调用时写`<alias>.函数名()`，对于自定义的包强烈推荐加别名，且建议和包名相同。
-
 - 别名设为` .`时， 相当于将该包中的函数和类型直接放在本文件中了。其中的函数可直接调用
-
 - **import包文件夹名**（而不是自己在go文件中写的package name），就会import此包文件夹下的所有*.go文件，即包文件夹中的所有可见的函数都可用。
-
 - 在同一包文件夹下的不同*.go文件中第一行的 package <包名> 必须相同，强烈建议和包文件夹名相同。
-
 - 只能 import包文件夹，不能以 `/` 结尾，也不能是具体的 go 文件
-
 - import 只会引用当前文件夹下的所有go文件，**不会递归引用其中的文件夹**。要引用其中的文件夹，需再次import
+- `import “fldr_pkg1”` 如果fldr_pkg1文件夹中的go文件在开头写的是`package pkg1`，import后也要使用`pkg1.XX`来调用其中的函数。
 
 ``` go
 package main
