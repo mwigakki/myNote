@@ -6,6 +6,8 @@
 
 **ResNet-GCN-LSTM模型**，
 
+ResNet : [4] He, K., Zhang, X., Ren, S., et al. Deep residual learning for image recognition [A].  // Proceedings of the IEEE conference on computer vision and pattern recognition [C], 2016: 770-778.
+
 修改GCN，在其中加入ResNet
 
 > 基于短期流量预测的SDN网络智能调度
@@ -28,7 +30,7 @@
 >
 > 在流量模型上对比：使用不同的流量模型（核心网，接入网，数据中心网）对该预测模型的性能进行测试，得到对比实验图，反应该模型在各种流量模型下都具有有效的预测性能。
 >
-> 但多个流量模型也不太好，审稿人可能更喜欢精细的场景
+> 但多个流量模型也不太好，人可能更喜欢精细的场景
 >
 > 
 >
@@ -204,9 +206,6 @@ TCP流以FIN标志为结束，UDP以设置的flowtimeout时间为限制，超过
 **全局测量**是在数据平面的一些网络设备中收 集测量数据，然后集中式的控制器合并从网络测量点收集的数据，并创建整个流量的网络范 围视图[54]。
 
 
-
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
 本实验基于 P4 的可编程网络运行环境需要用到的工具有：protobuf、grpc、PI、behavioralmodel[58]、p4c 和 mininet。protobuf 是一种二进制的数据传输格式，效率和兼容性都很好。grpc 是一个通用、高性能的开源 RPC 框架。behavioral-model 简称 BMv2，是一款支持 P4 编程 的软件交换机。p4c 是 P4 语言推荐的编译器。mininet 是一个网络模拟器，用于搭建包含虚拟 主机、交换机、控制器和链路的网络拓扑。
 
 **流量重放工具 tcpreplay** 对 CAIDA 流量的 pcap 文件进行重放。
@@ -270,7 +269,7 @@ TCP流以FIN标志为结束，UDP以设置的flowtimeout时间为限制，超过
 - 一条流经过的交换机越多，拥塞风险越大。
 - 一条链路的链路利用率越大，拥塞风险越大。
 
-NP-hard问题？
+NP-hard问题？ 启发式路由算法
 
 比较指标：流完成时间
 
@@ -292,9 +291,9 @@ NP-hard问题？
 >
 > bij < Cij,
 >
-> > **我这个是通过交换机到终端的流量大小预测出交换机的出口流量，通过出口流量得到下一时刻链路中的链路得到。**
+> > **我这个是通过交换机到终端的流量大小预测出交换机的出口流量，通过出口流量得到下一时刻链路中的流量。**
 >
-> 贪婪算法
+> 贪婪算法 / 启发式算法
 >
 > 算法步骤  阈值触发，动态设置，当前流量变化太快了就重新设置阈值
 >
@@ -303,6 +302,8 @@ NP-hard问题？
 > ​				当前最大链路利用率 a1
 >
 > for flow_set中所有流进行调整后，最大链路利用率有变小时 do： (当flow_set中所有流调整后发现都难以再使目标变小时，说明此时已得到最优)
+>
+> ​		（最好再加一个判断，最大链路利用率再阈值之下就不变了）
 >
 > ​	for flow_set中的可调整路径集合path_set do:
 >
@@ -325,6 +326,34 @@ NP-hard问题？
 > ​	下发流表
 >
 > 
+>
+> 整理上述思路后：
+>
+> Input：所有链路的流量矩阵*flow_set,* 最大流量值 *max_flow*, 
+>
+> while : 当前最大流量值*max_flow* 大于 阈值 do：
+>
+> ​     针对最大流量*max_flow*所在链路，根据路由表选出两端交换机注入到该链路的流量集合 *adjustable_flows_set*
+>
+> ​     for *f* in *adjustable_flows_set* : 
+>
+> ​          根据路由表选出流量 *f* 的可调整路径集合*adjustable_*path_set
+>
+> ​          for *p* in *adjustable_*path_set :
+>
+> ​              根据此时的全局链路流量矩阵以及路由表，计算出将*f* 调整到*p* 后的网络最大链路流量mf;
+>
+> ​              if mf < max_flow:
+>
+> ​                   将mf 放入调整后最大链路流量集合adjusted_flow_set中；
+>
+> ​                   将mf 对应的调整策略放入可选策略集合optional_strategy_set中;
+>
+> ​     选出adjusted_flow_set 中的最小值adjusted_flow在optional_strategy_set 所对应的调整策略 best_strategy。
+>
+> ​     应用best_strategy 进行路由调整。
+>
+> ​     同时更新*max_flow* 为 adjusted_flow。 
 >
 > 
 
@@ -505,17 +534,7 @@ mininet [1]  : [1] N. Handigol el al., “Reproducible network experiments using
 
 4、4pod的fat-tree: 软件定义网络中拥塞最小化的路由更新策略研究.pdf
 
-<<<<<<< Updated upstream
-![image-20230228203023913](img/image-20230228203023913.png)
-=======
-=======
->>>>>>> Stashed changes
-=======
-![ ](img/image-20230228203023913.png)
->>>>>>> Stashed changes
-
-
-流量预测是一种用于预测网络或系统中流量变化的技术。它可以帮助网络管理员和运营商预测和管理流量，确保网络和系统的正常运行。在本文中，我们将探讨流量预测的概念、技术和应用。
+![image-20230228203023913](img/image-20230228203023913.png)流量预测是一种用于预测网络或系统中流量变化的技术。它可以帮助网络管理员和运营商预测和管理流量，确保网络和系统的正常运行。在本文中，我们将探讨流量预测的概念、技术和应用。
 
 一、流量预测的概念
 
@@ -552,15 +571,7 @@ mininet [1]  : [1] N. Handigol el al., “Reproducible network experiments using
 流量预测可以帮助安全监控系统检测异常流量，以便及时采取措施，防止网络攻击。
 
 四、结论
-
-<<<<<<< Updated upstream
 流量预测是网络和系统管理中非常重要的一环。通过使用各种技术来预测流量，可以帮助网络管理员
->>>>>>> Stashed changes
-=======
-流量预测是网络和系统管理中非常重要的一环。通过使用各种技术来预测流量，可以帮助网络管理员
->>>>>>> Stashed changes
-
-
 
 
 
@@ -568,3 +579,6 @@ mininet [1]  : [1] N. Handigol el al., “Reproducible network experiments using
 
 
 
+后续工作展望：
+
+网络测量中完成分时测量，以减少每次的测量结点数，减小测量带来的负载。

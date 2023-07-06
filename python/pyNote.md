@@ -1,7 +1,3 @@
-[markwdown语法]([GitHub - younghz/Markdown: Markdown 基本语法。](https://github.com/younghz/Markdown))
-
-# 学python
-
 ## 1. python
 
 ​		python是一种解释型语言，没有编译这个环节，Java中有，将.java编译成.class，
@@ -1231,3 +1227,294 @@ print(random.randint(0,9))
 
 [正则语法]([正则表达式 – 语法 | 菜鸟教程 (runoob.com)](https://www.runoob.com/regexp/regexp-syntax.html))
 
+## 其他
+
+### Anaconda下安装Pytorch
+
+**1、创建 pytorch 环境，使用Python版本是3.7**
+
+首先**打开Anaconda Prompt**，之所以要设置虚拟环境，是因为这个 python里面的包有很多个，有些个包可以会存在相互干扰的问题，所以用这个虚拟环境来把他们来隔绝开。
+
+```bash
+conda create -n pytorch python=3.7
+```
+
+之后，在加载过程中会弹出提示，输入 y，即可安装。如果报错就换个源。
+
+删除虚拟环境的命令：
+
+``` bash
+conda remove -n your_env_name(虚拟环境名称) --all
+```
+
+
+
+**2、查看环境是否安装成功**
+
+```bash
+conda info --envs
+# 或
+conda env list
+```
+
+**3、切换环境**
+
+使用： 进入 pytorch 环境中。
+
+``` bash
+conda activate pytorch
+```
+
+使用  `conda deactivate pytorch` 退出虚拟环境。
+
+**4、下载pytorch**
+
+[Start Locally | PyTorch](https://pytorch.org/get-started/locally/)
+
+在官网选好相应版本和平台，直接CLI运行官网给出的命令即可。
+
+**5、测试**
+
+在python环境中运行 `import torch`不报错即可
+
+
+
+### 普通用户安装的anaconda如何在root用户下用?
+
+在root用户下使用普通用户安装的Anaconda环境，可以使用以下命令：
+
+1. 首先切换到root用户：`sudo su`
+2. 然后激活普通用户的conda环境：`source /home/sinet/anaconda3/bin/activate`
+
+这样就可以在root用户下使用普通用户的conda base环境了。可以通过`conda list`或python --list命令来验证，切换环境与普通用户一样`conda activate `其他env。当需要退出conda环境时，可以使用以下命令：`conda deactivate 其他env`
+ 
+
+### conda换源
+
+#### windows 下添加清华源 
+
+[anaconda | 镜像站使用帮助 | 清华大学开源软件镜像站 | Tsinghua Open Source Mirror](https://mirrors.tuna.tsinghua.edu.cn/help/anaconda/)
+
+**命令行中直接使用以下命令**
+
+```bash
+conda config --add channels https://mirrors.tuna.tsinghua.edu.cn/anaconda/pkgs/free/
+conda config --add channels https://mirrors.tuna.tsinghua.edu.cn/anaconda/cloud/conda-forge 
+conda config --add channels https://mirrors.tuna.tsinghua.edu.cn/anaconda/cloud/msys2/
+
+# 设置搜索时显示通道地址
+conda config --set show_channel_urls yes
+```
+
+运行 `conda clean -i` 清除索引缓存，保证用的是镜像站提供的索引。
+
+查看所有下载源
+
+``` bash
+conda config --show channels   
+
+channels:
+  - https://mirrors.tuna.tsinghua.edu.cn/anaconda/cloud/msys2/
+  - https://mirrors.tuna.tsinghua.edu.cn/anaconda/pkgs/free/
+  - https://mirrors.aliyun.com/pypi/simple/
+  - defaults
+```
+
+删除其中的阿里源
+
+``` bash
+conda config --remove channels https://mirrors.aliyun.com/pypi/simple/
+```
+
+如果报 `CondaHTTPError: HTTP 000 CONNECTION FAILED for url <https://mirrors.tuna.tsinghua...`这样的错，修改用户目录下的`.condarc`文件如下：
+
+``` shell
+ssl_verify: true
+show_channel_urls: true
+ 
+channels:
+  - http://mirrors.tuna.tsinghua.edu.cn/anaconda/pkgs/free/
+  - http://mirrors.tuna.tsinghua.edu.cn/anaconda/pkgs/main/
+  - https://mirrors.tuna.tsinghua.edu.cn/anaconda/pkgs/free/
+  - https://mirrors.tuna.tsinghua.edu.cn/anaconda/pkgs/main/
+```
+
+
+
+
+
+### python中执行shell
+
+**`subprocess.call()`**：执行指定的命令， 返回命令执行状态， 功能类似os.system(cmd)。
+
+``` python
+subprocess.call("ping 192.168.199.1 > data.txt", shell=True)
+# 同步调用，所以会等待该shell执行完毕
+# 如果需要异步调用，就新建线程调用
+
+def ping():
+    subprocess.call("ping 192.168.199.1 > data.txt", shell=True)
+    
+_thread.start_new_thread(ping, ())
+
+# 但有些命令像screen就不会等待运行完毕
+subprocess.call("bash ./deliver.sh ", shell=True)
+```
+
+> 若以字符串形式给出shell指令，如"ls -l “则需要使shell = Ture。否则默认以数组形式表示shell变量，如"ls”,"-l"
+
+***python 执行shell 并返回结果***
+
+``` python
+import subprocess
+
+def main():
+    # screen -dmS 166 bash -c "sshpass -p 'bjtungirc' ssh -o StrictHostKeyChecking=no -p 22 sinet@192.168.199.166";
+    cmd = "sshpass -p 'bjtungirc' ssh -o StrictHostKeyChecking=no -p 22 sinet@192.168.199.166 'python3 runtime_CLI.py; register_read 改成相应寄存器名 0'"
+    res = subprocess.Popen(cmd,stdout=subprocess.PIPE,shell=True)
+    for line in res.stdout.readlines():
+        print(line.decode("utf-8").strip())
+	
+    # 会等待cmd运行
+    print("在subprocess之后")
+
+if __name__ == '__main__':
+    main()
+```
+
+
+
+
+
+
+
+## scapy
+
+`from scapy.all import *` 
+
+### 发送
+
+
+
+
+
+### 接收
+
+#### sniff
+
+sniff 的签名如下：
+
+``` python
+sniff(count=0,
+      store=1,
+      offline=None,
+      prn=None,
+      filter=None,
+      L2socket=None,
+      timeout=None,
+      opened_socket=None,
+      stop_filter=None,
+      iface=None)
+
+```
+
+> **count** : 指定最多嗅探多少个符合要求的报文，设置为0时则一直捕获
+>
+> **store** : 指定保存抓取的数据包或者丢弃，1为保存，0为丢弃
+>
+> **offline** : 从pcap文件中读取数据包，而不进行嗅探，默认为None
+>
+> **prn** : 为每个数据包定义一个回调函数，回调函数会在捕获到符合 filter 的报文时被调用，通常使用 lambda 表达式来编写
+>
+> **filter** : 用来筛选抓取的信息，其用法与常见抓包软件WireShark 等相同，遵循 BPF 语法
+>
+> **L2socket** : 使用给定的L2socket
+>
+> **timeout** : 在给定的事件后停止嗅探，默认为None
+>
+> **opened_socket** : 对指定的对象使用.recv进行读取
+>
+> **stop_filter** : 定义一个函数，决定在抓到指定的数据之后停止
+>
+> **iface** : 指定抓包的网卡,不指定则代表所有网卡
+
+
+
+| 参数名        | 用途                           | 默认值     |
+| :------------ | :----------------------------- | :--------- |
+| count         | 抓包的个数，`0`为无限          | 0          |
+| store         | 是否存储抓到的包               | 1          |
+| offline       | 从`pcap`文件读取               | None       |
+| prn           | 回调函数（一般是`lambda`）     | None       |
+| session       | 流处理器                       | TCPSession |
+| filter        | `BPF`过滤规则                  | None       |
+| L2socket      | 特定的L2socket                 | None       |
+| timeout       | 设置中断计时器                 | None       |
+| opened_socket | 使用`recv`读取打开的`socket`   | None       |
+| stop_filter   | 设置中断过滤规则               | None       |
+| iface         | 指定网卡，`None`则代表所有网卡 | None       |
+
+``` python
+from scapy.all import *
+
+cnt = 0
+def CallBack(pkt):
+    global cnt
+    if pkt.haslayer('IP') and pkt["IP"].src != "192.168.91.134":
+        cnt += 1
+        print("receive pkt, src IP = %s , count pkt = %d"%(pkt["IP"].src, cnt))
+    # generally not IP but ARP
+
+if __name__ == '__main__':
+    print("start sniff ...")
+    pkt = sniff(iface='ens33', store=0, prn=CallBack)     # 扫描ens33网卡的数据包，无论进出
+```
+
+sniff的回调函数如果需要传入参数，可以使用Python偏函数（partial）或lambda函数来实现。
+
+偏函数使用方法如下：
+
+```python
+from functools import partial
+from scapy.all import *
+
+def my_callback(packet, my_param):
+    # 在这里处理数据包并使用 my_param 参数
+    pass
+
+# 创建偏函数，将 my_param 作为参数传递给 my_callback
+my_sniff = partial(sniff, prn=lambda x: my_callback(x, my_param))
+
+# 开始捕获数据包
+my_sniff()
+```
+
+lambda函数的使用方法如下：
+
+```python
+from scapy.all import *
+
+def my_callback(packet, my_param):
+    # 在这里处理数据包并使用 my_param 参数
+    pass
+
+# 创建 lambda 函数，将 my_param 作为参数传递给 my_callback
+my_sniff = lambda: sniff(prn=lambda x: my_callback(x, my_param))
+
+# 开始捕获数据包
+my_sniff()
+```
+
+
+
+## 问题
+
+#### Python from同级目录/文件夹 import时报错
+
+**原因分析：**
+
+Pycharm不会将当前文件目录自动加入Sourse_Path
+
+**解决方案**：
+
+![image-20230308210727814](img/image-20230308210727814.png)

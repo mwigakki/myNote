@@ -1342,7 +1342,11 @@ ubt@ubt-vm:~/tutorials$ tree | grep "basic"
 ## 后台执行
 
 1. 对于会占用命令行的命令，可以在命令开头加上 `nohup` 使命令后台运行，此命令行即可关闭了。
-2. 在命令后加上字符“&”后，退出shell，运行的命令可以继续运行。
+2. 在命令后加上字符“&”后，该命令就不占用shell了，但退出shell，运行的命令就停了。
+
+保险起见，`nohup [xx] &` 可保证不占用bash，且可以关闭窗口。
+
+
 
 ## 查找命令
 
@@ -2127,6 +2131,8 @@ Destination     Gateway         Genmask         Flags Metric Ref    Use Iface   
 
 可以看到，默认出口都是eth0，默认网关腾讯服务器没有告诉我们地址，写的是 _gateway，
 
+gateway 为 ` 0.0.0.0  ` 表示该ip地址目标是本主机所属的网络，不需要路由。
+
 route还可以添加路由、删除路由、设置路由规则等等。例：
 
 - 格式：`route add -net {NETWORK-ADDRESS} netmask {NETMASK} dev {INTERFACE-NAME}`  ： 添加到达指定网络的路由规则，
@@ -2155,7 +2161,7 @@ route还可以添加路由、删除路由、设置路由规则等等。例：
 
 ``` shell
 # route add -host 192.168.1.2 dev eth0   
-# route add -host 10.20.30.148 gw 10.20.30.40     #添加到10.20.30.148的网管  
+# route add -host 10.20.30.148 gw 10.20.30.40     #添加到10.20.30.148的网关
 ```
 
 **添加默认路由**:
@@ -2732,7 +2738,7 @@ Linux内核是支持多种拥塞控制算法并存的，而且支持为不同的
 
 TCP的若干参数都是以各个文件的形式保存的。例如，IP的默认跳数64保存在文件`ip_default_ttl`中，我们可以使用命令：`sudo sysctl net.ipv4.ip_default_ttl=32`修改为32。
 
-TCP可以使用的拥塞控制算法保存在`tcp_available_congestion_control`里。
+TCP可以使用的拥塞控制算法保存在`tcp_available_congestion_control`里。(其实不止文件中的)
 
 TCP正在使用的拥塞控制算法保存在`tcp_congestion_control`里。
 
@@ -3218,38 +3224,104 @@ shell关闭了，变量也就失效了，再打开新shell时就没有这个变�
 
   在虚拟机桌面按Ctrl+Alt+T，出现终端窗口，然后在终端中输入命令`xrandr -s 1280x800`（这里是x 诶刻斯），暂时改变虚拟机的分辨率。
 
-# 16. 正则表达式
-
-
-
-
-
-
-
 # 16.Linux服务器配置静态网口IP地址
 
-首先使用`ifconfig -a` 确定自己需要配置IP地址的网口名。
+在Ubuntu 18.04系统中，用户界面配置网卡的静态IP会修改 `/etc/netplan/*.yaml` 文件中的配置。
 
-然后`sudo vi /etc/network/interfaces` 编辑该文件。(以配置网口eth0为例）
+而通过用户界面配置的IP地址就是在这里修改的。
 
-``` shell
-auto eth0
-iface eth0 inet static
-address 192.168.1.60
-netmask 255.255.255.0
-# network x.x.x.x
-# broadcast x.x.x.x
-# dns-nameserves x.x.x.x
-gateway x.x.x.x
+**但好像没法设置光口的地址**
+
+步骤：
+
+1 打开此文件：
+
+```shell
+sudo vim /etc/netplan/01-network-manager-all.yaml
 ```
 
-然后使用`sudo /etc/init.d/networking restart`重启生效。
+2 修改文件（注意：缩进一律用空格，不要用tab键，同时注意冒号后的空格）
 
-如果上述命令失败就重启机器。
+``` shell
+network:
+  ethernets:
+    enp0s3:
+      dhcp4: no
+      addresses: [192.168.0.180/24]
+      optional: true
+      gateway4: 192.168.0.1
+      nameservers:
+        addresses: [192.168.0.1,223.6.6.6]
+  version: 2
+  renderer: NetworkManager
+```
+
+3 重启网络服务使配置生效
+
+```shell
+sudo netplan apply
+```
+
+4 验证结果
+
+```shell
+ifconfig
+```
+
+> 下面是另一种方法：
+>
+> 但这种方法不太好，或者说在这里配的ip地址权限太高，每次开机后，默认路由会从这里面配的地址中找一个，这通常与我们的需求相悖。
+>
+> 但好处是可以配光口。
+>
+> 首先使用`ifconfig -a` 确定自己需要配置IP地址的网口名。
+>
+> 然后`sudo vim /etc/network/interfaces` 编辑该文件。(以配置网口eth0为例）
+>
+> ``` shell
+> auto eth0
+> iface eth0 inet static
+> address 192.168.1.60
+> netmask 255.255.255.0
+> # network x.x.x.x
+> # broadcast x.x.x.x
+> # dns-nameserves x.x.x.x
+> gateway x.x.x.x
+> ```
+>
+> 然后使用`sudo /etc/init.d/networking restart`重启生效。
+>
+> 如果上述命令失败就重启机器。
 
 
 
-# 17.正则表达式
+# 17. Linux服务器同步时间
+
+### 设置时区
+
+首先把所有机器设为相同的时区，将时区设置为东8区的时间，虽然服务器在全球的不同地方，但是与时间服务器交互存在一定时延，选择近的服务器会使时间同步更精准。
+
+``` shell
+cp /usr/share/zoneinfo/Asia/Shanghai /etc/localtime
+```
+
+### 同步网络时间
+
+在Linux下，我们可以使用ntpdate进行网络时间的同步，而不是我们自己去设置时间。这个命令的使用很简单，
+
+``` shell
+ntpdate  0.cn.pool.ntp.org
+```
+
+时间服务器分为两种，一种是一级时间服务器，另外一种是二级时间服务器。我们如果是同步自己的服务器的时间，那么选择二级时间服务器，因为一级时间服务器是为二级时间服务器提供时间校对服务器，我们尽量不要增加一级服务器的压力。这种层级的概念和DNS的层级概念是一致的。
+
+
+
+
+
+
+
+# 18.正则表达式
 
 ### 简介
 
@@ -3414,11 +3486,7 @@ gateway x.x.x.x
     sudo apt-get install open-vm-tools-desktop
     
 
-<<<<<<< Updated upstream
-
-<<<<<<< Updated upstream
-
-- linux下使用pip报错
+- **linux下使用pip报错**
 
 使用的pip版本
 
@@ -3457,10 +3525,6 @@ unset https_proxy
 ```
 
 然后pip就可以用了。
-=======
-=======
->>>>>>> Stashed changes
-    # 重启Ubuntu虚拟机
 
 - **Ubuntu18 git报错**
 
@@ -3478,12 +3542,6 @@ unset https_proxy
 
   解决方法：`sudo apt update`, `sudo apt install openssl`
 
-  
-
-# 重启Ubuntu虚拟机
-
-    ```
->>>>>>> Stashed changes
 
 
 
@@ -3529,10 +3587,10 @@ Buffer的核心作用是用来缓冲，缓和冲击，每当buffer满或者主�
 登录普通用户后：（普通用户的密码在云服务器提供商的控制台设定，普通用户想要用密码登录也需要如下`2`中的设定。当然，此时可能还没法用xshell登录修改，那么就使用云服务器提供商提供的服务器交互界面设置）
 
 1. 切换到root角色
-    `sudo -i`
+    `sudo su`
 
 2. 修改SSH配置文件 /etc/ssh/sshd_config
-    `vi /etc/ssh/sshd_config`
+    `vim /etc/ssh/sshd_config`
 
     修改PermitRootLogin和PasswordAuthentication为yes
 
@@ -3761,7 +3819,7 @@ Ubuntu18 安装自带 `wireshark Version: 2.6.10-1~ubuntu18.04.0`
 
 可能需要提前执行一下这个` sudo apt-get update`
 
-注：【tkinter】这个包：`apt-get install python3-tk`
+注：【tkinter】这个包：`sudo apt install python3-tk`，当然只能给linux自带的python这样安装
 
 ##### python实现.py的带参数启动
 
@@ -3910,6 +3968,8 @@ export PATH=/home/[用户名]/anaconda3/bin:$PATH
 打开新的终端后，进入自己的文件夹目录下，输入anaconda -V（注意a要小写，V要大写），conda -V ,显示版本信息，若显示则表示安装成功。
 
 如果显示未找到此命令就运行  `source /home/[用户名]/.bashrc` 保存更改。
+
+安装好后，以后每次进入服务器终端都会默认在conda 的base环境里，需要离开此环境使用`conda deactivate` 退出虚拟环境
 
 ##### Anaconda安装Pytorch
 
