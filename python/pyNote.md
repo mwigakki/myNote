@@ -1229,6 +1229,33 @@ print(random.randint(0,9))
 
 ## 其他
 
+### 给程序计时
+
+``` python
+############ 1
+import time
+T1 = time.process_time()	 # 以微秒为单位
+
+#______假设下面是程序部分______
+for i in range(100*100):
+    pass
+
+T2 =time.process_time()
+print('程序运行时间:%s毫秒' % ((T2 - T1)*1000))
+
+############ 2 
+import time
+start_time = time.time_ns() # 3.7 版本新增的纳秒级计时
+
+#______假设下面是程序部分______
+for i in range(100*100):
+    pass
+
+end_time = time.time_ns()
+run_time = end_time - start_time
+print('程序耗时： %f ms' % (run_time /  1000000))
+```
+
 ### Anaconda下安装Pytorch
 
 **1、创建 pytorch 环境，使用Python版本是3.7**
@@ -1246,8 +1273,6 @@ conda create -n pytorch python=3.7
 ``` bash
 conda remove -n your_env_name(虚拟环境名称) --all
 ```
-
-
 
 **2、查看环境是否安装成功**
 
@@ -1287,7 +1312,7 @@ conda activate pytorch
 2. 然后激活普通用户的conda环境：`source /home/sinet/anaconda3/bin/activate`
 
 这样就可以在root用户下使用普通用户的conda base环境了。可以通过`conda list`或python --list命令来验证，切换环境与普通用户一样`conda activate `其他env。当需要退出conda环境时，可以使用以下命令：`conda deactivate 其他env`
- 
+
 
 ### conda换源
 
@@ -1348,6 +1373,8 @@ channels:
 **`subprocess.call()`**：执行指定的命令， 返回命令执行状态， 功能类似os.system(cmd)。
 
 ``` python
+import subprocess
+
 subprocess.call("ping 192.168.199.1 > data.txt", shell=True)
 # 同步调用，所以会等待该shell执行完毕
 # 如果需要异步调用，就新建线程调用
@@ -1382,6 +1409,29 @@ if __name__ == '__main__':
     main()
 ```
 
+***新建进程***
+
+  \# 新建进程到168的机器去放流量
+
+``` python
+flow_inject = "sshpass -p 'bjtungirc' ssh -o StrictHostKeyChecking=no root@192.168.199.168 'bash /home/sinet/lt/traffic_inject.sh 0045'"   # 在0045后加上-t 参数可以加快重放（尽可能快）
+
+os.system(flow_inject)
+```
+
+***pexpect 模块来模拟交互式会话***
+
+``` python
+child = pexpect.spawn('simple_switch_CLI --thrift-port 9090')
+child.expect('RuntimeCmd: ')
+child.sendline('register_read pkt_counter')
+child.expect('RuntimeCmd: ')
+output = child.before 	# 输入的结果，不过是bytes类型
+tmp = str(output, encoding='utf-8')
+tmp = tmp.split("= ")[1].strip().split(',')
+print(tmp)
+```
+
 
 
 
@@ -1393,6 +1443,10 @@ if __name__ == '__main__':
 `from scapy.all import *` 
 
 ### 发送
+
+sendp 发二层包
+
+send 发三层包
 
 
 

@@ -2,6 +2,8 @@
 
 源码下载：[Index of /pub/linux/kernel/](https://mirrors.edge.kernel.org/pub/linux/kernel/) ，本文以 5.4.224 版本为例讲解。
 
+在新下载的内核中，网络相关代码的位置：`usr/src/linux-x.x.xxx/net/`
+
 在`tcp_ipv4.c`中，`tcp_prot`定义了tcp的各个接口。(如下所示)
 
 ``` c
@@ -69,7 +71,9 @@ static struct tcp_congestion_ops tcp_bbr_cong_ops __read_mostly = { // tcp_bbr.c
 
 TCP头部字段`tcphdr`定义位置：`usr/src/linux-x.x.xxx/include/uapi/tcp.h`
 
-机器收到数据包后的处理过程都在 `usr/src/linux-x.x.xxx/net/ipv4/tcp_input.c/tcp_rcv_state_process()`中，6306行，将发送窗口改为接收到的包的cwnd。
+机器收到数据包后的处理过程的主程序在`usr/src/linux-x.x.xxx/net/ipv4/ip_input.c/*ip_rcv_core`函数中
+
+在  `usr/src/linux-x.x.xxx/net/ipv4/tcp_input.c/tcp_rcv_state_process()`中，6306行，将发送窗口改为接收到的包的cwnd。（原本就有的）
 
 
 
@@ -121,7 +125,7 @@ TCP头部字段`tcphdr`定义位置：`usr/src/linux-x.x.xxx/include/uapi/tcp.h`
 
 - 位置：`/include/linux/tcp.h`
 
-- 该数据结构时TCP 协议的控制块，它在`inet_connection_sock`结构的基础上扩展了滑动窗口协议、拥塞控制算法等一些TCP 的专有属性
+- 该数据结构是TCP 协议的控制块，它在`inet_connection_sock`结构的基础上扩展了滑动窗口协议、拥塞控制算法等一些TCP 的专有属性
 
 
 
@@ -178,7 +182,7 @@ TCP选项字段构造：[TCP/IP OPTION字段 - 莫扎特的代码 - 博客园 (c
 | snd_wnd     | 当前发送窗口                                                 |
 | snd_nxt     | 下一个发送序号                                               |
 | snd_una     | 最早的未确认序号                                             |
-|             |                                                              |
+| ihl         | ip header length  ： ip头部长度                              |
 | TCPOLEN     | TCP OPTION LENGTH                                            |
 |             |                                                              |
 
@@ -195,3 +199,28 @@ TCP选项字段构造：[TCP/IP OPTION字段 - 莫扎特的代码 - 博客园 (c
 接收窗口`rwnd`：放在ACK中的窗口字段的值，收端告诉源端自己还能接收多少。
 
 发送窗口的值 **`swnd = min(cwnd, rwnd)`**
+
+
+
+## lkseagle代码修改的部分
+
+`/usr/src/linux-5.4.224/net/ipv4/tcp_cong.c/tcp_reno_cong_avoid()` 函数， // 都是我自己注释的， /\*官方自己的 注释\*/
+
+下面这些都是新增的
+
+``` c
+	if(tp->rx_opt.my_wnd){
+		tp->snd_cwnd = tp->rx_opt.my_wnd << tp->rx_opt.snd_wscale;
+		printk("my_wnd is ok!");
+	}
+	else{
+		tp->snd_cwnd=10;
+	}
+	printk("cwnd:%d,my_wnd:%d,snd_wscale:%d \n", tp->snd_cwnd, tp->rx_opt.my_wnd, tp->rx_opt.snd_wscale);
+```
+
+
+
+`/usr/src/linux-5.4.224/include/linux/tcp.h/tcp_options_received`  结构体，在最后增加了自定的my_wnd
+
+`usr/src/linux-x.x.xxx/net/ipv4/tcp_input.c/tcp_parse_options()` 解析可选字段的函数中，为了使我们新增的my_wnd字段能够解析，3980-3983 增加了 if 里面的解析。同时还有这个函数中新增了7个 printk 打印输出。（ctrl + F 找到可以删除）
