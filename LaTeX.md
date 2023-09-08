@@ -269,6 +269,10 @@ Latex正文中两段之间必须完整空出一行。
 
 ![image-20230104210904221](img/image-20230104210904221.png)
 
+- [Latex公式字母加粗](https://www.cnblogs.com/yqs-cedarmo/p/9792114.html)
+
+在Latex中，公式字母加粗用语法：\boldsymbol{待添加的字母}
+
 - 公式的编号
 
 ``` tex
@@ -501,6 +505,72 @@ $$
 
 this is figure \ref{ABMPTCP}
 ```
+
+并列插入两张图片1
+
+``` tex
+\begin{figure*}[!ht]
+    \centering
+    \subfigure[RMSE]{
+        \begin{minipage}[t]{0.3\linewidth}%并排放三张图片，每张占页面的0.5，下同。
+            \centering
+            \includegraphics[width=1\textwidth]{RMSE.eps}
+        \end{minipage}
+        %\label{rmse}
+    }
+    \subfigure[WAPE]{
+        \begin{minipage}[t]{0.3\linewidth}%并排放三张图片，每张占页面的0.5，下同。
+            \centering
+            \includegraphics[width=1\textwidth]{WAPE.eps}
+        \end{minipage}
+        %\label{wape}
+    }
+    \subfigure[MAE]{
+        \begin{minipage}[t]{0.305\linewidth}% 并排放三张图片，每张占页面的0.5，下同。
+            \centering
+            \includegraphics[width=1\textwidth]{MAE.eps}
+        \end{minipage}
+        %\label{wae}
+    }
+    \caption{Comparison of RMSE, WAPE, and MAE of various predict algorithms }
+    \label{rwm} % rmse  wape  mae
+\end{figure*}
+```
+
+![image-20230701152256790](img/image-20230701152256790.png)
+
+并列插入两张图片2
+
+如果是两张不相关的图片，不想以子图的方式存在
+
+**figure后有*就是跨栏，没有就不跨栏**
+
+[(2条消息) LATEX——两张图并列排列/双栏模板中图片通栏并列布局_latex双栏图片_nccccc12345的博客-CSDN博客](https://blog.csdn.net/nccccc12345/article/details/115095292)
+
+```tex
+\begin{figure*}[htbp]
+    \centering
+    \begin{minipage}[t]{0.64\linewidth}
+        \centering
+        \includegraphics[width=1\textwidth]{zhexiantu.eps}
+        \label{zxt}
+        \caption{Comparison of various algorithms for MLU reduction}
+    \end{minipage}
+    \begin{minipage}[t]{0.32\linewidth}
+        \centering
+        \includegraphics[width=1\textwidth]{cdf.eps}
+        \caption{Comparison of cumulative distribution functions of MLU}
+        \label{cdf}
+    \end{minipage}
+\end{figure*}
+
+```
+
+![image-20230701153709563](img/image-20230701153709563.png)
+
+
+
+
 
 #### 2.7 LaTeX数学定理
 

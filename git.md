@@ -168,13 +168,18 @@ nothing to commit, working tree clean
 2. 使用命令：`git rm <file>`删除了文件，此时删除的操作已经被提交到暂存区staged了。此时需要先使用命令`git restore --staged <file>` 将暂存区的删除恢复到工作区，再使用命令：`git restore <file>` 恢复文件
 
 # 远程仓库
-> 查看远程仓库地址：`git remote -v`;
+查看远程仓库地址：`git remote -v`;
 
 自行注册GitHub账号。由于你的本地Git仓库和GitHub仓库之间的传输是通过SSH加密的，所以，需要一点设置：
 
 - 第1步：创建SSH Key。在用户主目录（windows的.ssh目录c盘：/user(或者是用户)/你的用户名(你自己之前起过的)/.ssh）下，看看有没有.ssh目录，如果有，再看看这个目录下有没有id_rsa和id_rsa.pub这两个文件，如果已经有了，可直接跳到下一步。如果没有，打开Shell（Windows下打开Git Bash或CMD），创建SSH Key：
-  > ssh-keygen -t rsa -C "youremail@example.com"
-
+  
+  ```bash
+  ssh-keygen -t rsa -C "youremail@example.com"
+  ```
+  
+  > 注意：运行此命令的用户需要与之后拉取远程仓库的用户一致
+  
   你需要把邮件地址换成你自己的邮件地址，然后一路回车，使用默认值即可，无需密码
   如果一切顺利的话，可以在用户主目录里找到.ssh目录，里面有id_rsa和id_rsa.pub两个文件，这两个就是SSH Key的秘钥对，**id_rsa是私钥**，不能泄露出去，id_rsa.pub是公钥，可以放心地告诉任何人。
   
@@ -236,7 +241,13 @@ Git会输出一个警告，告诉你已经把GitHub的Key添加到本机的一�
 这个警告只会出现一次，后面的操作就不会有任何警告了。
 如果你实在担心有人冒充GitHub服务器，输入yes前可以对照GitHub的RSA Key的指纹信息是否与SSH连接给出的一致。
 
+ ```crystal
+ # github测试SSH密钥是否能够正常工作
+ ssh -T git@github.com
+ ```
+
 ### 删除远程库
+
 如果添加的时候地址写错了，或者就是想删除远程库，可以用git remote rm <name>命令。使用前，建议先用git remote -v查看远程库信息
 > git remote -v：
 ``` bash
@@ -919,7 +930,7 @@ sudo apt-get install git
 ```bash
 sudo groupadd git
 sudo useradd git -g git
-passwd git	# 给git设置密码 按照提示设置为1就行，比较方便
+passwd git	# 给git设置密码
 ```
 
 更多：[Ubuntu 创建、管理用户、组和git库、项目_bon_ami的博客-CSDN博客_ubuntu创建bendi新用户](https://blog.csdn.net/bon_ami/article/details/45538777)
@@ -971,7 +982,7 @@ sudo chown -R git:git mwigakki.git
 最后在自己的电脑运行：
 
 ```bash
-$ git clone git@[自己的ip]:/home/gitrepo/mwigakki.git
+$ git clone git@117.72.17.139:/home/gitrepo/mwigakki.git
 Cloning into 'mwigakki'...
 warning: You appear to have cloned an empty repository.
 Checking connectivity... done.
@@ -983,7 +994,7 @@ Checking connectivity... done.
 
 #### 6、推送到远端
 
-对于本地已有的仓库准备推送到自己的git服务器，先在服务器上建一个相应的仓库（不要直接mkdir，需要像上面第4步初始化一个仓库），再添加远程仓库地址即可。（远程仓库和本地仓库名字可以不一样）
+对于本地已有的仓库准备推送到自己的git服务器，先把本机的`id_rsa.pub`中的key文本添加到github 的sshkey中，然后在服务器上建一个相应的仓库（不要直接mkdir，需要像上面第4步初始化一个仓库），再添加远程仓库地址即可。（远程仓库和本地仓库名字可以不一样）
 
 可能需要先将github的地址删掉再加上自己的，命令如下：
 
@@ -1001,3 +1012,5 @@ git push --set-upstream origin master
 ```
 
 之后的修改直接 `git push` 就行了。
+
+ 
