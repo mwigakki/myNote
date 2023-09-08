@@ -541,7 +541,7 @@ stash@{0}: WIP on dev: f52c633 add merge
 
 一是用`git stash apply`恢复，但是恢复后，stash内容并不删除，你需要用`git stash drop`来删除；
 
-另一种方式是用`git stash pop`，恢复的同时把stash内容也删了：
+另一种方式是用**`git stash pop`**，恢复的同时把stash内容也删了：
 
 再用git stash list查看，就看不到任何stash内容了：
 
@@ -1014,3 +1014,23 @@ git push --set-upstream origin master
 之后的修改直接 `git push` 就行了。
 
  
+
+# 问题汇总
+
+当使用`git pull` 或者 `git push` 时提示：`There is no tracking information for the current branch.
+Please specify which branch you want to merge with.`，说明当前`pull`对象没有远程分支的跟踪信息，即本地分支和远程分支没有关联起来。我们查看提交情况`git log --pretty=oneline`发现：
+
+![image-20230908162258120](img/image-20230908162258120.png)zh
+
+只有本地master分支的情况没有远程master分支。我们使用命令：
+
+``` bash
+git branch --set-upstream-to=origin/master master
+# 这里第一个master 是远程分支名，第二个master是本地分支名。如果不是这个名字需要相应修改。
+```
+
+此时我们先拉去远程分支`git pull`，再查看提交情况`git log --pretty=oneline`发现：
+
+![image-20230908162653941](img/image-20230908162653941.png)
+
+已经有远程分支的信息了，而且落后本地两个版本。此时就可以正常使用`git push`推送到远程。
