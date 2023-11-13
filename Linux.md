@@ -676,7 +676,7 @@ cp 即拷贝文件和目录。
 - **-f：**为强制(force)的意思，若目标文件已经存在且无法开启，则移除后再尝试一次；
 - **-i：若目标档(destination)已经存在时，在覆盖时会先询问动作的进行(常用)**
 - **-l：**进行硬式连结(hard link)的连结档创建，而非复制文件本身；
-- **-p：**连同文件的属性一起复制过去，而非使用默认属性(备份常用)；
+- **-p：**连同文件的属性一起复制过去，而非使用默认属性(备份常用)；如果不是-p，就是用复制目的地址的属性；
 - **-r：递归持续复制，用於目录的复制行为；(常用)**
 - **-s：**复制成为符号连结档 (symbolic link)，亦即『捷径』文件；
 - **-u：**若 destination 比 source 旧才升级 destination ！
@@ -1286,7 +1286,36 @@ myweb
 - 切换用户（su）
 
     > su yao               //切换为用户"yao",输入后回车需要输入该用户的密码
-    >  exit                 //退出当前用户
+    > exit                 //退出当前用户
+
+#### 查看ubuntu系统发行版本等信息
+
+- `cat /proc/version` 
+
+![image-20231108095941181](img/image-20231108095941181.png)
+
+``` 
+Linux version 5.4.0-42-generic (buildd@lgw01-amd64-038)   # linux内核版本号
+gcc version 9.3.0             # gcc编译器版本号
+Ubuntu 9.3.0-10ubuntu2        # Ubuntu版本号
+```
+
+- `lsb_release -a`
+
+![image-20231108100150416](img/image-20231108100150416.png)
+
+####  查看位数（32位或64位）的命令
+
+- `getconf LONG_BIT`
+
+#### 查看架构（arm或amd）的命令
+
+``` shell
+root@iZ2ze0zuq27nx0z96tt9g:/opt# dpkg --print-architecture
+amd64
+```
+
+> amd （intelx86架构）和arm版本区别。:arm基于精简指令(RISC), x86基于复杂指令集CISC; 总之，arm是为了低功耗，主要都是移动端使用；x86是为了高性能。主要定位计算密集场景，例如多媒体编辑、科研计算等。
 
 ## 文件操作
 
@@ -3508,7 +3537,7 @@ ntpdate  0.cn.pool.ntp.org
     ``` shell
     sudo apt-get install open-vm-tools
     
-    sudo apt-get install open-vm-tools-desktop
+    sudo apt-get install open-vm-tools-desktopwhere
     
 
 - **linux下使用pip报错**
@@ -3550,9 +3579,7 @@ unset https_proxy
 ```
 
 然后pip就可以用了。
-=======
-=======
->>>>>>> Stashed changes
+
     # 重启Ubuntu虚拟机
 
 - **Ubuntu18 git报错**
@@ -3846,9 +3873,17 @@ Ubuntu18 安装自带 `wireshark Version: 2.6.10-1~ubuntu18.04.0`
 - 默认下载python2的包：`sudo apt install python-packageName`
 - 改为下载python3的包：`apt install python3-packageName`
 
-可能需要提前执行一下这个` sudo apt-get update`
+可能需要提前执行一下这个` sudo apt update`
 
-注：【tkinter】这个包：`sudo apt install python3-tk`，当然只能给linux自带的python这样安装
+**注**：很多包它import时候的名字和安装的时候的名字可能不一样，但相差不太大，这时就安装的时候看它的提示就能知道要安装的名字。
+
+##### linux下python模块包位置
+
+如果是系统自带的python，会使用`/usr/local/lib/python3.8/dist-packages`这个目录。
+
+如果是自己安装的python，会使用`/usr/local/lib/python3.8/site-packages`这个目录。
+
+如果是虚拟环境的python，会使用`[虚拟环境安装用户的根目录]/anaconda3/envs/[虚拟环境名]/lib/python3.7/site-packages/这个目录。`
 
 ##### python实现.py的带参数启动
 
@@ -3890,6 +3925,45 @@ subprocess.call(command, shell=True)
 #会直接打印出结果
 subprocess.Popen(command, shell=True) 也可以是subprocess.Popen(command, stdout=subprocess.PIPE, shell=True) 这样就可以输出结果了。
 ```
+
+### 安装cuda和cuDNN
+
+主要参考 https://zhuanlan.zhihu.com/p/648423631
+
+#### 1 查看相关信息
+
+- 查看cpu型号终端命令
+
+``` shell
+cat /proc/cpuinfo # 详细
+lscpu # 简略
+```
+
+- 查看显卡型号终端命令
+
+``` bash
+函数preProcess0作用为处理全局变量和虚函数，生成对应的目标代码，其伪代码如下对每一个全局符号表中的符号 f
+如果为数组在栈底分配数组长度的空间。否则，就是简单变量在栈底分配一格空间对每一个全局类表中的符号如果c的虚拟函数个数>0
+为记录vf函数地址预留空间 (在后续过程中会返填)。生成调用main函数的代码 (call near ptr main)生成停机指令 (halt)问号出应该填入:
+调用IfElseStm函数，生成If-else语句的目标代码
+利用左值地址，生成new 指令
+判断语法树中的每个节点的类型
+对每个c中的虚拟函数表中每个虚拟函数vflspci | grep -i nvidia
+
+# 输出如下
+43:00.0 VGA compatible controller: NVIDIA Corporation Device 24b0 (rev a1)
+43:00.1 Audio device: NVIDIA Corporation Device 228b (rev a1)
+...
+
+```
+
+我们看`43:00.0 VGA compatible controller: NVIDIA Corporation Device 24b0 (rev a1)`这一行就行，在[此网站](http://pci-ids.ucw.cz/mods/PC/10de?action=help?help=pci)输入四位代码获取显卡型号。可以看到服务器上的显卡名称为**`Name: GA104GL [RTX A4000]`** 。
+
+`
+
+ 
+
+
 
 ### 安装java
 
@@ -3958,7 +4032,11 @@ public class TestDemo  {
 
 ##### 安装anaconda
 
+> [Ubuntu20.04.2LTS系统下安装CUDA +cuDNN+PyTorch_torch lts cudnn cuda-CSDN博客](https://blog.csdn.net/geiyes/article/details/115280118) 暂时没有安装cuda 在 162上
+
 首先安装anaconda，版本选择不宜太新也不宜太旧，ubuntu18.04 自带python3.6，选择anaconda版本Anaconda3-5.3.0-Linux-x86_64即可。
+
+ubuntu20 自带python3.8，安装方法一样。
 
 使用wget 下载相应文件，并运行此sh：
 
@@ -4001,6 +4079,26 @@ export PATH=/home/[用户名]/anaconda3/bin:$PATH
 如果显示未找到此命令就运行  `source /home/[用户名]/.bashrc` 保存更改。
 
 安装好后，以后每次进入服务器终端都会默认在conda 的base环境里，需要离开此环境使用`conda deactivate` 退出虚拟环境
+
+##### 注意
+
+安装anaconda后将linux的默认python改成`conda base`环境的python，无论`/usr/bin/python`软链接是怎么指的。我们PATH 来看下
+
+``` bash
+echo $PATH
+
+/home/ubt/anaconda3/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/usr/games:/usr/local/games:/snap/bin:/usr/local/go/bin
+```
+
+可以看到系统去找python的时候先在conda环境找到了，就不会去找系统的python了。
+
+因为安装conda的时候安装程序把conda环境的顺序写在最前面了，`vim ~/.bashrc` 打印看看
+
+``` bash
+export PATH="/home/sinet/anaconda3/bin:$PATH"
+```
+
+解决方法就是在改文档最后加上python别名`alias python="/usr/bin/python"`，让它一直指向系统python
 
 ##### Anaconda安装Pytorch
 
@@ -4099,49 +4197,4 @@ iperf -s -i 1
 |                |              |        |            |                      |
 
 把参数添加到 `sudo vim /etc/sysctl.conf` 中，然后执行 `sudo sysctl -p` 使参数生效
-
-
-
-# # quic python实现
-
-### HTTP/3 server
-
-You can run the example server, which handles both HTTP/0.9 and HTTP/3:
-
-```sh
-python examples/http3_server.py --certificate tests/ssl_cert.pem --private-key tests/ssl_key.pem
-```
-
-### HTTP/3 client
-
-You can run the example client to perform an HTTP/3 request:
-
-```sh
-python examples/http3_client.py --ca-certs tests/pycacert.pem https://localhost:4433/
-```
-
-
-
-首先使用命令：查看端口使用情况
-
-```bash
-env | grep -i proxy
-```
-
-然后将自己报错的端口号占用进行一个移除操作，每个都要移除。
-
-```bash
-unset FTP_PROXY 
-unset HTTP_PROXY 
-unset HTTPS_PROXY 
-unset ALL_PROXY 
-unset NO_PROXY 
-unset no_proxy 
-unset all_proxy 
-unset ftp_proxy 
-unset http_proxy 
-unset https_proxy 
-```
-
-然后pip就可以用了。
 
