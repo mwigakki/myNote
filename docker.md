@@ -92,9 +92,9 @@ Hypervisor 接下来就会将这些物理资源划分为虚拟资源，并且看
 
 从更高层面上来讲：
 
-**Hypervisor 是硬件虚拟化（Hardware Virtualization）——Hypervisor 将硬件物理资源划分为虚拟资源**。
+**虚拟机的隔离策略Hypervisor 是硬件虚拟化（Hardware Virtualization）——Hypervisor 将硬件物理资源划分为虚拟资源**。
 
-**容器是操作系统虚拟化（OS Virtualization）——容器将系统资源划分为虚拟资源**。
+**docker容器的隔离策略CGroups是linux内核提供的隔离机制，是操作系统虚拟化（OS Virtualization）——容器将系统资源划分为虚拟资源**。
 
 ### 容器编排
 
@@ -271,6 +271,40 @@ alpine       latest    e66264b98777   3 weeks ago   5.53MB
 ```
 
 可见`Alpine`的大小是非常小的。目前 Docker 官方已开始推荐使用 `Alpine` 替代之前的 `Ubuntu` 做为基础镜像环境。这样会带来多个好处。包括镜像下载速度加快，镜像安全性提高，主机之间的切换更方便，占用更少磁盘空间等。
+
+#### 修改镜像源
+
+首先使用如下命令查看当前镜像源是什么
+
+``` shell
+docker info # 查看完整docker相关信息
+
+docker info | grep "Registry"  # 得到镜像源信息
+#结果 Registry: https://index.docker.io/v1/
+```
+
+然后修改镜像源
+
+创建或修改` /etc/docker/daemon.json `文件，修改为如下形式：
+
+``` json
+{
+    "registry-mirrors" : [
+    "https://registry.docker-cn.com",
+    "https://docker.mirrors.ustc.edu.cn",
+    "http://hub-mirror.c.163.com",
+    "https://cr.console.aliyun.com/"
+  ]
+}
+```
+
+重启docker服务使配置生效 $ 
+
+``` shell
+sudo systemctl restart docker.service
+```
+
+
 
 ### 删除镜像
 
@@ -1121,6 +1155,8 @@ touch: new.txt: Read-only file system
 
 ## 9. 网络管理
 
+[Docker四种网络模式 - 简书 (jianshu.com)](https://www.jianshu.com/p/22a7032bb7bd)
+
 Network Namespace 是 Linux 内核提供的功能，是实现网络虚拟化的重要功能，它能创建多个隔离的网络空间，它们有独自网络栈信息。不管是虚拟机还是容器，运行的时候仿佛自己都在独立的网络中。而且不同Network Namespace的资源相互不可见，彼此之间无法直接通信。
 
 **namespace 是 Linux 内核用来隔离内核资源的方式。**通过 namespace 可以让一些进程只能看到与自己相关的一部分资源，而另外一些进程也只能看到与它们自己相关的资源，这两拨进程根本就感觉不到对方的存在。具体的实现方式是把一个或多个进程的相关资源指定在同一个 namespace 中。
@@ -1761,5 +1797,12 @@ $ ip addr show bridge0
 
 可以继续用 `brctl show` 命令查看桥接的信息。另外，在容器中可以使用 `ip addr` 和 `ip route` 命令来查看 IP 地址配置和路由信息。
 
+## 11. 底层原理
 
+![在这里插入图片描述](https://img-blog.csdnimg.cn/53de044ef67d4b1e9592a065645f778a.png?x-oss-process=image/watermark,type_ZHJvaWRzYW5zZmFsbGJhY2s,shadow_50,text_Q1NETiBA5p625p6E5biILeWwvOaBqQ==,size_20,color_FFFFFF,t_70,g_se,x_16)
 
+docker的底层技术主要由三部分组成
+
+- 命名空间 namespace : 命令空间可以将全局资源（如进程PID、网络、文件等）划分为独立的命名空间，让每个容器只能看到自己的东西，彼此之间不会产生冲突。它是容器隔离的基础，保证了容器A看不到容器B。
+- 控制组 cgroups：控制器功能是来限制和隔离容器的资源使用。为了使容器的隔离更加可控，防止一个容器占用太多资源而影响了其他容器，控制组可以对CPU、磁盘IO，内存等资源进行限制和分配，确保在资源有限的情况下能够正常运行。
+- 联合文件系统 UnionFS ： 它是docker镜像分层实现的基础。

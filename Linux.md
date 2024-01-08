@@ -3550,10 +3550,6 @@ unset https_proxy
 ```
 
 然后pip就可以用了。
-=======
-=======
->>>>>>> Stashed changes
-    # 重启Ubuntu虚拟机
 
 - **Ubuntu18 git报错**
 
