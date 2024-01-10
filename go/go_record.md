@@ -29,11 +29,15 @@ https://www.topgoer.com/
 
 https://www.kandaoni.com/news/19058.html#
 
-1. 首先到官网下载最新Go for Linux 安装包。
+1. 首先到[官网](https://golang.google.cn/doc/install)下载最新Go for Linux 安装包。
+
+    ``` shell
+    wget https://golang.google.cn/dl/go1.21.5.linux-amd64.tar.gz
+    ```
 
 2. 将安装包放在` ~/Downloads`处
 
-3. 解压go环境到指定位置` usr/local `下：**`:~/Documents$ sudo tar -C /usr/local -xzf go1.xx.x.linux-amd64.tar.gz`**
+3. 解压go环境到指定位置` usr/local `下：**`:~/Documents$ sudo tar -C /usr/local -xzf go1.21.5.linux-amd64.tar.gz`**
 
 4. 然后是添加变量：
    - 执行 `sudo vim /etc/profile`，在该文件最后插入：
@@ -42,6 +46,8 @@ https://www.kandaoni.com/news/19058.html#
      export GOPATH=$HOME/gopath
      export GOROOT=/usr/local/go
      export PATH=$PATH:$GOROOT/bin:$GOPATH/bin
+     
+     # 没有 GOPATH=$HOME/gopath 这个目录就新建
      ```
    
 5. 使添加的环境生效：使用：**`source /etc/profile`**，可能没有生效，此时重启即可
@@ -140,7 +146,15 @@ func (a Address) newAddress(p string, c string) {
 }
 ```
 
+### 手动关闭程序
 
+调用`os.Exit(int)`函数来结束程序，传入的参数表示程序的退出状态码。退出状态码是一个整数值，用于表示程序退出时的状态。
+
+传入的退出状态码可以根据具体的需求进行选择。一般来说，以下是常见的退出状态码约定：
+
+- 0：表示程序正常退出，没有发生错误。
+- 1：表示程序非正常退出，一般用于表示一般性错误。
+- 其他非零值：表示不同类型的错误或异常情况，可以根据需要自定义。
 
 ## 4.  编译
 
@@ -153,6 +167,8 @@ func (a Address) newAddress(p string, c string) {
 2. 在其他目录下执行 `go build` :
 
 ​		此时要在go build 后面加路径，不需要绝对路径，只需要加%GOPATH%/src/之后的路径就行了，写到最终的文件夹名就行了 ，不需要.go的文件名。例如`go build github.com\studyGo1\01helloword1`，可执行文件就会保存在当前目录下。
+
+运行`go build`如果报错如下：`go: go.mod file not found in current directory or any parent directory; see 'go help modules'`。处理方法如下：在你的项目根目录下执行以下命令，以初始化 Go 模块：`go mod init <module-name>` 。`<module-name>` 是你的项目名称
 
 3. 改生成的exe文件名（名字默认是项目名，即这个文件夹的名字）
 
@@ -3037,6 +3053,63 @@ BB 10 12 22
 4
 */
 ```
+
+**注意**：我使用ctrl+c 结束程序后，，程序会收到 `SIGINT` 信号，这会导致程序立即退出，而不会等待 `defer` 修饰的函数执行完成。如果想在程序终止时执行某些清理操作，可以使用操作系统信号处理机制来处理终止信号。在 Go 中，可以使用 `os/signal` 包来监听和处理操作系统信号。通过监听 `SIGINT` 信号，可以在程序接收到终止信号时执行所需的清理操作。
+
+**常见问题**：我在用go做tcp c/s连接模型的实验时，客户端和服务器连接成功后，使用ctrl+c结束了客户端和服务器的程序后，我发现服务器机器中的TCP连接并没有断开而是进入了TIME_AWAIT阶段。有什么办法可以使我使用ctrl+c后直接使客户端和服务器的TCP连接全部断开。
+
+当你使用 `ctrl+c` 结束程序时，操作系统会发送 `SIGINT` 信号给程序，程序收到该信号后会立即退出。这样的退出方式不会给程序正常关闭连接的机会，因此会导致TCP连接进入 `TIME_WAIT` 状态。
+
+要在程序退出时立即关闭TCP连接，你可以通过在程序中捕获 `SIGINT` 信号，并在信号处理函数中执行一些清理操作，包括关闭TCP连接。
+
+在Go中，可以使用`os/signal`包来处理操作系统信号。以下是一个使用`os/signal`包来捕获 `SIGINT` 信号并在信号处理函数中关闭TCP连接的示例：
+
+```go
+package main
+
+import (
+	"fmt"
+	"net"
+	"os"
+	"os/signal"
+	"syscall"
+)
+
+func main() {
+	// 创建一个TCP连接
+	conn, err := net.Dial("tcp", "服务器地址:端口号")
+	if err != nil {
+		fmt.Println("无法连接到服务器")
+		return
+	}
+
+	// 监听SIGINT信号
+	sigCh := make(chan os.Signal, 1)
+	signal.Notify(sigCh, syscall.SIGINT)
+
+	// 启动一个goroutine来等待SIGINT信号
+	go func() {
+		<-sigCh
+		fmt.Println("接收到SIGINT信号，正在关闭连接...")
+		conn.Close()
+		os.Exit(0)
+	}()
+
+	// 其他程序逻辑
+	// ...
+
+	// 当程序正常退出时，关闭连接
+	defer conn.Close()
+
+	// ...
+}
+```
+
+这样，在接收到 `SIGINT` 信号时，程序会关闭TCP连接并退出，而不会进入 `TIME_WAIT` 状态。
+
+注意，为了确保程序在接收到信号后及时退出，需要在程序的逻辑中使用goroutine来等待信号。并在信号处理函数中关闭连接并调用 `os.Exit(0)` 来立即退出程序。
+
+
 
 ## 14. panic & recover
 

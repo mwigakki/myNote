@@ -980,6 +980,8 @@ Linux系统是一个多用户多任务的分时操作系统，任何一个要使
 
 详见：[Linux 用户和用户组管理 | 菜鸟教程 (runoob.com)](https://www.runoob.com/linux/linux-user-manage.html)
 
+每个用户都有用户ID，每个组也都有组ID
+
 **修改用户密码：**
 
 -  给XXX用户设置密码:`passwd XXX`，然后根据提示输入密码。
@@ -2121,6 +2123,8 @@ tcp6       0      0 :::80                   :::*                    LISTEN      
 
 
 
+
+
 ### route
 
 用于显示和操作IP路由表。
@@ -2234,85 +2238,6 @@ Destination     Gateway         Genmask         Flags Metric Ref    Use Iface
 169.254.0.0     0.0.0.0         255.255.0.0     U     1000   0        0 ens49f1
 192.168.199.0   0.0.0.0         255.255.255.0   U     100    0        0 eno1
 # 通过先删除，再添加实现。
-```
-
-
-
-### tcpdump
-
-**tcpdump**：dump the traffic on a network，根据使用者的定义**对网络上的数据包进行截获的包分析工具**。
-
-tcpdump可以将网络中传送的数据包的“头”完全截获下来提供分析。它支持针对网络层、协议、主机、网络或端口的过滤，并提供and、or、not等逻辑语句来帮助你去掉无用的信息。
-
-- 普通情况下，直接启动tcpdump将监视第一个网络接口上所有流过的数据包。
-
-```bash
-root@VM-8-17-ubuntu:/home/ubuntu# tcpdump
-...
-```
-
-- **监听指定网络接口的数据包**
-
-此处以docker 的 nginx容器为例，将其开启，并指定监听 docker0 接口
-
-``` bash
-root@VM-8-17-ubuntu:/home/ubuntu# tcpdump -i docker0
-```
-
-浏览器访问此nginx服务器，可以看到 `tcpdump` 抓到的包
-
-``` shell
-root@VM-8-17-ubuntu:/home/ubuntu# tcpdump -i docker0
-tcpdump: verbose output suppressed, use -v or -vv for full protocol decode
-listening on docker0, link-type EN10MB (Ethernet), capture size 262144 bytes
-17:48:57.574838 IP 219.242.112.67.64511 > 172.17.0.2.http: Flags [S], seq 1830528148, win 64240, options [mss 1412,nop,wscale 8,nop,nop,sackOK], length 0
-17:48:57.575319 IP 172.17.0.2.http > 219.242.112.67.64511: Flags [S.], seq 1769917238, ack 1830528149, win 64240, options [mss 1460,nop,nop,sackOK,nop,wscale 7], length 0
-17:48:57.575362 IP 219.242.112.67.64512 > 172.17.0.2.http: Flags [S], seq 3193273513, win 64240, options [mss 1412,nop,wscale 8,nop,nop,sackOK], length 0
-17:48:57.575370 IP 172.17.0.2.http > 219.242.112.67.64512: Flags [S.], seq 2415067009, ack 3193273514, win 64240, options [mss 1460,nop,nop,sackOK,nop,wscale 7], length 0
-17:48:57.577913 IP 219.242.112.67.64511 > 172.17.0.2.http: Flags [.], ack 1, win 1025, length 0
-17:48:57.578011 IP 219.242.112.67.64512 > 172.17.0.2.http: Flags [.], ack 1, win 1025, length 0
-^C
-6 packets captured
-6 packets received by filter
-0 packets dropped by kernel
-```
-
-可以看到抓到的出包和入包，内容有时间，处理进程，协议(IP、ARP等)，源IP，目的IP，等等信息
-
-- **监视指定主机的数据包**
-
-打印所有进入或离开sundown的数据包.
-
-```
-tcpdump host sundown
-```
-
-也可以指定ip,例如截获所有210.27.48.1 的主机收到的和发出的所有的数据包
-
-```
-tcpdump host 210.27.48.1 
-```
-
-- **监视指定端口的数据包**
-
-如果想要获取主机210.27.48.1接收或发出的telnet包，使用如下命令
-
-```
-tcpdump tcp port 23 and host 210.27.48.1
-```
-
-对本机的udp 123 端口进行监视 123 为ntp的服务端口
-
-```
-tcpdump udp port 123 
-```
-
-更多见：[Linux tcpdump命令详解](https://www.cnblogs.com/ggjucheng/archive/2012/01/14/2322659.html)
-
-- **tcpdump抓包并保存成cap文件**
-
-``` bash
-tcpdump -i [抓包的端口] -w [保存文件的位置]   # 其他条件自己写
 ```
 
 ### tcpreplay
@@ -2733,6 +2658,136 @@ GNU Wget(常常简称为wget）是一个**网络上进行下载**的简单而强
 `wget [网络下载地址]`
 
 如下载linux内核(在相应的目录下)：`sudo wget https://cdn.kernel.org/pub/linux/kernel/v5.x/linux-5.4.224.tar.xz`
+
+### scp
+
+Linux scp 是 secure copy 的缩写，用于 Linux 之间复制文件和目录。scp 是 linux 系统下基于 ssh 登陆进行安全的远程文件拷贝命令。
+
+``` shell
+scp local_file remote_username@remote_ip:remote_folder # 可以在最后加上传输后的文件名
+
+# 如果时复制目录的话就得加上-r
+scp -r local_folder remote_username@remote_ip:remote_folder 
+
+# 如果远程服务器防火墙有为scp命令设置了指定的端口，我们需要使用 -P 参数来设置命令的端口号
+```
+
+### linux查看流量的工具
+
+#### ss-查看连接
+
+[Linux ss命令详解 - 小a玖拾柒 - 博客园 (cnblogs.com)](https://www.cnblogs.com/ftl1012/p/ss.html)
+
+ss是`Socket Statistics`的缩写，ss命令可以用来获取socket统计信息，它可以显示和netstat类似的内容。ss的优势在于它能够显示**更多更详细的有关TCP和连接状态的信息**，而且比netstat更快速更高效。
+
+当服务器的socket连接数量变得非常大时，无论是使用`netstat`命令还是直接`cat /proc/net/tcp`，执行速度都会很慢。
+
+ss快的秘诀在于，它利用到了TCP协议栈中tcp_diag。tcp_diag是一个用于分析统计的模块，可以获得Linux 内核中第一手的信息，这就确保了ss的快捷高效。
+
+#### iptraf-按连接/端口查看流量
+
+安装 : `sudo apt install iptraf`
+
+使用：`iptraf-ng`，就有图形化界面，选择监控端口即可。在图像界面有较多选项，可以从统计上也可以查看每个连接的收发包数。
+
+#### nload-监视流量和带宽
+
+安装 : `sudo apt install nload`
+
+使用：`nload`，按方向键选择要监听的端口。可以在命令行上指定网卡名称：`nload eno1`
+
+运行nload之后，可以使用以下快捷键：：
+
+- 使用左右箭头键或`Enter / Tab`键将显示切换到下一个网卡。
+- 使用`F2`显示选项窗口。
+- 使用`F5`将当前设置保存到用户配置文件中。
+- 使用`F6`从配置文件中重新加载设置。
+- 使用`q`或`Ctrl + C`退出nload。
+
+使用-a 选项，设置计算时间窗口的长度(以秒为单位)。
+
+一次显示多个设备，不显示流量图，可以使用-m选项。箭头键来回切换屏幕上显示的设备数量：`nload -m`
+
+#### tcpdump-抓包工具
+
+**tcpdump**：dump the traffic on a network，根据使用者的定义**对网络上的数据包进行截获的包分析工具**。
+
+tcpdump可以将网络中传送的数据包的“头”完全截获下来提供分析。它支持针对网络层、协议、主机、网络或端口的过滤，并提供and、or、not等逻辑语句来帮助你去掉无用的信息。
+
+- 普通情况下，直接启动tcpdump将监视第一个网络接口上所有流过的数据包。
+
+```bash
+root@VM-8-17-ubuntu:/home/ubuntu# tcpdump
+...
+```
+
+- **监听指定网络接口的数据包**
+
+此处以docker 的 nginx容器为例，将其开启，并指定监听 docker0 接口
+
+``` bash
+root@VM-8-17-ubuntu:/home/ubuntu# tcpdump -i docker0
+```
+
+浏览器访问此nginx服务器，可以看到 `tcpdump` 抓到的包
+
+``` shell
+root@VM-8-17-ubuntu:/home/ubuntu# tcpdump -i docker0
+tcpdump: verbose output suppressed, use -v or -vv for full protocol decode
+listening on docker0, link-type EN10MB (Ethernet), capture size 262144 bytes
+17:48:57.574838 IP 219.242.112.67.64511 > 172.17.0.2.http: Flags [S], seq 1830528148, win 64240, options [mss 1412,nop,wscale 8,nop,nop,sackOK], length 0
+17:48:57.575319 IP 172.17.0.2.http > 219.242.112.67.64511: Flags [S.], seq 1769917238, ack 1830528149, win 64240, options [mss 1460,nop,nop,sackOK,nop,wscale 7], length 0
+17:48:57.575362 IP 219.242.112.67.64512 > 172.17.0.2.http: Flags [S], seq 3193273513, win 64240, options [mss 1412,nop,wscale 8,nop,nop,sackOK], length 0
+17:48:57.575370 IP 172.17.0.2.http > 219.242.112.67.64512: Flags [S.], seq 2415067009, ack 3193273514, win 64240, options [mss 1460,nop,nop,sackOK,nop,wscale 7], length 0
+17:48:57.577913 IP 219.242.112.67.64511 > 172.17.0.2.http: Flags [.], ack 1, win 1025, length 0
+17:48:57.578011 IP 219.242.112.67.64512 > 172.17.0.2.http: Flags [.], ack 1, win 1025, length 0
+^C
+6 packets captured
+6 packets received by filter
+0 packets dropped by kernel
+```
+
+可以看到抓到的出包和入包，内容有时间，处理进程，协议(IP、ARP等)，源IP，目的IP，等等信息
+
+- **监视指定主机的数据包**
+
+打印所有进入或离开sundown的数据包.
+
+```
+tcpdump host sundown
+```
+
+也可以指定ip,例如截获所有210.27.48.1 的主机收到的和发出的所有的数据包
+
+```
+tcpdump host 210.27.48.1 
+```
+
+- **监视指定端口的数据包**
+
+如果想要获取主机210.27.48.1接收或发出的telnet包，使用如下命令
+
+```
+tcpdump tcp port 23 and host 210.27.48.1
+```
+
+对本机的udp 123 端口进行监视 123 为ntp的服务端口
+
+```
+tcpdump udp port 123 
+```
+
+更多见：[Linux tcpdump命令详解](https://www.cnblogs.com/ggjucheng/archive/2012/01/14/2322659.html)
+
+- **tcpdump抓包并保存成cap文件**
+
+``` bash
+tcpdump -i [抓包的端口] -w [保存文件的位置]   # 其他条件自己写
+```
+
+
+
+
 
 # 11. Linux 防火墙
 
@@ -3897,7 +3952,7 @@ print(str(int(a)+int(b)))
 
 > argv[]中自动append启动时传入的参数，如果传入了多余的参数，在代码中没有引用是允许的；但是当没有相应的参数传入时，会报超出索引值的错误
 
-##### python中执行shell命令：
+### python中执行shell命令：
 
 1. os模块中的os.system()这个函数来执行shell命令
 

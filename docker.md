@@ -14,11 +14,11 @@ https://www.w3cschool.cn/docker/docker-tutorial.html
 
 ## 1. 容器简介
 
-Docker使用Google公司推出的Go语言进行开发实现，基于Linux内核的cgroup，namespace，以及AUFS类的Union FS等技术，对进程进行封装隔离，属于操作系统层面的虚拟化技术。由于隔离的进程独立于宿主和其它的隔离的进程，因此也称其为容器。
+Docker使用Google公司推出的Go语言进行开发实现，**基于Linux内核的cgroup，namespace，以及AUFS类的Union FS等技术**，对进程进行封装隔离，属于操作系统层面的虚拟化技术。由于隔离的进程独立于宿主和其它的隔离的进程，因此也称其为容器。
 
 ### 为什么要用容器
 
-- 传统的应用部署方式是通过插件或脚本来安装应用。这样做的缺点是应用的运行、配置、管理、所有生存周期将**与当前操作系统绑定**，这样做并不利于应用的升级更新/回滚等操作，当然也可以通过创建虚机的方式来实现某些功能，但是虚拟机非常重，并不利于移植。
+- 传统的应用部署方式是通过插件或脚本来安装应用。这样做的缺点是应用的运行、配置、管理、所有生存周期将**与当前操作系统绑定**，这样做并不利于应用的升级更新/回滚等操作，当然也可以通过创建虚拟机的方式来实现某些功能，但是虚拟机非常重，并不利于移植。
 
 - 软件开发的一大目的就是隔离，应用程序在运行时相互独立互不干扰，这种隔离实现起来是很不容易的，其中一种解决方案就是虚拟机技术，通过将应用程序部署在不同的虚拟机中从而实现隔离，另一种就是**容器**技术。
 
@@ -151,22 +151,22 @@ Docker Daemon可以认为是通过Docker Server模块接受Docker Client的请�
 
 > 本文档讲述Ubuntu Docker 的安装，其他系统安装请自行查阅
 
-**前提条件**
+#### 前提条件
 
 Docker 要求 Ubuntu 系统的内核版本高于 3.10 ，查看本页面的前提条件来验证你的 Ubuntu 版本是否支持 Docker。
 
 通过` uname -r`命令查看你当前的内核版本
 
-**使用脚本安装 Docker**
+#### 使用脚本安装 Docker
 
 - 1、获取最新版本的 Docker 安装包
 
 ```bash
-sudo apt-get update
+sudo apt update
 ```
 
 ```bash
-sudo apt-get install -y docker.io
+sudo apt install -y docker.io
 ```
 
 - 2、启动docker 后台服务
@@ -190,6 +190,22 @@ docker system info
 ```
 
 如果在 Linux 中遇到无权限访问的问题（切换root用户可解决），需要确认当前用户是否属于本地 Docker UNIX 组。如果不是，可以通过`usermod -aG docker <user>`来添加，然后退出并重新登录 Shell，改动即可生效。
+
+#### 权限问题
+
+开启docker服务是需要root用户权限的，而使用docker的用户很可能不是root用户，此时该用户就没法操作dokcer，解决方法有两种。
+
+1. 赋予普通用户root权限，自行查阅
+
+2. 将普通用户添加到docker用户组中
+
+    docker安装后会默认创建docker用户组，该组拥有与docker守护进程通信的权限。使用以下命令将当前用户添加到docker用户组中。
+
+    ``` shell
+    sudo usermod -aG docker $USER
+    ```
+
+    注意，添加用户到用户组后，需要重新登录用户才能生效。
 
 ## 4. Docker 镜像 
 
@@ -572,14 +588,22 @@ docker container run [OPTIONS] IMAGE [COMMAND] [ARG...]			# contianer可以省�
 
 OPTIONS说明：(常用)
 
-- `-i`: 以交互模式运行容器，通常与` -t `同时使用；
-- `-t`: 为容器重新分配一个伪输入终端，通常与` -i`同时使用；
-- `--name="xxx"`: 为容器指定一个名称；
-- `-d`: 让 Docker 在后台运行而不是直接把执行命令的结果输出在当前宿主机下
-- `-p`: 指定映射到宿主机上的端口
-- `-P`:  (大写P)随机端口映射，容器内部端口**随机**映射到主机的端口
-- `-v 宿主机中的数据卷或目录:容器中的挂载位置`   :  --volume绑定一个数据卷
-- `--mount source=宿主机中的数据卷或目录 target=容器中的挂载位置 `： 挂载数据卷
+``` shell
+-e username="ritchie": 设置环境变量；
+--env-file=[]: 从指定文件读入环境变量；
+-i: 以交互模式运行容器，通常与` -t `同时使用；
+--net="bridge": 指定容器的网络连接类型，支持 bridge/host/none/container: 四种类型；
+-t: 为容器重新分配一个伪输入终端，通常与` -i`同时使用；
+--expose=[]: 开放一个端口或一组端口；
+-m :设置容器使用内存最大值；
+--name="xxx": 为容器指定一个名称；
+--rm ：容器退出时自动关闭容器，并自动清理容器内部的文件系统。
+-d: 让 Docker 在后台运行而不是直接把执行命令的结果输出在当前宿主机下
+-p: 指定映射到宿主机上的端口，格式为：主机(宿主)端口:容器端口
+-P:  (大写P)随机端口映射，容器内部端口随机映射到主机的端口
+-v 或 --volume 绑定一个数据卷 ；格式：宿主机中的数据卷或目录:容器中的挂载位置   :  
+--mount source=宿主机中的数据卷或目录 target=容器中的挂载位置 ： 挂载数据卷 ；与-v的功能是一样的 
+```
 
 更多见：[Docker run 命令 | 菜鸟教程 (runoob.com)](https://www.runoob.com/docker/docker-run-command.html)
 
@@ -590,6 +614,14 @@ docker container run <image> <app>
 ```
 
 例：
+
+例如运行最小的linux发行版alpine
+
+```
+docker run -it alpine /bin/sh  # alpine 没有安装 /bin/bash
+```
+
+运行一个Ubuntu试试
 
 ``` bash
 docker container run -it ubuntu /bin/bash
@@ -607,22 +639,26 @@ docker container run -it ubuntu /bin/bash
 
 下面是常用命令：
 
-| 命令  (参数`<container>`可以是容器 ID 或名称)  | 描述                                             |
-| :--------------------------------------------- | :----------------------------------------------- |
-| `docker ps` 或 `docker container ls`           | 列出正在运行的容器                               |
-| `docker ps -a   ` 或 `docker container ls -a ` | 列出所有容器                                     |
-| `docker ps -s` 或 `docker container ls -s `    | 列出正在运行的容器 *（带 CPU/内存）*             |
-| `docker images` 或 `docker image ls`           | 列出所有镜像                                     |
-| `docker exec -it <container> bash`             | 连接到容器                                       |
-| `docker logs <container>`                      | 显示容器的控制台日志                             |
-| `docker stop <container>`                      | 停止一个容器                                     |
-| `docker start <container>`                     | 启动一个容器                                     |
-| `docker restart <container>`                   | 重启一个容器                                     |
-| `docker rm <container>`                        | 移除一个stoped容器，在后面加上`-f`可强制销毁容器 |
-| `docker port <container>`                      | 显示容器的端口映射                               |
-| `docker top <container>`                       | 列出进程                                         |
-| `docker kill <container>`                      | 杀死一个running中的容器                          |
-| `docker container prune`                       | 清除所有处于终止状态的容器                       |
+| 命令  (参数`<container>`可以是容器 ID 或名称)  | 描述                                                      |
+| :--------------------------------------------- | :-------------------------------------------------------- |
+| `docker ps` 或 `docker container ls`           | 列出正在运行的容器                                        |
+| `docker ps -a   ` 或 `docker container ls -a ` | 列出所有容器，包括后台运行的，关闭的，只要没关的都        |
+| `docker ps -s` 或 `docker container ls -s `    | 列出正在运行的容器 *（带 CPU/内存）*                      |
+| `docker images` 或 `docker image ls`           | 列出所有镜像                                              |
+| `docker exec -it <container> bash`             | 连接到容器                                                |
+| `docker logs <container>`                      | 显示容器的控制台日志                                      |
+| `docker stop <container>`                      | 停止一个容器                                              |
+| `docker start <container>`                     | 启动一个容器                                              |
+| `docker restart <container>`                   | 重启一个容器                                              |
+| `docker rm <container>`                        | 移除一个stoped容器，在后面加上`-f`可强制销毁running的容器 |
+| `docker port <container>`                      | 显示容器的端口映射                                        |
+| `docker top <container>`                       | 列出进程                                                  |
+| `docker kill <container>`                      | 杀死一个running中的容器                                   |
+| `docker container prune`                       | 清除所有处于终止状态的容器                                |
+
+各个状态转移的命令图
+
+![在这里插入图片描述](img/20210323151707418.png)
 
 ***docker stop 与 docker kill的区别***
 
@@ -631,6 +667,8 @@ docker container run -it ubuntu /bin/bash
 
 - docker stop：支持“**优雅退出**”。先发送SIGTERM信号，在一段时间之后（10s）再发送SIGKILL信号。Docker内部的应用程序可以接收SIGTERM信号，然后做一些“退出前工作”，比如保存状态、处理当前请求等。
 - docker kill：发送SIGKILL信号，应用程序直接退出。
+
+注：kill和stop只是关闭了容器，使用`docker container ls`确实看不到了，但使用`docker container ls -a`仍可以看到那些被关闭了的容器，它们的状态为Exit，此时可以`docker rm <ID>`来删除这些容器，当然也可以使用`docker start <ID>`来重新开启这些容器。
 
 ### docker进入、退出容器
 
@@ -657,7 +695,7 @@ docker exec -it <容器ID/容器name> /bin/bash
 **退出容器命令**
 
 ```bash
-exit	# exit表示退出并停止容器
+exit	# exit表示退出并停止容器，当然只是停止，没有被remove
 ```
 
 或者
@@ -684,8 +722,6 @@ myubuntu.tar  node_modules  package-lock.json  samples-server-master
 ```
 
 这样将导出容器快照到本地文件。
-
-<hr/>
 
 可以使用 `docker import` 从**容器**快照文件中再**导入为镜像**，例如:
 
@@ -737,17 +773,23 @@ e7c41e1a1764   web1      0.00%     22.58MiB / 1.936GiB   1.14%     10MB / 785kB 
 
 ### 容器生命周期
 
-容器的生命周期，从**创建、运行、休眠，直至销毁**的整个过程。
+使用`docker container ls -a`可以看到所有的容器状态`STATUS`，总共的状态有7个。
 
-使用`docker container run ...` 创建一个容器。
+```  txt
+created（已创建）
+restarting（重启中）
+running（运行中）
+removing（迁移中）
+paused（暂停）
+exited（停止）
+dead（死亡）
+```
 
-可以根据需要多次停止、启动、暂停以及重启容器，并且这些操作执行得很快。
+这些状态中，最重要和常见的是除了restarting（重启中）和removing（迁移中）之外的五个状态，下面基本上网络上大部分的容器生命周期图都只包含五个状态：**created（已创建），running（运行中），paused（暂停），exited（停止），dead（死亡）**。
 
-停止容器就像停止虚拟机一样。尽管已经停止运行，容器的全部配置和内容仍然保存在 Docker 主机的文件系统之中，并且随时可以重新启动。
+![在这里插入图片描述](https://img-blog.csdnimg.cn/20210323152009626.png)
 
-使用`docker rm <container>` 销毁一个容器。
-
-
+图中可以看出各个状态转移使用的命令。
 
 ## 6. Dockerfile
 
@@ -776,13 +818,15 @@ RUN echo '<h1>Hello, Docker!</h1>' > /usr/share/nginx/html/index.html
 
 这个 Dockerfile 很简单，一共就两行。涉及到了两条指令，`FROM` 和 `RUN`。
 
-- `FROM`指定基础镜像
+### 语法
 
-    所谓定制镜像，那一定是以一个镜像为基础，在其上进行定制。就像我们之前运行了一个 `nginx` 镜像的容器，再进行修改一样，基础镜像是必须指定的。而 `FROM` 就是指定 **基础镜像**，因此一个 `Dockerfile` 中 `FROM` 是必备的指令，并且**必须是第一条指令**。
+#### `FROM`指定基础镜像
 
-    > 在 [Docker Hub](https://hub.docker.com/search?q=&type=image&image_filter=official) 上有非常多的高质量的官方镜像，有可以直接拿来使用的服务类的镜像，如 [`nginx`](https://hub.docker.com/_/nginx/)、[`redis`](https://hub.docker.com/_/redis/)、[`mongo`](https://hub.docker.com/_/mongo/)、[`mysql`](https://hub.docker.com/_/mysql/)、[`httpd`](https://hub.docker.com/_/httpd/)、[`php`](https://hub.docker.com/_/php/)、[`tomcat`](https://hub.docker.com/_/tomcat/) 等；也有一些方便开发、构建、运行各种语言应用的镜像，如 [`node`](https://hub.docker.com/_/node)、[`openjdk`](https://hub.docker.com/_/openjdk/)、[`python`](https://hub.docker.com/_/python/)、[`ruby`](https://hub.docker.com/_/ruby/)、[`golang`](https://hub.docker.com/_/golang/) 等。可以在其中寻找一个最符合我们最终目标的镜像为基础镜像进行定制。
-    >
-    > 如果没有找到对应服务的镜像，官方镜像中还提供了一些更为基础的操作系统镜像，如 [`ubuntu`](https://hub.docker.com/_/ubuntu/)、[`debian`](https://hub.docker.com/_/debian/)、[`centos`](https://hub.docker.com/_/centos/)、[`fedora`](https://hub.docker.com/_/fedora/)、[`alpine`](https://hub.docker.com/_/alpine/) 等，这些操作系统的软件库为我们提供了更广阔的扩展空间。
+所谓定制镜像，那一定是以一个镜像为基础，在其上进行定制。就像我们之前运行了一个 `nginx` 镜像的容器，再进行修改一样，基础镜像是必须指定的。而 `FROM` 就是指定 **基础镜像**，因此一个 `Dockerfile` 中 `FROM` 是必备的指令，并且**必须是第一条指令**。
+
+> 在 [Docker Hub](https://hub.docker.com/search?q=&type=image&image_filter=official) 上有非常多的高质量的官方镜像，有可以直接拿来使用的服务类的镜像，如 [`nginx`](https://hub.docker.com/_/nginx/)、[`redis`](https://hub.docker.com/_/redis/)、[`mongo`](https://hub.docker.com/_/mongo/)、[`mysql`](https://hub.docker.com/_/mysql/)、[`httpd`](https://hub.docker.com/_/httpd/)、[`php`](https://hub.docker.com/_/php/)、[`tomcat`](https://hub.docker.com/_/tomcat/) 等；也有一些方便开发、构建、运行各种语言应用的镜像，如 [`node`](https://hub.docker.com/_/node)、[`openjdk`](https://hub.docker.com/_/openjdk/)、[`python`](https://hub.docker.com/_/python/)、[`ruby`](https://hub.docker.com/_/ruby/)、[`golang`](https://hub.docker.com/_/golang/) 等。可以在其中寻找一个最符合我们最终目标的镜像为基础镜像进行定制。
+>
+> 如果没有找到对应服务的镜像，官方镜像中还提供了一些更为基础的操作系统镜像，如 [`ubuntu`](https://hub.docker.com/_/ubuntu/)、[`debian`](https://hub.docker.com/_/debian/)、[`centos`](https://hub.docker.com/_/centos/)、[`fedora`](https://hub.docker.com/_/fedora/)、[`alpine`](https://hub.docker.com/_/alpine/) 等，这些操作系统的软件库为我们提供了更广阔的扩展空间。
 
 - 指定空白镜像
 
@@ -797,59 +841,61 @@ RUN echo '<h1>Hello, Docker!</h1>' > /usr/share/nginx/html/index.html
 
     不以任何系统为基础，直接将可执行文件复制进镜像的做法并不罕见，对于 Linux 下静态编译的程序来说，并不需要有操作系统提供运行时支持，所需的一切库都已经在可执行文件里了，因此直接 `FROM scratch` 会让镜像体积更加小巧。使用 [Go 语言](https://golang.google.cn/) 开发的应用很多会使用这种方式来制作镜像，这也是为什么有人认为 Go 是特别适合容器微服务架构的语言的原因之一。
 
-- `RUN`执行命令
+#### `RUN`执行命令
 
-    `RUN` 指令是用来执行命令行命令的。由于命令行的强大能力，`RUN` 指令在定制镜像时是最常用的指令之一。其格式有两种：
+`RUN` 指令是用来执行命令行命令的。由于命令行的强大能力，`RUN` 指令在定制镜像时是最常用的指令之一。其格式有两种：
 
-    - *shell* 格式：`RUN <命令>`，就像直接在命令行中输入的命令一样。刚才写的 Dockerfile 中的 `RUN` 指令就是这种格式。
-    - *exec* 格式：`RUN ["可执行文件", "参数1", "参数2"]`，这更像是函数调用中的格式。
+- *shell* 格式：`RUN <命令>`，就像直接在命令行中输入的命令一样。刚才写的 Dockerfile 中的 `RUN` 指令就是这种格式。
+- *exec* 格式：`RUN ["可执行文件", "参数1", "参数2"]`，这更像是函数调用中的格式。
 
-    既然 `RUN` 就像 Shell 脚本一样可以执行命令，那么我们是否就可以像 Shell 脚本一样把每个命令对应一个 RUN 呢？比如这样：
+既然 `RUN` 就像 Shell 脚本一样可以执行命令，那么我们是否就可以像 Shell 脚本一样把每个命令对应一个 RUN 呢？比如这样：
 
-    ``` shell
-    FROM debian:stretch
-    
-    RUN apt-get update
-    RUN apt-get install -y gcc libc6-dev make wget
-    RUN wget -O redis.tar.gz "http://download.redis.io/releases/redis-5.0.3.tar.gz"
-    RUN mkdir -p /usr/src/redis
-    RUN tar -xzf redis.tar.gz -C /usr/src/redis --strip-components=1
-    RUN make -C /usr/src/redis
-    RUN make -C /usr/src/redis install
-    ```
+``` shell
+FROM debian:stretch
 
-    之前说过，**Dockerfile 中每一个指令都会建立一层**，`RUN` 也不例外。每一个 `RUN` 的行为，就和刚才我们手工建立镜像的过程一样：新建立一层，在其上执行这些命令，执行结束后，`commit` 这一层的修改，构成新的镜像。
+RUN apt-get update
+RUN apt-get install -y gcc libc6-dev make wget
+RUN wget -O redis.tar.gz "http://download.redis.io/releases/redis-5.0.3.tar.gz"
+RUN mkdir -p /usr/src/redis
+RUN tar -xzf redis.tar.gz -C /usr/src/redis --strip-components=1
+RUN make -C /usr/src/redis
+RUN make -C /usr/src/redis install
+```
 
-    而上面的这种写法，创建了 7 层镜像。这是完全没有意义的，而且很多运行时不需要的东西，都被装进了镜像里，比如编译环境、更新的软件包等等。结果就是产生非常臃肿、非常多层的镜像，不仅仅增加了构建部署的时间，也很容易出错。 这是很多初学 Docker 的人常犯的一个错误。
+之前说过，**Dockerfile 中每一个指令都会建立一层**，`RUN` 也不例外。每一个 `RUN` 的行为，就和刚才我们手工建立镜像的过程一样：新建立一层，在其上执行这些命令，执行结束后，`commit` 这一层的修改，构成新的镜像。
 
-    Union FS 是有最大层数限制的，比如 AUFS，曾经是最大不得超过 42 层，现在是不得超过 127 层。
+而上面的这种写法，创建了 7 层镜像。这是完全没有意义的，而且很多运行时不需要的东西，都被装进了镜像里，比如编译环境、更新的软件包等等。结果就是产生非常臃肿、非常多层的镜像，不仅仅增加了构建部署的时间，也很容易出错。 这是很多初学 Docker 的人常犯的一个错误。
 
-    上面的 `Dockerfile` 正确的写法应该是这样：
+Union FS 是有最大层数限制的，比如 AUFS，曾经是最大不得超过 42 层，现在是不得超过 127 层。
 
-    ``` dockerfile
-    FROM debian:stretch
-    
-    RUN set -x; buildDeps='gcc libc6-dev make wget' \
-        && apt-get update \
-        && apt-get install -y $buildDeps \
-        && wget -O redis.tar.gz "http://download.redis.io/releases/redis-5.0.3.tar.gz" \
-        && mkdir -p /usr/src/redis \
-        && tar -xzf redis.tar.gz -C /usr/src/redis --strip-components=1 \
-        && make -C /usr/src/redis \
-        && make -C /usr/src/redis install \
-        && rm -rf /var/lib/apt/lists/* \
-        && rm redis.tar.gz \
-        && rm -r /usr/src/redis \
-        && apt-get purge -y --auto-remove $buildDeps
-    ```
+上面的 `Dockerfile` 正确的写法应该是这样：
 
-    首先，之前所有的命令只有一个目的，就是编译、安装 redis 可执行文件。因此没有必要建立很多层，这只是一层的事情。因此，这里没有使用很多个 `RUN` 一一对应不同的命令，而是仅仅使用一个 `RUN` 指令，并使用 `&&` 将各个所需命令串联起来。将之前的 7 层，简化为了 1 层。在撰写 Dockerfile 的时候，要经常提醒自己，这并不是在写 Shell 脚本，而是在定义每一层该如何构建。
+``` dockerfile
+FROM debian:stretch
 
-    并且，这里为了格式化还进行了换行。Dockerfile 支持 Shell 类的行尾添加 `\` 的命令换行方式，以及行首 `#` 进行注释的格式。良好的格式，比如换行、缩进、注释等，会让维护、排障更为容易，这是一个比较好的习惯。
+RUN set -x; buildDeps='gcc libc6-dev make wget' \
+&& apt-get update \
+&& apt-get install -y $buildDeps \
+&& wget -O redis.tar.gz "http://download.redis.io/releases/redis-5.0.3.tar.gz" \
+&& mkdir -p /usr/src/redis \
+&& tar -xzf redis.tar.gz -C /usr/src/redis --strip-components=1 \
+&& make -C /usr/src/redis \
+&& make -C /usr/src/redis install \
+&& rm -rf /var/lib/apt/lists/* \
+&& rm redis.tar.gz \
+&& rm -r /usr/src/redis \
+&& apt-get purge -y --auto-remove $buildDeps
+```
 
-    此外，还可以看到这一组命令的最后添加了清理工作的命令，删除了为了编译构建所需要的软件，清理了所有下载、展开的文件，并且还清理了 `apt` 缓存文件。这是很重要的一步，我们之前说过，**镜像是多层存储，每一层的东西并不会在下一层被删除**，会一直跟随着镜像。因此镜像构建时，一定要确保每一层只添加真正需要添加的东西，**任何无关的东西都应该清理掉**。
+首先，之前所有的命令只有一个目的，就是编译、安装 redis 可执行文件。因此没有必要建立很多层，这只是一层的事情。因此，这里没有使用很多个 `RUN` 一一对应不同的命令，而是仅仅使用一个 `RUN` 指令，并使用 `&&` 将各个所需命令串联起来。将之前的 7 层，简化为了 1 层。在撰写 Dockerfile 的时候，要经常提醒自己，这并不是在写 Shell 脚本，而是在定义每一层该如何构建。
 
-#### 构建镜像
+并且，这里为了格式化还进行了换行。Dockerfile 支持 Shell 类的行尾添加 `\` 的命令换行方式，以及行首 `#` 进行注释的格式。良好的格式，比如换行、缩进、注释等，会让维护、排障更为容易，这是一个比较好的习惯。
+
+此外，还可以看到这一组命令的最后添加了清理工作的命令，删除了为了编译构建所需要的软件，清理了所有下载、展开的文件，并且还清理了 `apt` 缓存文件。这是很重要的一步，我们之前说过，**镜像是多层存储，每一层的东西并不会在下一层被删除**，会一直跟随着镜像。因此镜像构建时，一定要确保每一层只添加真正需要添加的东西，**任何无关的东西都应该清理掉**。
+
+
+
+### 构建镜像
 
 现在我们明白了这个 Dockerfile 的内容，那么让我们来构建这个镜像吧。
 
@@ -1032,7 +1078,7 @@ $ docker volume inspect my-vol
 $ docker volume rm my-vol
  ```
 
-`数据卷` 是被设计用来持久化数据的，它的生命周期独立于容器，Docker 不会在容器被删除后自动删除 `数据卷`，并且也不存在垃圾回收这样的机制来处理没有任何容器引用的 `数据卷`。如果需要在删除容器的同时移除数据卷。可以在删除容器的时候使用 `docker rm -v` 这个命令。
+`数据卷` 是被设计用来**持久化数据**的，它的生命周期独立于容器，Docker 不会在容器被删除后自动删除 `数据卷`，并且也不存在垃圾回收这样的机制来处理没有任何容器引用的 `数据卷`。如果需要在删除容器的同时移除数据卷。可以在删除容器的时候使用 `docker rm -v` 这个命令。
 
 无主的数据卷可能会占据很多空间，要清理请使用以下命令
 
@@ -1122,6 +1168,8 @@ index.html  test1.py
 
 使用 `--mount` 不仅可以挂载数据卷，还可以指定挂载一个**本地主机的目录**到容器中去。
 
+挂载主机目录后就相当于将容器内外的这样的目录进行同步映射了，在容器内外对对应目录内的东西进行修改都可以在容器内外同步看到。但是要注意内外新增文件的权限。
+
 ``` shell
 root@VM-8-17-ubuntu:/home/ubuntu/mydocker/webapp# docker run -d -p 8003:80 \
 > --name web3 \
@@ -1150,6 +1198,10 @@ root@VM-8-17-ubuntu:/home/ubuntu/mydocker/webapp# docker run -d -p 8003:80 \
 /usr/share/nginx/html # touch new.txt
 touch: new.txt: Read-only file system
 ```
+
+### 挂载目录后的权限问题
+
+
 
 
 
@@ -1240,7 +1292,7 @@ docker run --name webserver -d -p 80:80 nginx
 
 - 映射所有接口地址
 
-使用 `hostPort:containerPort` 格式本地的 80 端口映射到容器的 80 端口，可以执行
+使用 `hostPort:containerPort` 格式将本地的 80 端口映射到容器的 80 端口，可以执行
 
 ``` shell
 $ docker run -d -p 80:80 nginx
@@ -1573,17 +1625,17 @@ Docker提供了多种网络类型：
 - **host：** Docker容器与宿主机共享网络，容器不会有自己的Network-Namesapce，与宿主机不进行网络隔离。
 - **overlay：** 将多个Docker Daemon连接到一起。
 - **IPvlan：** 用户可以完全控制IPv4和IPv6寻址。支持对二层VLAN tag和三层网络路由的完全控制。
-- **macvlan:** 支持为容器设置mac地址，让Docker daemon能够基于Mac地址路由流量。
+- **macvlan:** 支持为容器设置mac地址，让Docker daemon能够基于Mac地址路由流量。**可以使容器直连物理网络，与宿主机同属一个局域网**
 - **none:** 这种模式下的容器禁用所有网络。
 - **Network plugins:** 安装使用第三方的Docker网络插件。
 
 其中常见的两种：bridge及host
 
-- **Bridge**
+#### Bridge
 
-    **Bridge（网桥）是Docker默认使用的网络类型**，用于**同一主机上**的docker容器相互通信，**网络中的所有容器可以通过IP互相访问，连接到同一个网桥的docker容器可以相互通信**。Bridge网络通过网络接口`docker0` 与主机桥接，启动docker时就会自动创建，新创建的容器默认都会自动连接到这个网络，可以在主机上通过`ifconfig docker0`查看到该网络接口的信息
+**Bridge（网桥）是Docker默认使用的网络类型**，用于**同一主机上**的docker容器相互通信，**网络中的所有容器可以通过IP互相访问，连接到同一个网桥的docker容器可以相互通信**。Bridge网络通过网络接口`docker0` 与主机桥接，启动docker时就会自动创建，新创建的容器默认都会自动连接到这个网络，可以在主机上通过`ifconfig docker0`查看到该网络接口的信息
 
-    ![](https://upload-images.jianshu.io/upload_images/22206660-0386dd7d38199d27.png?imageMogr2/auto-orient/strip)
+![](https://upload-images.jianshu.io/upload_images/22206660-0386dd7d38199d27.png?imageMogr2/auto-orient/strip)
 
 ```  bash
 root@VM-8-17-ubuntu:/home/ubuntu# ifconfig docker0
@@ -1592,9 +1644,37 @@ docker0: flags=4163<UP,BROADCAST,RUNNING,MULTICAST>  mtu 1500
         inet6 fe80::42:88ff:fed9:a67d  prefixlen 64  scopeid 0x20<link>
 ```
 
-- **Host**
+#### Host
 
-  Host模式下，容器的网络接口不与宿主机网络隔离。**在容器中监听相应端口的应用能够直接被从宿主机访问，即不需要做端口映射**。host网络仅支持Linux，host网络没有与宿主机网络隔离，可能引发**安全隐患或端口冲突**
+Host模式下，容器的网络接口不与宿主机网络隔离。**在容器中监听相应端口的应用能够直接被从宿主机访问，即不需要做端口映射**。host网络仅支持Linux，host网络没有与宿主机网络隔离，可能引发**安全隐患或端口冲突**
+
+#### macvlan
+
+有些容器开的服务需要让局域网内的其他主机能够获取，因此我们需要一种跨主机的网络模式，可以使容器具有独立IP使其可以被访问。
+
+使用下面命令创建一个macvlan网络：
+
+``` shell
+docker network create -d macvlan --subnet=192.168.199.0/24 --gateway=192.168.199.1 -o parent=eno1 mac1
+```
+
+命令说明：
+
+- `-d` ：指定docker网络driver为macvlan
+- `--subnet`：指定macvlan所在的网络
+- `--gateway`：指定网络的网关
+- `-o parent` ： 指定用来分配macvlan的物理网卡，上面的`subnet`和`geteway`需要根据此网卡设置
+- `mac1`：指定此网络的名字
+
+接着我们就可以使用此网络来开容器了。使用如下命令开一个试试
+
+``` shell
+docker run -it --name c1 --ip =192.168.199.200 --network mac1 alpine
+```
+
+如果不是用--ip指定IP地址，就会在局域网IP地址池里按序分配一个。
+
+
 
 ### 宿主机访问容器应用
 

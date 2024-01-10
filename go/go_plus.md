@@ -137,6 +137,28 @@ func main() {
 
 将上面的代码编译成`client`或`client.exe`可执行文件，先启动server端再启动client端，在client端输入任意内容回车之后就能够在server端看到client端发送的数据，从而实现TCP通信。
 
+**注意：**
+
+做TCP c/s模型连接实验时，c端s端连接成功后，我们想结束实验，于是分别在c端s端的shell窗口按下了ctrl+c。但此时机器中的服务端机器中的连接并没有直接断开而是进入`TIME_WAIT`阶段。如下所示：
+
+``` shell
+tcp        0      0 127.0.0.1:45538         127.0.0.1:8888          TIME_WAIT  
+```
+
+在Linux中，默认的TCP连接超时等待时间是60秒，可以通过调整操作系统的设置来更改TCP连接超时等待时间。编辑`/etc/sysctl.conf`文件，在文件末尾添加`net.ipv4.tcp_fin_timeout = <value>`来修改TCP连接超时等待时间。
+
+``` shell
+cat /proc/sys/net/ipv4/tcp_fin_timeout
+60
+# 查看到是60TCP断开连接
+
+echo 20 > /proc/sys/net/ipv4/tcp_fin_timeout # 修改
+```
+
+修改后，保存文件并使用`sudo sysctl -p`重新加载`sysctl`配置。但最好不要改。
+
+
+
 #### TCP黏包
 
 **为什么会出现粘包**

@@ -155,6 +155,8 @@ nothing to commit, working tree clean
 命令`git checkout -- file`也可立马丢弃 **工作区** 的修改：
    - `git checkout -- file`命令中的`--`很重要，没有`--`，就变成了“切换到另一个分支”的命令，我们在后面的分支管理中会再次遇到`git checkout`命令。
 ### 丢弃暂存区的修改
+我们使用`git add .`后想要撤销此操作，可以使用`git reset`将刚存入暂存区的内容重新放入工作区。
+
 新版命令`git restore --staged <file>` 更容易理解，记住这个就好
 
 命令`git reset HEAD <file>`可以把暂存区的修改撤销掉（unstage），重新放回工作区：
@@ -191,7 +193,7 @@ nothing to commit, working tree clean
   - 删除命令【其实就是删除.ssh这个隐藏目录目录】 `rm -rf .ssh`
   - 新生成SSH-key【替换成你自己的邮箱】`ssh-keygen -t rsa -C "xxx@xx.com"`
   - 键入命令后，会让你输入密码用来保护你的密钥等，总共三次需要输入的，你都直接三次回车就好！！
-  - 生成后，会在 /root 目录下，也就是当前用户的目录下，生成一个.ssh隐藏目录，目录中会有【id_rsa】和【id_rsa.pub】两个文件，一个是私钥，一个是公钥。你现在就可以复制使用了
+  - 生成后，会在 /root 目录下，也就是当前用户的目录下，生成一个.ssh隐藏目录，目录中会有【id_rsa】和【id_rsa.pub】两个文件，一个是私钥，一个是公钥。你现在就可以复制公钥使用了
   
 - 第2步：登陆[GitHub](https://github.com/)，点击头像`setting`，“`SSH and GPG Keys`”页面：然后，点“`New SSH Key`”，填上任意Title，在Key文本框里粘贴`id_rsa.pub`文件的内容，最后add即可
 
