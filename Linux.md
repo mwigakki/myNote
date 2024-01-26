@@ -1736,14 +1736,14 @@ systemd+ 2687668  0.1  0.4  53996  8696 ?        Ssl  Jun30  15:08 redis-server 
 
 top 命令的基本格式如下：
 
-`[root@localhost ~]#top [选项]`
+`[root@localhost ~]#top [选项]`，进入交互界面，接下来按1，查看每个cpu占用
 
 选项：
 
 ``` 
 -d 秒数：指定 top 命令每隔几秒更新。默认是 3 秒；
 -b：使用批处理模式输出。一般和"-n"选项合用，用于把 top 命令重定向到文件中；
--n 次数：指定 top 命令执行的次数。一般和"-"选项合用；
+-n 次数：指定 top 命令执行的次数。一般和"-b"选项合用；
 -p 进程PID：仅查看指定 ID 的进程；
 -s：使 top 命令在安全模式中运行，避免在交互模式中出现错误；
 -u 用户名：只监听某个用户的进程；
@@ -2932,23 +2932,23 @@ uname -a
 更新操作：
 
 ```sh
-sudo apt-get upgrade 
-sudo apt-get update
+sudo apt upgrade 
+sudo apt update
 ```
 
 然后就是下载安装一系列的软件，为编译内核做准备
 
 ``` sh
-sudo apt-get install libncurses5-dev openssl libssl-dev 
-sudo apt-get install build-essential openssl 
-sudo apt-get install pkg-config 
-sudo apt-get install libc6-dev 
-sudo apt-get install bison 
-sudo apt-get install flex 
-sudo apt-get install libelf-dev 
-sudo apt-get install zlibc minizip 
-sudo apt-get install libidn11-dev libidn11
-sudo apt-get install dwarves
+sudo apt install libncurses5-dev openssl libssl-dev 
+sudo apt install build-essential openssl 
+sudo apt install pkg-config 
+sudo apt install libc6-dev 
+sudo apt install bison 
+sudo apt install flex 
+sudo apt install libelf-dev 
+sudo apt install zlibc minizip 
+sudo apt install libidn11-dev libidn11
+sudo apt install dwarves
 ```
 
 #### 3.解压内核到指定位置
@@ -3319,12 +3319,7 @@ shell关闭了，变量也就失效了，再打开新shell时就没有这个变�
 
   在虚拟机桌面按Ctrl+Alt+T，出现终端窗口，然后在终端中输入命令`xrandr -s 1280x800`（这里是x 诶刻斯），暂时改变虚拟机的分辨率。
 
-# 16. 正则表达式
-
-
-
-
-
+# 16. Linux配置IP地址
 
 1 打开此文件：
 
@@ -3416,10 +3411,6 @@ ntpdate  0.cn.pool.ntp.org
 ```
 
 时间服务器分为两种，一种是一级时间服务器，另外一种是二级时间服务器。我们如果是同步自己的服务器的时间，那么选择二级时间服务器，因为一级时间服务器是为二级时间服务器提供时间校对服务器，我们尽量不要增加一级服务器的压力。这种层级的概念和DNS的层级概念是一致的。
-
-
-
-
 
 
 
@@ -4011,10 +4002,6 @@ lscpu # 简略
 ```
 
 我们看`43:00.0 VGA compatible controller: NVIDIA Corporation Device 24b0 (rev a1)`这一行就行，在[此网站](http://pci-ids.ucw.cz/mods/PC/10de?action=help?help=pci)输入四位代码获取显卡型号。可以看到服务器上的显卡名称为**`Name: GA104GL [RTX A4000]`** 。
-
-`
-
- 
 
 
 
