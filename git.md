@@ -174,7 +174,7 @@ nothing to commit, working tree clean
 
 自行注册GitHub账号。由于你的本地Git仓库和GitHub仓库之间的传输是通过SSH加密的，所以，需要一点设置：
 
-- 第1步：创建SSH Key。在用户主目录（windows的.ssh目录c盘：/user(或者是用户)/你的用户名(你自己之前起过的)/.ssh）下，看看有没有.ssh目录，如果有，再看看这个目录下有没有id_rsa和id_rsa.pub这两个文件，如果已经有了，可直接跳到下一步。如果没有，打开Shell（Windows下打开Git Bash或CMD），创建SSH Key：
+- 第1步：创建SSH Key。在用户主目录（windows的.ssh目录在`c盘:/user(或者是用户)/你的用户名/.ssh`下，看看有没有.ssh目录，如果有，再看看这个目录中有没有`id_rsa`和`id_rsa.pub`这两个文件，如果已经有了，可直接跳到下一步。如果没有，打开Shell（Windows下打开Git Bash或CMD），创建SSH Key：
   
   ```bash
   ssh-keygen -t rsa -C "youremail@example.com"
@@ -183,11 +183,12 @@ nothing to commit, working tree clean
   > 注意：运行此命令的用户需要与之后拉取远程仓库的用户一致
   
   你需要把邮件地址换成你自己的邮件地址，然后一路回车，使用默认值即可，无需密码
+  
   如果一切顺利的话，可以在用户主目录里找到.ssh目录，里面有id_rsa和id_rsa.pub两个文件，这两个就是SSH Key的秘钥对，**id_rsa是私钥**，不能泄露出去，id_rsa.pub是公钥，可以放心地告诉任何人。
   
 - 第一步（2）：在linux下：
   
-  - 首先 `cd /root`
+  - 首先 `cd ~`
   - 查看是否已经存在SSH-Key【其实就是查看.ssh这个隐藏目录是否存在】` ls -al ~/.ssh`
   - 如果没有就新建，如果有，建议删除再新建，
   - 删除命令【其实就是删除.ssh这个隐藏目录目录】 `rm -rf .ssh`
@@ -915,14 +916,12 @@ Github总是连不上？gitee私有仓库有人数限制？那就只能自己搭
 
 [搭建Git服务器 - 廖雪峰的官方网站 (liaoxuefeng.com)](https://www.liaoxuefeng.com/wiki/896043488029600/899998870925664)
 
-搭建Git服务器需要准备一台运行Linux的机器，强烈推荐用Ubuntu或Debian，这样，通过几条简单的`apt`命令就可以完成安装。
-
 假设你已经有`sudo`权限的用户账号，下面，正式开始安装。
 
 #### 1、安装`git`：
 
 ```bash
-sudo apt-get install git
+sudo apt install git
 ```
 
 #### 2、创建用户
@@ -932,7 +931,7 @@ sudo apt-get install git
 ```bash
 sudo groupadd git
 sudo useradd git -g git
-passwd git	# 给git设置密码
+# passwd git	# 给git设置密码
 ```
 
 更多：[Ubuntu 创建、管理用户、组和git库、项目_bon_ami的博客-CSDN博客_ubuntu创建bendi新用户](https://blog.csdn.net/bon_ami/article/details/45538777)
@@ -943,12 +942,12 @@ passwd git	# 给git设置密码
 
 ```bash
 touch authorized_keys
-chmod 644 authorized_keys
+chmod 644 authorized_keys 
 ```
 
 `id_rsa.pub`文件位置如下：
 
-> id_rsa[私钥](https://so.csdn.net/so/search?q=私钥&spm=1001.2101.3001.7020)，id_rsa.pub公钥
+> id_rsa为私钥，id_rsa.pub为公钥，没有的话就初始化一个
 >
 > - windows：C:\Users\ \[当前用户] \\.ssh
 >
@@ -956,7 +955,7 @@ chmod 644 authorized_keys
 
 #### 4、初始化Git仓库
 
-首先我们选定一个目录作为Git仓库，假定是`/home/gitrepo/runoob.git`，在`/home/gitrepo`目录下输入命令:
+首先我们选定一个目录作为Git仓库，假定是`/home/gitrepo/mwigakki.git`，在`/home/gitrepo`目录下输入命令:
 
 ```bash
 cd /home
@@ -979,12 +978,28 @@ Initialized empty Git repository in /home/gitrepo/mwigakki.git/
 sudo chown -R git:git mwigakki.git
 ```
 
-#### 5、克隆仓库
+#### 5、禁用git的shell登录
+
+出于安全考虑，第二步创建的git用户不允许登录shell，这可以通过编辑`/etc/passwd`文件完成。找到类似下面的一行：
+
+```
+git:x:1001:1001:,,,:/home/git:/bin/bash
+```
+
+改为：
+
+```
+git:x:1001:1001:,,,:/home/git:/usr/bin/git-shell
+```
+
+这样，`git`用户可以正常通过ssh使用git，但无法登录shell，因为我们为`git`用户指定的`git-shell`每次一登录就自动退出。
+
+#### 6、克隆仓库
 
 最后在自己的电脑运行：
 
 ```bash
-$ git clone git@117.72.17.139:/home/gitrepo/mwigakki.git
+$ git clone git@[服务器IP]:/home/gitrepo/mwigakki.git
 Cloning into 'mwigakki'...
 warning: You appear to have cloned an empty repository.
 Checking connectivity... done.
@@ -994,9 +1009,9 @@ Checking connectivity... done.
 
 接下来的工作就是推送拉取之类的，和之前的一样，只是可能要输密码。
 
-#### 6、推送到远端
+#### 7、推送到远端
 
-对于本地已有的仓库准备推送到自己的git服务器，先把本机的`id_rsa.pub`中的key文本添加到github 的sshkey中，然后在服务器上建一个相应的仓库（不要直接mkdir，需要像上面第4步初始化一个仓库），再添加远程仓库地址即可。（远程仓库和本地仓库名字可以不一样）
+对于本地已有的仓库准备推送到自己的git服务器，先把本机的`id_rsa.pub`中的key文本添加到github (或自己的远程地址)的sshkey中，然后在服务器上建一个相应的仓库（不要直接mkdir，需要像上面第4步初始化一个仓库），再添加远程仓库地址即可。（远程仓库和本地仓库名字可以不一样）
 
 可能需要先将github的地址删掉再加上自己的，命令如下：
 
