@@ -75,6 +75,7 @@ git --version
 `git log`命令显示从最近到最远的提交日志 
 如果嫌输出信息太多，看得眼花缭乱的，可以试试加上`--pretty=oneline`参数：即 `git log --pretty=oneline`
 该命令最主要是用来看版本号的，下面是一些示例：
+
 ```  bash
 76c1fafea484761fc13ad96062e5baa5751863f8 (HEAD -> master) add log
 f680593ab67427a0ecc9feb2e06296dd39d09bde add some analogy rhetoric
@@ -86,11 +87,11 @@ d9677798cd9c97b0ba6a3ba6d695c3e06cb78c3a first time commit
 ```
 
 ### 回退
-```
-首先，Git必须知道当前版本是哪个版本，
-在Git中，用HEAD表示当前版本，上一个版本就是HEAD^，上上一个版本就是HEAD^^，
-当然往上10个版本写10个^比较容易数不过来，所以写成HEAD~10。
-```
+
+
+首先，Git必须知道当前版本是哪个版本，在Git中，**用HEAD表示当前版本，也表示当前位于的分支**，上一个版本就是HEAD^，上上一个版本就是HEAD^^，当然往上10个版本写10个^比较容易数不过来，所以写成HEAD~10。
+
+
 使用命令：`git reset --hard HEAD^` 回退到上一个版本 ,(在cmd下要写两个^, 因为cmd中^是转义符号，相当于linux的\ )
 
 也可使用命令：`git reset --hard <版本号>` , 版本号不必输全，输入前几个能够唯一分辨就行
@@ -221,12 +222,28 @@ nothing to commit, working tree clean
 
 #### 推送到远程
 从现在起，只要本地作了提交，就可以通过命令：
-> git push <远程仓库名> <要推送的分支>
+
+``` git
+git push <远程仓库名> <要推送的分支>
 
 例
-> git push origin master
+
+git push origin master
+```
 
 把本地master分支的最新修改推送至GitHub。
+
+如果单独使用`git push`时，表示将当前分支推送到远程的同名分支。当然这需要保证远程有这个分支，不然推送报错。
+
+如果在本地新建了一个分支，需要推送到远程，可以使用如下命令。
+
+``` shell
+git push --set-upstream origin [分支名]
+# 或
+git push origin [分支名]:[分支名] # 这个命令如果远程仓库中不存在该分支，Git 将会自动创建该分支。
+```
+
+
 
 #### SSH警告
 当你第一次使用Git的clone或者push命令连接GitHub时，会得到一个警告：
@@ -252,8 +269,10 @@ Git会输出一个警告，告诉你已经把GitHub的Key添加到本机的一�
 ### 删除远程库
 
 如果添加的时候地址写错了，或者就是想删除远程库，可以用git remote rm <name>命令。使用前，建议先用git remote -v查看远程库信息
-> git remote -v：
+
 ``` bash
+git remote -v
+
 origin  git@github.com:michaelliao/learn-git.git (fetch)
 origin  git@github.com:michaelliao/learn-git.git (push)
 ```
@@ -324,10 +343,10 @@ Fast-forward
 **下面是具体命令：**
 
 - 查看当前所有分支：`git branch` , 当前分支前面会标一个*号。
-- 创建一个从HEAD处创建一个新分支：`git branch dev`
+- 创建一个从HEAD处创建一个新分支：`git branch dev` （它表示从当前分支创建一个分支，并不是默认从master分支）
 - 切换分支：`git switch dev`或`git checkout dev`
 - 创建并切换分支：`git switch -c dev`或`git checkout -b dev`，切换分支后进行相应的修改和提交commit
-- 将指定分支合并到**当前分支**： `git merge <分支名>`
+- 将指定分支合并到**当前分支**： `git merge <分支名>`，此时HEAD需要位于主分支或合并后保留的分支。注意：**此时master 分支就会新增一个-m为 “merge ...”的提交，而被合并的分支不会有任何变化。**
 - 删除分支：`git branch -d dev` , `-D`表示强制刪除
 
 注：在dev分支上修改了文件，但是并没有执行git add. git commit命令，然后切换到master分支，仍然能看到dev分支的改动。只是因为所有的修改还只是在工作区，连暂存区都不是，git都还不知道有任何的修改。
@@ -338,9 +357,10 @@ Fast-forward
 
 对文件进行修改，然后再`feature1`分支上提交。
 切换到`master`分支
+
 > git switch master
 
-再对文件进行修改并提交。
+再对同一文件进行修改并提交。
 现在，master分支和feature1分支各自都分别有新的提交，变成了这样：
 ![分支冲突](https://www.liaoxuefeng.com/files/attachments/919023000423040/0)
 
@@ -351,10 +371,10 @@ Auto-merging readme.txt
 CONFLICT (content): Merge conflict in readme.txt
 Automatic merge failed; fix conflicts and then commit the result.
 ```
-果然冲突了！Git告诉我们，readme.txt文件存在冲突，必须手动解决冲突后再提交。git status也可以告诉我们冲突的文件
+果然冲突了！Git告诉我们，readme.txt文件存在冲突，必须手动解决冲突后再提交。这时我们查看master 的分支情况也能发现，master并没有新增要给名叫 “merge ...”的分支，而我们查看出现冲突的文件，我们发现git将出现分支的内容全部放入当前分支的工作区了。git status也可以告诉我们冲突的文件
 
 ``` bash
-git status
+$ git status
 On branch master
 Your branch is ahead of 'origin/master' by 2 commits.
   (use "git push" to publish your local commits)
@@ -407,8 +427,9 @@ git log --graph --pretty=oneline --abbrev-commit
 通常，合并分支时，如果可能，Git会用`Fast forward`模式，但这种模式下，删除分支后，会丢掉分支信息。
 
 如果要强制禁用`Fast forward`模式，Git就会在`merge`时生成一个新的`commit`，这样，从分支历史上就可以看出分支信息。
-下面我们实战一下`--no-ff`方式的g`it merge`：
+下面我们实战一下`--no-ff`方式的`git merge`：
 首先，仍然创建并切换dev分支：
+
 > git switch -c dev
 > Switched to a new branch 'dev'
 
@@ -465,9 +486,6 @@ $ git log --graph --pretty=oneline --abbrev-commit
 
 所以，团队合作的分支看起来就像这样：
 ![合作开发](https://www.liaoxuefeng.com/files/attachments/919023260793600/0)
-
-dev分支的内容
-dev，然后使用fast forward方式提交
 
 ### bug分支
 软件开发中，bug就像家常便饭一样。有了bug就需要修复，在Git中，由于分支是如此的强大，所以，每个bug都可以通过一个新的临时分支来修复，修复后，合并分支，然后将临时分支删除。
@@ -562,9 +580,11 @@ stash@{0}: WIP on dev: f52c633 add merge
 
 有！
 
+### 复制单笔提交到分支
+
 同样的bug，要在dev上修复，我们只需要把4c805e2 fix bug 101这个提交所做的修改“复制”到dev分支。注意：我们只想复制4c805e2 fix bug 101这个提交所做的修改，并不是把整个master分支merge过来。
 
-为了方便操作，Git专门提供了一个`cherry-pick`命令，让我们能复制一个特定的提交到当前分支：
+为了方便操作**，Git专门提供了一个`cherry-pick`命令**，**让我们能复制一个特定的提交到当前分支**：
 ``` bash
 git branch
 * dev
@@ -579,6 +599,8 @@ $ git cherry-pick 4c805e2
 Git自动给dev分支做了一次提交，注意这次提交的commit是1d4b803，它并不同于master的4c805e2，因为这两个commit只是改动相同，但确实是两个不同的commit。用git cherry-pick，我们就不需要在dev分支上手动再把修bug的过程重复一遍。
 
 有些聪明的童鞋会想了，既然可以在master分支上修复bug后，在dev分支上可以“重放”这个修复过程，那么直接在dev分支上修复bug，然后在master分支上“重放”行不行？当然可以，不过你仍然需要git stash命令保存现场，才能从dev分支切换到master分支。
+
+`cherry-pick`命令当然也可能冲突，自己解决即可。
 
 
 ### Feature分支
@@ -634,7 +656,9 @@ Deleted branch feature-vulcan (was 287773e).
 
 现在，你的小伙伴要在dev分支上开发，就必须创建远程origin的dev分支到本地，于是他用这个命令创建本地dev分支：
 
-> git switch -c dev origin/dev
+``` git
+git switch -c dev origin/dev
+```
 
 现在，他就可以在dev上继续修改，然后，时不时地把dev分支push到远程：
 

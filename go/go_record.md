@@ -654,7 +654,7 @@ Go语言中要定义一个多行字符串时，就必须使用`反引号`字符�
 
 ```
 
-反引号间换行将被作为字符串中的换行，但是所有的转义字符均无效，文本将会原样输出。
+反引号间换行将被作为字符串中的换行，但是所有的转义字符均无效，文本将会原样输出。因此写正则表达式时通常都用反引号。
 
 ### 字符串的常用操作
 
@@ -5181,12 +5181,13 @@ import _ "github.com/go-sql-driver/mysql"
 ### package使用总结
 
 - 包的位置应在 `<GOPATH>\src\`文件夹中。
-- 每个go程序都需要有一个名为main的包（即使用package main 开头的go文件，这个go文件里必须要有main函数，这里才是程序入口）。
+- 而在不在 `<GOPATH>\src\`文件夹而在其他地方写go程序也可以，此时这个程序中不同目录层级要相互引用包时就是用`import [相对路径]`，如`import ./subfolder1/pkg`。（即使vscode显示这个import语法有误也没关系，它还是可以运行）
+- 每个go程序都需要有一个名为main的包（即使用package main 开头的go文件，这个go文件里必须要有main函数，这里才是程序入口）。且一个go 程序只能有一个main函数程序入口。
 - import 后可跟别名alias，可自定义，调用时写`<alias>.函数名()`，对于自定义的包强烈推荐加别名，且建议和包名相同。
 - **别名设为` .`时**， 相当于将该包中的函数和类型直接放在本文件中了。其中的函数可直接调用
 - **import包文件夹名（路径）**（而不是自己在go文件中写的package name），就会import此包文件夹下的所有*.go文件，即包文件夹中的所有可见的函数都可用。
 - 在同一包文件夹下的不同*.go文件中第一行的 package <包名> 必须相同，强烈建议和包文件夹名相同。
-- 只能 import包文件夹，不能以 `/` 结尾，也不能是具体的 go 文件
+- **只能 import包文件夹，不能以 `/` 结尾，也不能是具体的 go 文件**
 - import 只会引用当前文件夹下的所有go文件，**不会递归引用其中的文件夹**。要引用其中的文件夹，需再次import
 - `import “fldr_pkg1”` 如果fldr_pkg1文件夹中的go文件在开头写的是`package pkg1`，import后也要使用`pkg1.XX`来调用其中的函数。
 
@@ -5307,6 +5308,10 @@ func main() {
 #### bufio读取文件
 
 bufio是在file的基础上封装了一层API，支持更多的功能，且更快。
+
+我们一般都用这个api来读取文件。
+
+- **读文本文件**就像这样一行一行读即可
 
 ``` go
 func bufioRead() {
@@ -5501,6 +5506,74 @@ func readFileFromOffset() {
 		return
 	}
 	fmt.Printf("%v", ret)
+}
+```
+
+### 读取文件夹
+
+``` go
+package main
+
+import (
+	"fmt"
+	"os"
+	"log"
+)
+
+func main() {
+	dir := "<文件夹路径>" // 替换为您要读取的文件夹路径
+
+	files, err := os.ReadDir(dir)
+	if err != nil {
+		log.Fatal(err)
+	}
+ 
+	for _, file := range files {
+        // 此file是 fs.DirEntry 类型，有`Info`,`IsDir`,`Name`,`Type`等方法。
+		fmt.Println(file.Name())
+        // 要分别读取各个文件，需要构建完整的文件路径，在进行读取。
+        filePath := 
+	}
+}
+```
+
+这里得到`file`是`fs.DirEntry`类型，file有`Info`,`IsDir`,`Name`,`Type`等方法。
+
+下面这个方法可以获取所有的文件内容。
+
+``` go
+package main
+
+import (
+	"fmt"
+	"io/ioutil"
+	"os"
+	"path/filepath"
+)
+
+func main() {
+	root := "/path/to/directory" // 替换为你要读取的文件夹路径
+
+	err := filepath.Walk(root, func(path string, info os.FileInfo, err error) error {
+		if err != nil {
+			return err
+		}
+
+		if !info.IsDir() {
+			fileContent, err := ioutil.ReadFile(path)
+			if err != nil {
+				return err
+			}
+
+			fmt.Printf("File: %s\nContent:\n%s\n", path, string(fileContent))
+		}
+
+		return nil
+	})
+
+	if err != nil {
+		fmt.Println(err)
+	}
 }
 ```
 
@@ -8135,13 +8208,58 @@ func f2() {
 
 [Go语言标准库文档中文版 | Go语言中文网 | Golang中文社区 | Golang中国 (studygolang.com)](https://studygolang.com/pkgdoc)
 
-#### Match函数族
+### 字符串匹配-FindString函数族
+
+首先使用 **`compile` 或 `MustCompile`** 编译一个正则表达式对象。这两个函数的区别很简单，因为我们写的正则表达式模板可能有语法错误，所以goalng需要先检查此模板，使用`compile` 函数返回 `reg, err`，而`MustCompile` 只返回正则表达式对象`reg`。
+
+因此当我们想要自己处理模板在编译时可能出现的错误时我们就使用`compile`，在确信正则表达式是正确的情况下，简化正则表达式的编译过程，我们使用`MustCompile`。如下：
+
+``` go
+re1 := regexp.MustCompile(`a(\d[a-zA-Z])+`)
+```
+
+其实`MustCompile`内部也是直接调用的`Compile`，当出错时`MustCompile`就直接报panic了。
+
+编译完成后我们使用此正则表达式对象`reg`去匹配字符串，一般我们就是用它去匹配了。最常用的就是用`re1.FindAllString(line, -1)`来匹配符合模板的所有字符串。
+
+```go
+package main
+
+import (
+	"fmt"
+	"regexp"
+)
+
+func main() {
+	line := "a5c6J a9bab cba abb "
+	re1 := regexp.MustCompile(`a(\d[a-zA-Z])+`)
+
+	fmt.Println(re1.FindString(line))
+	fmt.Println(re1.FindAllString(line, -1)) // 第二个参数表示一个要匹配出几个结果，一般写-1表示匹配全部
+
+	fmt.Println(re1.FindStringIndex(line)) // 返回匹配结果的下标位置
+	fmt.Println(re1.FindAllStringIndex(line, -1))
+
+	fmt.Println(re1.FindStringSubmatch(line)) // 额外返回的结果是 每个捕获组的子字符串, 捕获组即用括号括起来的分组，用此函数来提提取我们需要的内容非常方便
+}
+/**
+a5c6J
+[a5c6J a9b]
+[0 5]
+[[0 5] [6 9]]
+[a5c6J 6J]
+*/
+```
+
+
+
+### 匹配判断-Match函数族
 
 - `func Match(pattern string, b []byte) (matched bool, err error) `
 - `func MatchString(pattern string, s string) (matched bool, err error)`
 - `func MatchReader(pattern string, r io.RuneReader) (matched bool, err error)`
 
-它们都是regexp包里可以直接调用的函数，检查第二个参数中是否存在**匹配pattern的子序列**。
+它们都是regexp包里可以直接调用的函数，检查第二个参数中是否**存在匹配pattern的子序列**。
 
 ``` go
 // 注意用反引号写pattern
@@ -8670,4 +8788,3 @@ www.txt里面的文字
 
 1. 在vscode中使用`go build`可能出现`go: go.mod file not found in current directory or any parent directory; see 'go help modules'` 的错误，解决方法是cmd 里输入 `go env -w GO111MODULE=auto`
 
-​	

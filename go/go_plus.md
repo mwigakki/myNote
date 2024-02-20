@@ -1,5 +1,3 @@
-# go_plus
-
 [【置顶】Go语言学习之路/Go语言教程 | 李文周的博客 (liwenzhou.com)](https://www.liwenzhou.com/posts/Go/golang-menu/)
 
 [Go语言标准库文档](https://studygolang.com/pkgdoc) 
@@ -8,7 +6,9 @@ https://www.topgoer.com/
 
 [数据结构和算法（Golang实现） - 《数据结构和算法（Golang实现）》 - 书栈网 · BookStack](https://www.bookstack.cn/read/hunterhug-goa.c/README.md)
 
- ## 1. Go实现TCP/UDP通信
+# 网络通信
+
+ ## Go实现TCP/UDP通信
 
 ### socket
 
@@ -443,6 +443,8 @@ func main() {
 	fmt.Printf("recv:%v addr:%v count:%v\n", string(data[:n]), remoteAddr, n)
 }
 ```
+
+# 数据结构
 
 ## 2. 递归
 
@@ -1209,5 +1211,394 @@ func InsertSort(nums []int) {
 
 
 
+# 命令行工具开发
 
+Golang自身实现官方工具go命令行是基于**flag**包解析参数和自定义command类型来实现的。整个Command的设计结构是比较清晰的，通过sub commands和flags来区分不同的功能，进入不同的Run方法。如下所示。
+
+![go-cli](img/go-command-line.png)
+
+基于第三方框架实现命令行的原理与上述相同，也是基于flag包解析参数，同时自定义Command结构体。不过第三方框架通常已经定义好成熟稳定且功能丰富的Command，开发者只需要简单复用其框架即可快速开发出高效的命令行工具。
+
+基于第三方框架的核心优势在于开箱即用，无需开发者重复发明轮子。如Go 社区中出现了一个叫 pflag 的第三方包，功能更加全面且足够强大。是Go 内置 flag 包的替代品，具有如下特点：
+
+- 实现了 POSIX/GNU 风格的 –flags。
+- pflag 与[《The GNU C Library》](https://www.gnu.org/software/libc/manual/html_node/index.html) 中「25.1.1 程序参数语法约定」章节中 [POSIX 建议语法](https://www.gnu.org/software/libc/manual/html_node/Argument-Syntax.html)兼容。
+- 兼容 Go 标准库中的 flag 包。如果直接使用 flag 包定义的全局 `FlagSet` 对象 `CommandLine`，则完全兼容；否则当你手动实例化了 `FlagSet` 对象，这时就需要为每个标志设置一个简短标志（`Shorthand`）。
+
+## cobra
+
+cobra既是一个用于创建强大现代CLI应用程序的库，也是一个生成应用程序和命令文件的程序。cobra被用在很多go语言的项目中，比如 Kubernetes、Docker、Istio、ETCD、Hugo、Github CLI等等。
+
+它提供的功能有：
+
+- 简易的子命令行模式，如 app server， app fetch等等
+- 完全兼容posix命令行模式
+- 嵌套子命令subcommand
+- 支持全局，局部，串联flags
+- 使用Cobra很容易的生成应用程序和命令，使用cobra create appname和cobra add cmdname
+- 如果命令输入错误，将提供智能建议，如 app srver，将提示srver没有，是否是app server
+- 自动生成commands和flags的帮助信息
+- 自动生成详细的help信息，如app help
+- 自动识别-h，–help帮助flag
+- 自动生成应用程序在bash下命令自动完成功能
+- 自动生成应用程序的man手册
+- 命令行别名
+- 自定义help和usage信息
+- 可选的紧密集成的viper apps
+
+[Go语言命令行利器cobra使用教程 - 简书 (jianshu.com)](https://www.jianshu.com/p/99aae91587af)
+
+[万字长文——Go 语言现代命令行框架 Cobra 详解 - 知乎 (zhihu.com)](https://zhuanlan.zhihu.com/p/627848739)
+
+### 安装使用
+
+使用cobra很简单，首先，使用go get按照最新版本的库，这个命令会安装cobra可执行程序以及库和依赖项
+
+``` go
+go get -u github.com/spf13/cobra
+```
+
+下一步，引入cobra到应用程序中
+
+```go
+import "github.com/spf13/cobra"
+```
+
+### 入门
+
+通常基于Cobra的应用程序将遵循以下组织结构：
+
+```go
+▾ appName/
+    ▾ cmd/
+        add.go
+        your.go
+        commands.go
+        here.go
+      main.go
+```
+
+ 在Cobra应用程序中，main.go文件通常非常简单。它有一个目的：初始化Cobra。
+
+```go
+package main
+
+import (
+    "github.com/spf13/cobra"
+    "{pathToYourApp}/cmd"
+)
+
+func main() {
+  cmd.Execute()
+}
+```
+
+### 使用cobra库
+
+要手动实现cobra，需要创建一个main.go 和rootCmd文件，可以根据需要提供其他命令
+
+### 创建一个命令
+
+假设我们要创建的命令行程序叫作 `hugo`，可以编写如下代码创建一个命令：
+
+> ```
+> hugo/cmd/root.go
+> ```
+
+```go
+package cmd 
+
+import (
+	"fmt"
+	"os"
+
+	"github.com/spf13/cobra"
+)
+
+var rootCmd = &cobra.Command{
+  Use:   "hugo",
+  Short: "Hugo is a very fast static site generator",
+  Long: `A Fast and Flexible Static Site Generator built with
+                love by spf13 and friends in Go.
+                Complete documentation is available at https://gohugo.io`,
+  Run: func(cmd *cobra.Command, args []string) {
+    fmt.Println("run hugo...")
+    // 使用cmd.Flag("flag的名字").Value 可以得到本cmd可用的flag
+  },/* Run 属性是一个函数，使用此app命令时就调用这个函数
+  所以该命令所有的程序逻辑都写在这儿
+  在这里可以使用 cmd.Flags 得到自己解析了标志
+	*/
+}
+
+func Execute() {
+  if err := rootCmd.Execute(); err != nil {
+    fmt.Println(err)
+    os.Exit(1)
+  }
+}
+```
+
+`cobra.Command` 是一个结构体，代表一个命令，其各个属性含义如下：
+
+`Use` 是命令的名称。
+
+`Short` 代表当前命令的简短描述。
+
+`Long` 表示当前命令的完整描述。
+
+`Run` 属性是一个函数，当执行命令时会调用此函数。
+
+`rootCmd.Execute()` 是命令的执行入口，其内部会解析 `os.Args[1:]` 参数列表（默认情况下是这样，也可以通过 `Command.SetArgs` 方法设置参数），然后遍历命令树，为命令找到合适的匹配项和对应的标志。
+
+### 创建 `main.go`
+
+按照编写 Go 程序的惯例，我们要为 `hugo` 程序编写一个 `main.go` 文件，作为程序的启动入口。
+
+> ```
+> hugo/main.go
+> ```
+
+```go
+package main
+
+import (
+    "hugo/cmd"
+)
+
+func main() {
+    cmd.Execute()
+}
+```
+
+`main.go` 代码实现非常简单，只在 `main` 函数中调用了 `cmd.Execute()` 函数，来执行命令。
+
+### 添加子命令
+
+与定义 `rootCmd` 一样，我们可以使用 `cobra.Command` 定义其他命令，并通过 `rootCmd.AddCommand()` 方法将其添加为 `rootCmd` 的一个子命令。
+
+> ```
+> hugo/cmd/version.go
+> ```
+
+```go
+var versionCmd = &cobra.Command{
+    Use:   "version",
+    Short: "Print the version number of Hugo",
+    Long:  `All software has versions. This is Hugo's`,
+    Run: func(cmd *cobra.Command, args []string) {
+        fmt.Println("Hugo Static Site Generator v0.9 -- HEAD")
+    },
+}
+
+func init() { // 每个子命令的init也会在命令开始时被调用
+    rootCmd.AddCommand(versionCmd)
+}
+```
+
+现在重新编译并运行命令行程序。
+
+```bash
+$ go build -o hugo
+$ ./hugo version                       
+Hugo Static Site Generator v0.9 -- HEAD
+```
+
+可以发现 `version` 命令已经被加入进来了。
+
+再次查看帮助信息hugo -h 也可以看到version子命令被加入进去了。
+
+### 返回和处理错误
+
+如果希望将错误返回给命令的调用者，可以使用RunE。RunE相对Run函数就是会处理错误的Run函数。
+
+```go
+package cmd
+
+import (
+  "fmt"
+
+  "github.com/spf13/cobra"
+)
+
+func init() {
+  rootCmd.AddCommand(tryCmd)
+}
+
+var tryCmd = &cobra.Command{
+  Use:   "try",
+  Short: "Try and possibly fail at something",
+  RunE: func(cmd *cobra.Command, args []string) error {
+    if err := someFunc(); err != nil {
+    return err
+    }
+    return nil
+  },
+}
+```
+
+ 然后可以在execute函数调用中捕获错误。
+
+### 使用命令行标志
+
+Cobra 完美适配 [pflag](https://link.zhihu.com/?target=https%3A//github.com/spf13/pflag)，结合 pflag 可以更灵活的使用标志功能。
+
+#### 持久标志
+
+如果一个标志是`持久的`，则意味着该标志将可用于它所分配的命令**以及该命令下的所有子命令**。
+
+对于全局标志，可以定义在根命令 `rootCmd` 上。 将如下代码加入到 root.go的Execute函数中，且必须放在这个函数`rootCmd.Execute()`之前。
+
+```go
+var Verbose bool
+rootCmd.PersistentFlags().BoolVarP(&Verbose, "verbose", "v", false, "verbose output")
+rootCmd.MarkFlagRequired("verbose") // flag默认都是可选的，这条命令的作用是将verbose标记为必选项，自己根据实际情况判断哪些标志需要是必选的
+```
+
+#### 本地标志
+
+标志也可以是`本地的`，这意味着它只适用于该指定命令。
+
+```go
+var Source string
+rootCmd.Flags().StringVarP(&Source, "source", "s", "", "Source directory to read from")
+```
+
+### 参数验证
+
+在执行命令行程序时，我们可能需要对命令参数进行合法性验证，`cobra.Command` 的 `Args` 属性提供了此功能。
+
+`Args` 属性类型为一个函数：`func(cmd *Command, args []string) error`，可以用来验证参数。
+
+Cobra 内置了以下验证函数：
+
+- `NoArgs`：如果存在任何命令参数，该命令将报错。
+- `ArbitraryArgs`：该命令将接受任意参数。
+- `OnlyValidArgs`：如果有任何命令参数不在 `Command` 的 `ValidArgs` 字段中，该命令将报错。
+- `MinimumNArgs(int)`：如果没有至少 N 个命令参数，该命令将报错。
+- `MaximumNArgs(int)`：如果有超过 N 个命令参数，该命令将报错。
+- `ExactArgs(int)`：如果命令参数个数不为 N，该命令将报错。
+- `ExactValidArgs(int)`：如果命令参数个数不为 N，或者有任何命令参数不在 `Command` 的 `ValidArgs` 字段中，该命令将报错。
+- `RangeArgs(min, max)`：如果命令参数的数量不在预期的最小数量 `min` 和最大数量 `max` 之间，该命令将报错。
+
+### Hooks
+
+在执行 `Run` 函数前后，我么可以执行一些钩子函数，其作用和执行顺序如下：
+
+1. `PersistentPreRun`：在 `PreRun` 函数执行之前执行，对此命令的子命令同样生效。
+2. `PreRun`：在 `Run` 函数执行之前执行。
+3. `Run`：执行命令时调用的函数，用来编写命令的业务逻辑。
+4. `PostRun`：在 `Run` 函数执行之后执行。
+5. `PersistentPostRun`：在 `PostRun` 函数执行之后执行，对此命令的子命令同样生效。
+
+修改 `rootCmd` 如下：
+
+```go
+var rootCmd = &cobra.Command{
+    Use:   "hugo",
+    PersistentPreRun: func(cmd *cobra.Command, args []string) {
+        fmt.Println("hugo PersistentPreRun")
+    },
+    PreRun: func(cmd *cobra.Command, args []string) {
+        fmt.Println("hugo PreRun")
+    },
+    Run: func(cmd *cobra.Command, args []string) {
+        fmt.Println("run hugo...")
+    },
+    PostRun: func(cmd *cobra.Command, args []string) {
+        fmt.Println("hugo PostRun")
+    },
+    PersistentPostRun: func(cmd *cobra.Command, args []string) {
+        fmt.Println("hugo PersistentPostRun")
+    },
+}
+```
+
+重新编译并运行 `hugo` 命令：
+
+```bash
+# 编译
+$ go build -o hugo
+# 执行
+$ ./hugo
+hugo PersistentPreRun
+hugo PreRun
+run hugo...
+hugo PostRun
+hugo PersistentPostRun
+```
+
+输出顺序符合预期
+
+# 判断文件类型
+
+可以使用标准库 `http.DetectContentType `，但在这里我们介绍一个第三方库` github.com/h2non/filetype`。
+
+使用命令下载下来
+
+``` go
+go get github.com/h2non/filetype
+```
+
+介绍 [Go每日一库之176：filetype(文件类型鉴别) - 掘金 (juejin.cn)](https://juejin.cn/post/7289297739535204391)
+
+filetype可以根据文件的魔数（magic numbers）签名来推断文件的类型和 MIME 类型。它支持多种常见的文件类型，包括图片、视频、音频、文档、压缩包等。它还提供了一些便捷的函数和类型匹配器，可以方便地对文件进行分类和筛选。它的特点有：
+
+- 支持多种文件类型，提供文件扩展名和正确的 MIME 类型
+- 可以根据扩展名或 MIME 类型来发现文件类型
+- 可以根据类别（图片、视频、音频等）来发现文件类型
+- 可以添加自定义的新类型和匹配器
+- 简单而语义化的 API
+- 即使处理大文件也非常快速
+- 只需要前 262 字节表示最大的文件头，所以你可以只传递一个切片
+- 无依赖（只有 Go 代码，不需要 C 编译）
+- 跨平台的文件识别
+
+### 简单地检测文件类型
+
+```go
+package main
+
+import (
+    "fmt"
+    "io/ioutil"
+    "github.com/h2non/filetype"
+)
+
+func main() {
+    // 读取一个文件
+    buf, _ := ioutil.ReadFile("sample.jpg")
+
+    // 匹配文件类型
+    kind, _ := filetype.Match(buf)
+    if kind == filetype.Unknown {
+     fmt.Println("Unknown file type")
+     return
+ }
+    fmt.Printf("File type: %s. MIME: %s\n", kind.Extension, kind.MIME.Value)
+}
+```
+
+### 检查文件类别
+
+```go
+package main
+
+import (
+    "fmt"
+    "io/ioutil"
+    "github.com/h2non/filetype"
+)
+
+func main() {
+    // 读取一个文件
+    buf, _ := ioutil.ReadFile("sample.jpg")
+
+    // 检查是否是图片
+    if filetype.IsImage(buf) {
+     fmt.Println("File is an image")
+ } else {
+     fmt.Println("Not an image")
+ }
+}
+```
 

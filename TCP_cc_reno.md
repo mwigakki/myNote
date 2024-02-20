@@ -306,8 +306,6 @@ struct tcp_congestion_ops {
 
 所在版本代码所在位置是：`linux-5.4.224/net/ipv4/tcp_cong.c`，该文件是tcp拥塞控制算法的起点文件。定义了cc算法的注册、查找、分配、初始化、
 
-
-
 ``` c
 // SPDX-License-Identifier: GPL-2.0-only
 /*
