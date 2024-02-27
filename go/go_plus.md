@@ -6,7 +6,13 @@ https://www.topgoer.com/
 
 [数据结构和算法（Golang实现） - 《数据结构和算法（Golang实现）》 - 书栈网 · BookStack](https://www.bookstack.cn/read/hunterhug-goa.c/README.md)
 
-# 网络通信
+# 网络和网页应用
+
+本部分内容主要基于：
+
+[15.1. tcp 服务器 | 第十五章. 网络，模板和网页应用 |《Go 入门指南》| Go 技术论坛 (learnku.com)](https://learnku.com/docs/the-way-to-go/151-tcp-server/3703)
+
+[03.1. Web 工作方式 | 第三章. Web 基础 |《Go Web 编程》| Go 技术论坛 (learnku.com)](https://learnku.com/docs/build-web-application-with-golang/031-web-working-mode/3168)
 
  ## Go实现TCP/UDP通信
 
@@ -16,7 +22,7 @@ https://www.topgoer.com/
 
 <img src="img\image-20220508194119681.png" alt="image-20220508194119681" style="zoom:67%;" />
 
-### Go语言实现TCP通信
+### Go实现TCP通信
 
 #### TCP服务端
 
@@ -36,6 +42,7 @@ package main
 import (
 	"bufio"
 	"fmt"
+	"io"
 	"net"
 	"os"
 	"strings"
@@ -46,14 +53,29 @@ func process(conn net.Conn) {
 	defer conn.Close()
 	// 3.与client通信
 	reader := bufio.NewReader(os.Stdin)
+	connReader := bufio.NewReader(conn)
 	for {
-		var tmp = [128]byte{}
-		n, e3 := conn.Read(tmp[:])
-		if e3 != nil {
-			fmt.Println("read from connection failed, err:", e3)
-			return
+		var buf []byte
+		tmp := make([]byte, 8)
+
+	receiveLoop:
+		for { // 使用for循环读取，无论c端发来的信息多长都能接收
+			n, err := connReader.Read(tmp) // 读取数据
+			switch err {
+			case io.EOF:
+				break receiveLoop // c端断开连接后就会发送io.EOF 过来
+			case nil:
+				buf = append(buf, tmp[:n]...)
+				if strings.HasSuffix(string(tmp[:n]), "\r\n\r\n") { // 判断内容接收完没有
+					break receiveLoop
+				}
+			default:
+				fmt.Println("read from client failed, err:", err)
+				os.Exit(0)
+			}
 		}
-		fmt.Println(string(tmp[:n]))
+		msg := string(buf)
+		fmt.Println("收到client的消息：", msg)
 		fmt.Print("[server] 请说：")
 		text, _ := reader.ReadString('\n')
 		text = strings.TrimSpace(text)
@@ -106,6 +128,8 @@ import (
 	"strings"
 )
 
+const StopCharacter = "\r\n\r\n" // 主动定义当前message完毕的结尾
+
 func main() {
 	// 1.与server建立连接
 	conn, err := net.Dial("tcp", "127.0.0.1:20000")
@@ -123,6 +147,7 @@ func main() {
 			break
 		}
 		conn.Write([]byte(text))
+		conn.Write([]byte(StopCharacter)) // 将停止信号也发送过去
 		var tmp = [128]byte{}
 		n, e3 := conn.Read(tmp[:])
 		if e3 != nil {
@@ -373,7 +398,7 @@ func main() {
 }
 ```
 
-### Go语言实现UDP通信
+### Go实现UDP通信
 
 UDP协议（User Datagram Protocol）中文名称是用户数据报协议，是OSI（Open System Interconnection，开放式系统互联）参考模型中一种**无连接**的传输层协议，不需要建立连接就能直接进行数据发送和接收，属于不可靠的、没有时序的通信，但是UDP协议的实时性比较好，通常用于视频直播相关领域。
 
@@ -443,6 +468,906 @@ func main() {
 	fmt.Printf("recv:%v addr:%v count:%v\n", string(data[:n]), remoteAddr, n)
 }
 ```
+
+## web服务器及工作原理
+
+golang使用`net/http`包搭建网页服务器。
+
+以下均是服务器端的几个概念
+
+- Request：用户请求的信息，用来解析用户的请求信息，包括 post、get、cookie、url 等信息
+
+- Response：服务器需要反馈给客户端的信息
+
+- Conn：用户的每次请求链接
+
+- Handler：处理请求和生成返回信息的处理逻辑
+
+### 简单的web服务器示例
+
+``` go
+package main
+
+import (
+	"fmt"
+	"log"
+	"net/http"
+)
+
+func HelloServer(w http.ResponseWriter, req *http.Request) {
+	fmt.Println("根地址注册的一个处理函数")
+	req.ParseForm() // 解析URL后跟的那些参数，默认是不解析的
+	fmt.Println("path:", req.URL.Path)
+	fmt.Println("scheme:", req.URL.Scheme)
+	fmt.Println(req.Form["myField"]) // url中带来的参数
+	fmt.Println(req.Form["NONE"])    // url中带来的参数
+	for k, v := range req.Form {
+		fmt.Println("key:", k, ", value:", v)
+	}
+	fmt.Fprintf(w, "<h1>标题1</h1>Hello, 、"+req.URL.Path[1:]) // 向 相应 w 写入一些东西，会直接出现的客户端的浏览器上
+	/* w 实现了 io.Writer 接口，使用下面的方法输出也可以
+	wtr := bufio.NewWriter(w)
+	wtr.WriteString("<h1>Hello</h1>" + req.URL.Path[1:])
+	wtr.Flush()
+	*/
+}
+func main() {
+	// 注：浏览器向本服务器发送http请求时，每个额外的图片或文件资源都会发送一个单独的http GET请求来获取这些资源，以便并行下载。因此注册的 HelloServer 函数会被调用多次。
+	http.HandleFunc("/", HelloServer) // 第一个参数是请求的路径，然后为服务器的根地址注册一个处理函数
+	// http.Handle("/", http.HandlerFunc(HelloServer))   //与上面的写法是一样的
+	err := http.ListenAndServe("localhost:8888", nil) // 使用 http.ListenAndServeTLS() 代替 http.ListenAndServe() 可以使用安全的https连接，此处暂时不讨论
+	if err != nil {
+		log.Fatal("ListenAndServe: ", err.Error())
+	}
+}
+
+```
+
+我们运行此文件后，打开浏览器输入` http://localhost:8888/?myField=1&myField=2&anotherField=3`，浏览器出现预期结果不难解释。然后查看服务器控制台打印的结果。
+
+``` php
+根地址注册的一个处理函数
+path: /
+scheme:
+[1 2]
+[]
+key: myField , value: [1 2]
+key: anotherField , value: [3]
+根地址注册的一个处理函数
+path: /favicon.ico
+scheme:
+[]
+[]
+```
+
+可以明显看出，浏览器一共发送了两个GET请求。一个请求根目录`/`，一个请求了默认的图标`favicon.ico`。两个GET请求都进入了HelloServer 函数进行处理。而且只有请求根目录的请求会带有客户端在URL中写入的那些参数。
+
+在服务端的req中我们可以按参数name拿到URL中传入的参数的。
+
+### 工作流程
+
+web流程图如下：
+
+![image-20240225201424119](img/image-20240225201424119.png)
+
+Go 实现 Web 服务的工作模式的流程图
+
+![Go 实现 Web 服务的工作模式的流程图](img/3.3.http.png)
+
+开启一个go web服务最本质的代码就两行
+
+``` go
+http.HandleFunc("/", HelloServer)
+http.ListenAndServe("localhost:8888", nil) 
+```
+
+在`http.ListenAndServe`内部会开启端口监听`ln, err := net.Listen("tcp", addr)`，然后调用了 `srv.Serve(net.Listener)` 函数，这个函数就是处理接收客户端的请求信息。`srv.Serve(net.Listener)` 函数中会调用`rw, err := l.Accept()`来接收TCP连接，并为每个连接conn单独开了一个 goroutine。
+
+那么如何具体分配到相应的函数来处理请求呢？`c.readRequest()`, 然后获取相应的 handler:`handler := c.server.Handler`，也就是我们刚才在调用函数 `ListenAndServe` 时候的第二个参数，我们前面例子传递的是 nil，也就是为空，那么默认获取 `handler = DefaultServeMux`, 那么这个变量用来做什么的呢？对，这个变量就是一个路由器，它用来匹配 url 跳转到其相应的 handle 函数，而这里的handle函数就是我们在 `http.HandleFunc("/", HelloServer)` 中设置的第二次参数。这个函数注册了请求 `/` 的路由规则，当请求 uri 为 "/"，路由就会转到函数 HelloServer，最后通过写入 response 的信息反馈到客户端。
+
+详细的整个流程如下图所示：
+
+![img](https://cdn.learnku.com/build-web-application-with-golang/images/3.3.illustrator.png?raw=true)
+
+
+
+
+
+
+
+
+
+## 使用go发送http请求
+
+简单地发送请求（简单看看就行，不可取）
+
+``` go
+package main
+
+import (
+	"fmt"
+	"io/ioutil"
+	"net/http"
+)
+
+var urls = []string{
+	"http://www.baidu.com",
+	"http://p4.org",
+}
+
+func main() {
+	for _, url := range urls {
+		resp, err := http.Head(url) // 向指定的URL发送HEAD，用来简单地判断url是否可以到达
+		if err != nil {
+			fmt.Println("Error:", url, err)
+		}
+		fmt.Println(url, ":", resp.Status)
+	}
+	// 发送http请求去访问哔哩哔哩
+	resp2, err := http.Get("http://www.bilibili.com")
+	if err != nil {
+		fmt.Println("Error:", err)
+	}
+	data, _ := ioutil.ReadAll(resp2.Body)
+	fmt.Println(string(data))
+	fmt.Println(resp2.Header)
+}
+```
+
+**下面的代码完整的发送HTTP请求的规范写法**
+
+``` go
+package main
+
+import (
+	"fmt"
+	"io/ioutil"
+	"net/http"
+)
+
+/*
+此go文件直接由postman生成，如果执行出错请重新去生成就行
+*/
+func main() {
+
+	url := "https://www.bilibili.com/v/food/?spm_id_from=333.1007.0.0" // 目标URL
+	method := "GET"                                                    // 请求方法
+
+	client := &http.Client{}
+	req, err := http.NewRequest(method, url, nil)
+
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+	// 添加请求头
+	req.Header.Add("X-Auth-Token", "gAAAAABk5AwA3PSYoVg45J-kUAm7LVU_jDBhZq-rhThl89KTEnU__6LA6lH-534jmGRyefIazEIpae6kzRdeQD3oSgsRCyzDIlxibhUHR9kYsEEysqSrmP-rEMkn9ZDAmdcTq0OVVVv9URLdh967RDLf_Ia6A4HWTtk1BE1YsYka7-_XFeW0Vn0")
+	req.Header.Add("Cookie", "b_nut=1692109483; b_ut=7; buvid3=09E66EFB-87C2-744F-D2AD-1B53628FA45383615infoc; i-wanna-go-back=-1")
+
+	res, err := client.Do(req)
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+	defer res.Body.Close()
+
+	body, err := ioutil.ReadAll(res.Body)
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+	fmt.Println(string(body))
+}
+```
+
+
+
+
+
+## 常见库包解释
+
+### net/http
+
+Go 的 http 有两个核心功能：Conn、ServeMux
+
+Go 为了实现高并发和高性能，使用了 goroutines 来处理 Conn 的读写事件，这样每个请求都能保持独立，相互不会阻塞，可以高效的响应网络事件。
+
+server.go文件中定义的`Hanler`。
+
+``` go
+type Handler interface {
+	ServeHTTP(ResponseWriter, *Request) //ServeHTTP应该将回复头和数据写入ResponseWriter，然后返回。返回请求已完成的信号；使用ResponseWriter或从请求中读取是无效的。在ServeHTTP调用完成之后或同时完成的正文。
+}
+```
+
+它就是处理HTTP请求的处理器。是一个接口，只有一个方法`ServeHTTP(ResponseWriter, *Request)`
+
+#### ServeMux
+
+服务端设定监听地址和路由器的代码：`http.ListenAndServe("localhost:8888", nil) `。第二次参数就是路由器，为nil表示调用了 http 包默认的路由器，通过路由器将本次请求的信息传递到后端的处理函数。该路由器的结构定义在`http.server.go`文件中：
+
+``` go
+type ServeMux struct {
+	mu    sync.RWMutex // 锁，由于请求涉及到并发处理，因此这里需要一个锁机制
+	m     map[string]muxEntry // 路由规则，一个string对应一个mux 实体
+	es    []muxEntry // slice of entries sorted from longest to shortest.
+	hosts bool       // whether any patterns contain hostnames
+}
+type muxEntry struct {
+	h       Handler // 这个路由表达式对应哪个 handler
+	pattern string // 匹配的字符串
+}
+type Handler interface {
+	ServeHTTP(ResponseWriter, *Request)  // 路由实现
+}
+```
+
+默认的路由器实现了 `ServeHTTP`
+
+``` go
+func (mux *ServeMux) ServeHTTP(w ResponseWriter, r *Request) {
+	if r.RequestURI == "*" {
+		if r.ProtoAtLeast(1, 1) {
+			w.Header().Set("Connection", "close")
+		}
+		w.WriteHeader(StatusBadRequest)
+		return
+	}
+	h, _ := mux.Handler(r)
+	h.ServeHTTP(w, r)
+}
+```
+
+路由器收到请求后，没出错，就调用` mux.Handler(r)`返回对应设置路由的处理Handler（一般就是我们使用http.HandleFunc传入的handler），然后执行`h.ServeHTTP(w, r)`。
+
+
+
+### net.Error
+
+这是`net`包返回的错误类型。定义如下
+
+``` go
+// An Error represents a network error.
+type Error interface {
+	error
+	Timeout() bool // Is the error a timeout?
+
+	// Deprecated: Temporary errors are not well-defined.
+	// Most "temporary" errors are timeouts, and the few exceptions are surprising.
+	// Do not use this method.
+	Temporary() bool
+}
+```
+
+可以看出，`net.Error` 不仅嵌套了内建的`error`，还额外声明了两个方法，表达该错误是否超时或错误是否为临时错误。
+
+`net`包中有许多结构体实现该接口，如`OpError`,`ParseError`, `AddrError`, `UnknownNetworkError`, `timeoutError`, `DNSConfigError` 等等。例如 conn 的`SetReadDeadline`方法就可能返回`OpError`错误。
+
+很多是否网络连接返回的错误我们可能通过类型断言来测试 `net.Error`，从而区分哪些临时发生的错误或者必然会出现的错误。举例来说，一个网络爬虫程序在遇到临时发生的错误时可能会休眠或者重试，如果是一个必然发生的错误，则他会放弃继续执行。
+
+``` go
+if neterr, ok := err.(net.Error); ok && neterr.Temporary(){
+    time.Sleep(100)
+    continue
+}
+if err != nil{
+    log.Fatal(err)
+}
+```
+
+# Gin框架
+
+Gin 是一个由go编写的轻量级的 http web框架，运行速度非常快。
+
+- github地址：[gin-gonic/gin: Gin is a HTTP web framework written in Go (Golang). It features a Martini-like API with much better performance -- up to 40 times faster. If you need smashing performance, get yourself some Gin. (github.com)](https://github.com/gin-gonic/gin)
+
+- 官网地址：[Gin Web Framework (gin-gonic.com)](https://gin-gonic.com/zh-cn/)
+
+## 环境搭建
+
+因为gin是go原生开发的，所以只要安装了go环境，把gin下载下来就可以直接用了。
+
+下载并安装 gin：
+
+``` go
+go get -u github.com/gin-gonic/gin
+```
+
+下载可能出现问题，解决参考：https://www.cnblogs.com/xiaoyingzhanchi/p/14410626.html
+
+在代码中引用gin
+
+``` go
+import "github.com/gin-gonic/gin"
+```
+
+我们常常会使用诸如 `http.StatusOK `之类的常量，因此常常引入` net/http` 包
+
+**简单使用**
+
+``` go
+package main
+
+import (
+	"net/http"
+
+	"github.com/gin-gonic/gin"
+)
+
+func main() {
+	// 创建一个默认路由
+	r := gin.Default()
+	// 配置路由，注册一个GET请求的处理函数。当访问根目录"/"时，会执行后面的回调函数。
+	r.GET("/", func(c *gin.Context) {
+		c.String(http.StatusOK, "值：%v", "hello 你好 gin")
+	})
+	r.GET("/news", func(c *gin.Context) {
+		c.String(http.StatusOK, "商品：%v", "水果")
+	})
+	r.POST("/add", func(c *gin.Context) { // 浏览器url无法提交post，只能form提交，或者postman模拟
+		c.String(http.StatusOK, "这是一个post")
+	})
+	r.PUT("/edit", func(c *gin.Context) { // 浏览器url无法提交post，只能form提交，或者postman模拟
+		c.String(http.StatusOK, "这是一个PUT")
+	})
+	r.DELETE("/del", func(c *gin.Context) { // 浏览器url无法提交post，只能form提交，或者postman模拟
+		c.String(http.StatusOK, "这是一个DELETE")
+	})
+	// r.Run() // 启动一个web服务，默认在 0.0.0.0:8080 启动服务
+	r.Run("localhost:8888")
+}
+```
+
+## golang程序的热加载 
+
+代码修改后，程序能够自动重新加载并执行。 gin中没有官方提供的热加载工具，需要借助第三方工具
+
+``` go
+go get github.com/pilu/fresh // 下载
+go install github.com/pilu/fresh // 安装
+```
+
+在项目中安装`fresh`后，直接在命令行执行`fresh`，之后就可以完全用`fresh`替代 `go run main.go`了。
+
+发现程序也正常执行了。此时我们执行修改代码，发现命令行立刻自动重新加载服务，说明fresh生效了。
+
+## Gin HTML模板渲染
+
+### 返回json,xml数据
+
+返回json,xml的示例代码如下，见`gindemo2`：
+
+``` go
+package main
+
+import (
+	"github.com/gin-gonic/gin"
+)
+
+type User struct {
+	Name string `json:"name"` // 注意这里的属性名必须大写公开，不然无法传送到客户端
+	Age  int    `json:"age"`  // 定义json中的返回字段写法
+}
+
+func main() {
+	// 创建一个默认路由
+	r := gin.Default()
+	// 配置路由，注册一个GET请求的处理函数。当访问根目录"/"时，会执行后面的回调函数。
+	r.GET("/", func(c *gin.Context) {
+		c.String(200, "首页")
+	})
+
+	// **** 返回 json 数据 ****
+	r.GET("/json", func(c *gin.Context) {
+		c.String(200, "返回json数据")
+		c.JSON(200, map[string]interface{}{
+			"success": true,
+			"msg":     "你好 gin",
+		}) // 第二个参数是空接口类型，可以返回任意类型数据，上面是通常的写法
+		c.JSON(200, gin.H{
+			"a": 1,
+		}) // 这里gin.H 就是 map[string]interface{} 的简写
+	})
+	r.GET("/json2", func(c *gin.Context) {
+		a := &User{"tom", 12}
+		c.String(200, "返回json数据")
+		c.JSON(200, a)
+	})
+	// 相应 JSONP 请求，一般情况下json和jsonp用法一样。
+	// jsonp与json的区别是jsonp可以传入回调函数。
+	// 比如 访问 localhost:8888/jsonp?callback=xxx
+	// 可以看到前端打印 xx({"name":"jerry","age":2});
+	// 具体有什么用呢，之后再说吧，现在用的不多
+	r.GET("/jsonp", func(c *gin.Context) {
+		c.JSONP(200, User{"jerry", 2})
+	})
+
+	// 返回 xml 数据
+	r.GET("/xml1", func(c *gin.Context) {
+		c.XML(200, gin.H{
+			"success": true,
+			"msg":     "this is xml",
+		}) // 参数类型和c.String c.JSON一样
+
+	})
+
+	r.Run("localhost:8888")
+}
+```
+
+### 返回html数据
+
+``` go
+package main
+
+import (
+	"net/http"
+
+	"github.com/gin-gonic/gin"
+)
+
+func returnHTML() {
+	router := gin.Default()
+	// 要返回html 需要加载我们的所有模板文件，因为我们不可能真在这里写所有的html代码
+	router.LoadHTMLGlob("mytemplates/*") // 加载本地文件夹，里面都是html模板，注意，这里只能使用mytemplates 目录下的文件，其子目录中的文件不能使用。配置方法往下看
+	router.GET("/", func(c *gin.Context) {
+		c.HTML(http.StatusOK, "index.html", gin.H{
+			"title": "后台数据",
+			"name":  "jack",
+		}) // 第二次参数写 html 文件目录，第三个参数写 传给这个html页面模板的数据
+		/*
+			在模板中的html 中，通过 {{.变量名}}就可以得到这里传入的变量了。
+		*/
+	})
+	// 访问路由指向一个 html 页面，并将后端数据传给html页面
+	router.Run("localhost:8888")
+}
+
+func main() {
+	returnHTML()
+}
+```
+
+在项目目录下新建`mytemplates`文件夹，里面放html 模板，如`index.html`
+
+``` html
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>{{.title}}</title>
+  </head>
+  <body>
+    <h1>首页</h1>
+    hello, {{.name}}
+  </body>
+</html>
+```
+
+浏览器输入`http://localhost:8888/`就可以访问到这个页面，而且有后台传入的数据。
+
+如果在`mytemplates`文件夹有多级目录，就需要额外写法，见`gindemo3`。
+
+如果项目文件树是这样的：
+
+``` txt
+- 项目名
+	- mytemplates
+		- amdin
+			- goods.html
+			- index.html
+		- default
+			- goods.html
+			- index.html
+	- main.go
+	- go.mod
+	- go.sum
+```
+
+main.go代码如下：
+
+``` go
+package main
+
+import (
+	"net/http"
+
+	"github.com/gin-gonic/gin"
+)
+
+type User struct {
+	Name string `json:"name"` // 注意这里的属性名必须大写公开，不然无法传送到客户端
+	Age  int    `json:"age"`  // 定义json中的返回字段写法
+}
+
+func returnHTML() {
+	router := gin.Default()
+	// 如果要加载多层目录的模板，就必须要层级结构写得完全清楚
+	router.LoadHTMLGlob("mytemplates/**/*") // 只能加载本地文件夹二层文件夹，
+	// 前台页面
+	router.GET("/", func(c *gin.Context) {
+		c.HTML(http.StatusOK, "default/index.html", gin.H{ // 第二个参数就要写html模板首行定义的名称了。
+			"title": "前台数据",
+			"name":  "jack",
+		}) // 第二个参数就要写html模板首行定义的名称了。
+		/*
+			在模板中的html 中，通过 {{.变量名}}就可以得到这里传入的变量了。
+		*/
+	})
+	router.GET("/goods", func(c *gin.Context) {
+		u := &User{"jerry", 78}
+		c.HTML(http.StatusOK, "default/goods.html", gin.H{
+			"title": "前台商品页面",
+			"name":  "tom",
+			"user":  u,
+		})
+		// 在html 模板中可以 {{.user}} 可以直接得到结构体，也可以 {{.user.Name}} 得到接口的成员变量
+	})
+	// 后台页面
+	router.GET("/admin/", func(c *gin.Context) {
+		c.HTML(http.StatusOK, "admin/index.html", gin.H{
+			"title": "后台首页",
+		})
+	})
+	router.GET("/admin/goods", func(c *gin.Context) {
+		c.HTML(http.StatusOK, "admin/goods.html", gin.H{
+			"title": "后台商品页面",
+		})
+	})
+
+	// 访问路由指向一个 html 页面，并将后端数据传给html页面
+	router.Run("localhost:8888")
+}
+
+func main() {
+	returnHTML()
+}
+```
+
+default/index.html 代码如下：
+
+``` html
+<!-- 定义模板的名称，它是与end成对出现的, 在go代码中要引用这个名称 -->
+{{ define "default/index.html"}}
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>{{.title}}</title>
+  </head>
+  <body>
+    <h1>前台首页</h1>
+    hello, {{.name}}
+  </body>
+</html>
+{{ end }}
+```
+
+其他html代码类似。
+
+总结发现
+
+- `router.LoadHTMLGlob`引用模板目录很麻烦，只能引用当前一级的目录。
+- 在html模板直接嵌套后端引用的变量已不再适合当前前后端分离的大趋势了。但可以了解一下写法。 
+
+### gin 模板语法
+
+文件项目：gindemo3
+
+``` html
+<!-- 定义模板的名称，在go代码中要引用这个名称 -->
+{{ define "default/goods.html"}}
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>{{.title}}</title>
+  </head>
+  <body>
+    <h1>前台商品页面</h1>
+    名称：{{.name}}
+    <hr />
+    <h1>定义变量</h1>
+    <!-- 定义变量 ，把后台的数据赋值给模板里的变量 -->
+    {{$uname := .user.Name}}
+    <!-- 输出定义的变量 -->
+    <h4>{{$uname}}</h4>
+    <hr />
+    <h1>比较函数</h1>
+    {{ if ge .score 60}} 及格 {{else}} 不及格 {{end}}
+    <!-- else 中还可以接 if  不演示了-->
+    <!-- gt 大于；ge 大于等于；lt 小于；le 小于等于；eq 等于；ne 不等于-->
+    <hr />
+    <h1>循环遍历 range</h1>
+    <ul>
+      {{range $key, $value := .hobbies}}
+      <li>{{$key}}: {{$value}}</li>
+      {{else}} 传入的切片数据是没有值的，可以是切片是空的，也可以是切片没有定义
+      {{end}}
+    </ul>
+    <hr />
+    <h1>结构体解构 with</h1>
+    {{with .user}} 在这个结构中，.user的成员变量已经解构了，可以直接使用
+    <p>name ={{.Name}}</p>
+    <p>age:{{.Age}}</p>
+    {{end}}
+
+    <hr />
+    <h1>预定义函数</h1>
+    user.name： {{ .user.Name}}， 它的长度等于 {{ len .user.Name}}
+    其他内置的预定义函数如and,or 等自己查询
+    <hr />
+    <h1>自定义模板函数</h1>
+    在后台go 文件中，加载HTML模板文件的语句上面
+    <pre>
+	router.SetFuncMap(template.FuncMap{
+      "UnixToTime": UnixToTime, // UnixToTime 是自己定义的，返回一个时间的字符串即可
+    })
+  </pre
+    >
+    时间戳 {{.date}} 代表{{UnixToTime .date}}
+  </body>
+</html>
+{{ end }}
+
+```
+
+### 模板嵌套
+
+写一个公共模板 `public/header.html`
+
+``` html
+{{ define "public/header.html"}}
+
+<style>
+  h2 {
+    background-color: yellow;
+    color: tomato;
+    text-align: center;
+  }
+</style>
+
+<h2>this is 公共头部，所在页面:{{.title}}，{{.sthNotExist}}</h2>
+<!-- 后面引用的后端变量在被其他页面引用时才会赋值 -->
+{{end}}
+```
+
+在其他页面需要引用的位置加上`{{ template "public/header.html" .}}` 即可。
+
+## 静态文件服务
+
+当我们渲染的html文件引用了静态文件（css,js）时，我们需要配置静态web服务。
+
+首先我们在项目目录下新建`static`文件夹，里面再新建`css, js, img`文件夹。再css里面新建文件`base.css`
+
+``` css
+h1 {
+  background-color: teal;
+  color: hotpink;
+  text-align: center;
+}
+h2 {
+  color: green;
+}
+```
+
+我们在任意页面中通过普通前端的方式引入
+
+``` html
+<head>
+    ...
+    <link rel="stylesheet" href="/static/css/base.css" />
+    <!-- 前端写文件地址时写上最前面的斜杠，表示相对于根目录 -->
+</head>
+```
+
+然后我们访问该页面，发现此css并没有生效。我们在浏览器控制台发现浏览器确实请求了 `http://localhost:8888/static/css/base.css`，但是404失败了。
+
+说明gin启动的web服务，**项目目录下的任何文件都必须在后台进行配置才能进行访问**，比如html页面通过`router.LoadHTMLGlob("mytemplates/**/*") `和`router.GET("/", func(c *gin.Context){})`配置。
+
+因此像css这样的静态文件也需要配置，如下
+
+``` go
+router.Static("/static", "./static") // 配置静态web 目录，第一个参数是前端要请求的地址，第二次参数写文件存放的地址
+// 一般此语句放在router.LoadHTMLGlob("mytemplates/**/*") 下方即可
+// 观察语句发现它不需要像配置html要把每一层的目录都明确地写上
+```
+
+## 路由传值
+
+### GET请求传值
+
+前端从URL传入的值，如访问`http://localhost:8888/?user=sd`
+
+``` go
+	router.GET("/", func(c *gin.Context) {
+		user := c.Query("user")             // 前端通过 URL?xxx=XXX  传过来的值
+		page := c.DefaultQuery("page", "1") // 不传过来我也可以用带默认值的函数
+		c.JSON(http.StatusOK, gin.H{
+			"user": user,
+			"page": page,
+		})
+	})
+```
+
+前端页面就可以返回我们返回的json页面。
+
+### POST请求传值
+
+我们写一个有form元素的前端页面，用来提交post请求。user.html
+
+``` html
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>用户界面</title>
+  </head>
+  <body>
+    <form action="doAddUser" , method="post">
+      用户名：<input type="text" name="username1" /> <br />
+      年龄：<input type="txt" name="age1" /> <br />
+      密码：<input type="password" name="password1" /> <br />
+      <input type="submit" value="提交" />
+      <!-- 点击提交就会去请求 doAddUser -->
+    </form>
+  </body>
+</html>
+```
+
+在后端找到这个html模板，并处理提交的post请求。
+
+``` go
+	router.GET("/user", func(c *gin.Context) {
+		c.HTML(http.StatusOK, "user.html", gin.H{})
+	})
+	// 处理form 提交过来的post请求
+	router.POST("/doAddUser", func(c *gin.Context) {
+		username := c.PostForm("username1")
+		password := c.PostForm("password1")
+		age := c.DefaultPostForm("age1", "18")
+		dontHaveInForm := c.DefaultPostForm("dhif", "xxxxx")
+		c.JSON(http.StatusOK, gin.H{
+			"username":       username,
+			"password":       password,
+			"age":            age,
+			"dontHaveInForm": dontHaveInForm,
+		})
+	})
+```
+
+提交form表单时不写age，看看效果：
+
+![image-20240227085526481](img/image-20240227085526481.png)
+
+结果如下：
+
+![image-20240227085551199](img/image-20240227085551199.png)
+
+可见，加默认值的`age := c.DefaultPostForm("age1", "18")`，在表单中有这个字段，即使不写也相当于传入值为空“”。
+
+### 绑定到结构体
+
+获取GET/POST传递的数据绑定到结构体，其实是利用反射机制自动提取了请求中的QuerString、form表单、json、xml到结构体中。
+
+#### **GET 请求**
+
+``` go
+// 用来 绑定的 结构体
+type UserInfo struct {
+	UserName string `form:"username"` // 配置 form  标签
+	Password int    `form:"password"` //
+}
+
+...
+
+	// 获取post 传来的数据并绑定在结构体中
+	router.GET("/getUser", func(c *gin.Context) {
+		user := &UserInfo{} 
+		if err := c.ShouldBind(&user); err != nil {
+			c.JSON(200, gin.H{
+				"err": err.Error(),
+			})
+		} else {
+			c.JSON(200, user)
+		}
+	})
+
+```
+
+我们在浏览器访问 `http://localhost:8888/getUser?username=123&password=345 `，能够看到页面正确打印我们传入的值。
+
+#### **POST请求**
+
+``` go
+	// 处理form 提交过来的post请求，并用结构体来接收传的值
+	router.POST("/doAddUser2", func(c *gin.Context) {
+		user := &UserInfo{} // 用的结构体就是上面定义的
+		if err := c.ShouldBind(&user); err != nil {
+			c.JSON(200, gin.H{
+				"err": err.Error(),
+			})
+		} else {
+			c.JSON(200, user)
+		}
+	})
+// 当然，前端代码要写对应
+/*
+    <form action="doAddUser2" , method="post">
+      用户名：<input type="text" name="username" /> <br />
+      密码：<input type="password" name="password" /> <br />
+      <input type="submit" value="提交" />
+      <!-- 点击提交就会去请求 doAddUser -->
+    </form>
+*/
+```
+
+在有这个表单的前端页面中输入username和password并提交，可以看到正确结果。
+
+#### POST提交的XML数据
+
+``` go
+// 用来 绑定 xml数据的 结构体
+type Article struct {
+	Title   string `form:"title" xml:"title"`     // 配置 xml 标签
+	Content string `form:"content" xml:"content"` //
+}
+...
+
+	// 获取POST传过来的 xml 数据
+	router.POST("/xml", func(c *gin.Context) {
+		b, _ := c.GetRawData() // 获取原始未解析的数据stream data.，返回的b是 []byte类型
+		article := &Article{}
+		if err := xml.Unmarshal(b, &article); err != nil {
+			c.JSON(400, err)
+		} else {
+			c.JSON(200, article)
+		}
+	})
+
+/* xml数据如下
+<?xml version="1.0" encoding="UTF-8"?>
+<article>
+    <content type="string">我是张三123456</content>
+    <title type="string"> 张  三  </title>
+</article>
+*/
+```
+
+后端代码如上，然后使用postman发送一个带xml数据的post请求
+
+![image-20240227232144907](img/image-20240227232144907.png)
+
+send发送之后我们看到结果：
+
+![image-20240227232230661](img/image-20240227232230661.png)
+
+#### 动态路由
+
+我们也可以通过`user/123`，`user/qwer`这样的方式来访问，也即不用 `?`来传值。即将后面的值`123、qwer`作为值传给后台。
+
+``` go
+	// 动态路由， uid是被解析为用户传入的值
+	router.GET("/user/:uid", func(c *gin.Context) {
+		uid := c.Param("uid") // 解析传入的值
+		c.JSON(200, gin.H{
+			"name": "这是user界面",
+			"uid":  "传入的uid为" + uid,
+		})
+	})
+```
+
+访问 `http://localhost:8888/user/123撒旦` 得到页面结果 `{"name":"这是user界面","uid":"传入的uid为123撒旦"}`。
+
+## 路由分组
+
+
+
+
 
 # 数据结构
 

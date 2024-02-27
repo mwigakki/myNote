@@ -168,7 +168,7 @@ func (a Address) newAddress(p string, c string) {
 
 ​		此时要在go build 后面加路径，不需要绝对路径，只需要加%GOPATH%/src/之后的路径就行了，写到最终的文件夹名就行了 ，不需要.go的文件名。例如`go build github.com\studyGo1\01helloword1`，可执行文件就会保存在当前目录下。
 
-运行`go build`如果报错如下：`go: go.mod file not found in current directory or any parent directory; see 'go help modules'`。处理方法如下：在你的项目根目录下执行以下命令，以初始化 Go 模块：`go mod init <module-name>` 。`<module-name>` 是你的项目名称
+运行`go build`如果报错如下：`go: go.mod file not found in current directory or any parent directory; see 'go help modules'`。处理方法如下：在你的项目根目录下执行以下命令，以初始化 Go 模块：`go mod init <module-name>` 。`<module-name>` 是你的项目名称，可省略。
 
 3. 改生成的exe文件名（名字默认是项目名，即这个文件夹的名字）
 
@@ -3714,9 +3714,52 @@ Go语言中没有“类”的概念，也不支持“类”的继承等面向对
 //将MyInt定义为int类型
 type MyInt int
 type students []*student
+type RdrWtr func(io.Writer, io.Reader) // 也可以自定义函数
 ```
 
 通过`type`关键字的定义，`MyInt`就是一种新的类型，它具有`int`的特性。
+
+还可以对函数进行类型定义，语法：`type 类型名称 func(参数类型) 返回类型`，实例如下：
+
+``` go
+package main
+
+import "fmt"
+
+type sthHasName interface {
+	printMyName(string)
+} // 定义一个接口
+
+type PrintNameAdapter func(string) // 自定义函数类型，就是函数适配器，使用时 PrintNameAdapter(另一个函数) 就相当于这个函数类型的一个实例了
+
+// 让这个函数类型去实现这个接口
+func (p PrintNameAdapter) printMyName(name string) {
+	p(name)
+}
+func human(name string) {
+	fmt.Println("this is human ", name)
+}
+func animal(name string) {
+	fmt.Println("this is animal ", name)
+}
+
+func f1(s sthHasName, name string) { // 第一个参数是接口
+	s.printMyName(name)
+}
+
+func main() {
+	PrintNameAdapter(human)("阿姨")  	// 简单使用，但无法体现函数适配器的好用法
+	f1(PrintNameAdapter(animal), "tom") // 好用法。函数适配器就能够传入这个接口
+}
+/*
+this is human  阿姨
+this is animal  tom
+*/
+```
+
+
+
+
 
 #### 类型别名
 
@@ -4773,6 +4816,46 @@ func main() {
 }
 ```
 
+下面的例子用于加深对接口的理解
+
+``` go
+package main
+
+import "fmt"
+
+type zhuangke interface {
+	dajia(string)
+}
+
+type qinglongbang struct{}
+
+func (q *qinglongbang) dajia(shijian string) {
+	fmt.Println(shijian, ",青龙帮打架很狠，打的人头破血流")
+}
+
+type heiyingbang struct{}
+
+func (h *heiyingbang) dajia(shijian string) {
+	fmt.Println(shijian, ",黑影帮打架时身穿黑衣，善使暗器，来去无踪")
+}
+
+type dahuirenjia struct { // 此大户人家每年都会准备一笔钱留着给“庄客”，实际上就是用于雇佣打架的黑社会的钱
+	zhuangke // 但此大户人家爱惜名声，从不说这些庄客来自哪里，是干什么的（没有name）。每次雇佣的都不会一批黑社会，让外界以为他们从不与黑社会有染
+}
+
+// "大户人家每次欺行霸市都会先编造理由，总说自己是正当防卫，实际上偷偷地派庄客去打人"
+func main() {
+	qlb := &qinglongbang{}
+	hyb := &heiyingbang{}
+	dhrj := &dahuirenjia{hyb}
+	shijian := "三月"
+	dhrj.zhuangke.dajia(shijian)
+	dhrj.zhuangke = qlb
+	shijian = "九月"
+	dhrj.zhuangke.dajia(shijian)
+}
+```
+
 ### 空接口
 
 空接口是指没有定义任何方法的接口类型。因此任何类型都可以视为实现了空接口。也正是因为空接口类型的这个特性，空接口类型的变量可以存储任意类型的值。
@@ -5509,6 +5592,13 @@ func readFileFromOffset() {
 }
 ```
 
+### 创建与删除
+
+``` go
+err := os.Mkdir("./ab/cd", 0666)
+err := os.Remove("t.txt")
+```
+
 ### 读取文件夹
 
 ``` go
@@ -5532,7 +5622,7 @@ func main() {
         // 此file是 fs.DirEntry 类型，有`Info`,`IsDir`,`Name`,`Type`等方法。
 		fmt.Println(file.Name())
         // 要分别读取各个文件，需要构建完整的文件路径，在进行读取。
-        filePath := 
+        filePath := dir+"\"+file.Name()
 	}
 }
 ```
@@ -8175,15 +8265,93 @@ D:\go\gopath\src\github.com\studyGo3\qwer\test4>go run main.go -bind="1,10.0.0.1
 */
 ```
 
-## 27. 网络及网页应用
+## 27. go mod使用
 
-#### tcp服务器
+[go mod使用 | 全网最详细 - 知乎 (zhihu.com)](https://zhuanlan.zhihu.com/p/482014524)
 
-这部分我们将使用 TCP 协议和协程通道编写一个简单的客户端 - 服务器应用，一个（web）服务器应用需要响应众多客户端的并发请求：go 会为每一个客户端产生一个协程用来处理请求。我们需要使用 net 包中网络通信的功能。它包含了用于 TCP/IP 以及 UDP 协议、域名解析等方法。
+### 介绍
 
-[15.1. tcp 服务器 | 第十五章. 网络，模板和网页应用 |《Go 入门指南》| Go 技术论坛 (learnku.com)](https://learnku.com/docs/the-way-to-go/151-tcp-server/3703)
+在学习go基础上我直接在go环境`go env`中将 `set GO111MODULE=auto`，模块管理设置为自动。表示如果当前目录如果由`go.mod`文件就是go mod 模块，否则就是使用传统的GOPATH模式。
 
+而 `set GO111MODULE=on`设置表示强制使用go mod 模块模式。由于在学习的过程中有些第三方库如gin必须使用go mod模块，因此我们需要学习并使用它。
 
+使用 Go 模块（即使用 go.mod 文件）和传统的 GOPATH 模式之间有一些重要的区别，这些区别包括：
+
+1. **依赖管理**：
+   - Go 模块：通过使用 go.mod 文件，您可以更加精确地管理项目的依赖关系，包括指定依赖的版本、管理依赖的更新和版本冲突等。这样可以更好地控制项目的依赖关系，并减少因为不同版本的依赖包引起的问题。
+   - GOPATH 模式：传统的 GOPATH 模式依赖于整个 GOPATH 目录结构来管理项目和依赖包，可能会导致依赖关系混乱，特别是在处理多个项目或依赖版本时。
+2. **版本管理**：
+   - Go 模块：允许您使用语义化版本控制依赖包的版本，可以确保项目使用的依赖包版本是确定的，并且可以灵活地更新依赖。
+   - GOPATH 模式：在 GOPATH 模式下，版本管理相对困难，依赖包的版本可能不确定，难以追踪依赖包的具体版本信息。
+3. **项目独立性**：
+   - Go 模块：每个项目都可以具有自己的 go.mod 文件，可以独立管理依赖，而不受 GOPATH 目录结构的限制。
+   - GOPATH 模式：在 GOPATH 模式下，多个项目共享同一个 GOPATH，可能会导致依赖冲突或版本不一致的问题。并且代码开发必须在go path src目录下。
+4. **依赖包查找**
+   - Go 模块：当modules功能启用时，依赖包的存放位置变更为$GOPATH/pkg，允许同一个package多个版本并存，且多个项目可以共享缓存的 module。
+   - GOPATH 模式：只会去GOROOT和GOPATH中寻找缓存包。
+
+总的来说，使用 Go 模块（go.mod 文件）相对于传统的 GOPATH 模式来说，具有更好的依赖管理、版本控制和项目独立性。因此，推荐使用 Go 模块来管理依赖关系和版本控制，特别是对于较复杂的项目或需要精确管理依赖关系的情况。
+
+### 使用
+
+我们新建一个文件夹`project3`，在命令行中输入`go mod init project3` （项目名即文件夹名可以省略）。可以发现生成一个`go.mod`的文件，内容如下：
+
+``` go
+module github.com/LT/project3
+
+go 1.18
+```
+
+> go.mod文件一旦创建后，它的内容将会被go toolchain全面掌控。go toolchain会在各类命令执行时，比如go get、go build、go mod等修改和维护go.mod文件。
+>
+> go.mod 提供了module, require、replace和exclude 四个命令
+>
+> - `module` 语句指定包的名字（路径）
+> - `require` 语句指定的依赖项模块
+> - `replace` 语句可以替换依赖项模块
+> - `exclude` 语句可以忽略依赖项模块
+
+然后我们添加依赖，创建`main.go`文件，内容如下：
+
+``` go
+package main
+
+import (
+    "github.com/gin-gonic/gin"
+)
+
+func main() {
+    r := gin.Default()
+    r.GET("/ping", func(c *gin.Context) {
+        c.JSON(200, gin.H{
+            "message": "pong",
+        })
+    })
+    r.Run() // listen and serve on 0.0.0.0:8080 (for windows "localhost:8080")
+}
+```
+
+执行` go run main.go `会提示我们添加依赖。
+
+``` go
+main.go:4:2: no required module provides package github.com/gin-gonic/gin; to add it:
+        go get github.com/gin-gonic/gin
+```
+
+> go module 安装 package 的原則是先拉最新的 release tag，若无tag则拉最新的commit
+
+我们在此文件夹下的cmd中执行` go get github.com/gin-gonic/gin`后，发现`go.mod` 文件中多了很多内容，这些都是需求的依赖和相应的版本。同时go 会自动生成一个`go.sum` 文件来记录 dependency tree。
+
+> 可以使用命令 go list -m -u all 来检查可以升级的package，使用go get -u need-upgrade-package 升级后会将新的依赖版本更新到go.mod * 也可以使用 go get -u 升级所有依赖
+
+这些依赖所在的位置就是`$GOPATH/pkg/mod/github/gin-gonic/gin@版本`。
+
+**go get升级**
+
+- 运行 go get -u 将会升级到最新的次要版本或者修订版本(x.y.z, z是修订版本号， y是次要版本号)
+- 运行 go get -u=patch 将会升级到最新的修订版本
+- 运行 go get package@version 将会升级到指定的版本号version
+- 运行go get如果有版本的更改，那么go.mod文件也会更改
 
 ## #标准库之math
 
@@ -8755,12 +8923,6 @@ www.txt里面的文字
 
 
 
-
-
-
-
-
-
 ## #内置函数
 
 内置函数都在`builtin`里
@@ -8775,16 +8937,4 @@ www.txt里面的文字
 - `delete(map, key)`: 使用`delete()`内建函数从map中删除一组键值对
 - `panic()` : 用于错误处理，见14
 - `recover()` : 用于错误处理，见14
-
-
-
-
-
-
-
-
-
-## #相关问题
-
-1. 在vscode中使用`go build`可能出现`go: go.mod file not found in current directory or any parent directory; see 'go help modules'` 的错误，解决方法是cmd 里输入 `go env -w GO111MODULE=auto`
 
