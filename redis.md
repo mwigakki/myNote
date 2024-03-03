@@ -199,9 +199,7 @@ redis 的几十个配置说明见：[Redis 配置 | 菜鸟教程 (runoob.com)](h
 
 # 4. Redis 数据类型
 
-Redis支持五种数据类型：string（字符串），hash（哈希），list（列表），set（集合）及zset(sorted set：有序集合)。
-
-------
+Redis支持五种数据类型：**string（字符串），hash（哈希），list（列表），set（集合）及zset(sorted set：有序集合)。**
 
 ## String（字符串）
 

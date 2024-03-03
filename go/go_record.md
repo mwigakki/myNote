@@ -103,6 +103,19 @@ go env -w GOPROXY=https://goproxy.cn,direct
 
 <img src="img\image-20220503090152697.png" alt="image-20220503090152697" style="zoom:67%;" />
 
+### golang程序的热加载 
+
+代码修改后，程序能够自动重新加载并执行。 gin中没有官方提供的热加载工具，需要借助第三方工具
+
+``` go
+go get github.com/pilu/fresh // 下载
+go install github.com/pilu/fresh // 安装
+```
+
+在项目中安装`fresh`后，直接在命令行执行`fresh`，之后就可以完全用`fresh`替代 `go run main.go`了。
+
+发现程序也正常执行了。此时我们执行修改代码，发现命令行立刻自动重新加载服务，说明fresh生效了。
+
 ## 3. Hello world!
 
 go 代码第一句是`package 包名`
@@ -5264,7 +5277,7 @@ import _ "github.com/go-sql-driver/mysql"
 ### package使用总结
 
 - 包的位置应在 `<GOPATH>\src\`文件夹中。
-- 而在不在 `<GOPATH>\src\`文件夹而在其他地方写go程序也可以，此时这个程序中不同目录层级要相互引用包时就是用`import [相对路径]`，如`import ./subfolder1/pkg`。（即使vscode显示这个import语法有误也没关系，它还是可以运行）
+- 而在不在 `<GOPATH>\src\`文件夹而在其他地方写go程序也可以，此时这个程序中不同目录层级要相互引用包时就是用`import [相对路径]`，如`import ./subfolder1/pkg`。（即使vscode显示这个import语法有误也没关系，它还是可以运行）。然而在go mod模式下，import后跟相对路径是不被支持的。这时我们就引用包所在位置相对于项目的绝对路径即可。比如项目 `go mod` 文件中首行`module github.com/demo4`，自己的包在`github.com/demo4/tmp`下，那我们就这样引用`import github.com/demo4/tmp` 就行。
 - 每个go程序都需要有一个名为main的包（即使用package main 开头的go文件，这个go文件里必须要有main函数，这里才是程序入口）。且一个go 程序只能有一个main函数程序入口。
 - import 后可跟别名alias，可自定义，调用时写`<alias>.函数名()`，对于自定义的包强烈推荐加别名，且建议和包名相同。
 - **别名设为` .`时**， 相当于将该包中的函数和类型直接放在本文件中了。其中的函数可直接调用

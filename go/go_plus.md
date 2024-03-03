@@ -569,14 +569,6 @@ http.ListenAndServe("localhost:8888", nil)
 
 ![img](https://cdn.learnku.com/build-web-application-with-golang/images/3.3.illustrator.png?raw=true)
 
-
-
-
-
-
-
-
-
 ## 使用go发送http请求
 
 简单地发送请求（简单看看就行，不可取）
@@ -660,10 +652,6 @@ func main() {
 }
 ```
 
-
-
-
-
 ## 常见库包解释
 
 ### net/http
@@ -719,8 +707,6 @@ func (mux *ServeMux) ServeHTTP(w ResponseWriter, r *Request) {
 ```
 
 路由器收到请求后，没出错，就调用` mux.Handler(r)`返回对应设置路由的处理Handler（一般就是我们使用http.HandleFunc传入的handler），然后执行`h.ServeHTTP(w, r)`。
-
-
 
 ### net.Error
 
@@ -785,6 +771,10 @@ import "github.com/gin-gonic/gin"
 
 **简单使用**
 
+> gin服务器后端代码中写文件的路径时，写相对于项目的路经。也就是说相对路径永远是相对于项目的。
+>
+> 写前端请求的地址路径时，最前面加了/就是相对于根目录，不加/就是相对于当前页面路径。
+
 ``` go
 package main
 
@@ -818,18 +808,7 @@ func main() {
 }
 ```
 
-## golang程序的热加载 
-
-代码修改后，程序能够自动重新加载并执行。 gin中没有官方提供的热加载工具，需要借助第三方工具
-
-``` go
-go get github.com/pilu/fresh // 下载
-go install github.com/pilu/fresh // 安装
-```
-
-在项目中安装`fresh`后，直接在命令行执行`fresh`，之后就可以完全用`fresh`替代 `go run main.go`了。
-
-发现程序也正常执行了。此时我们执行修改代码，发现命令行立刻自动重新加载服务，说明fresh生效了。
+gin作为web服务器，不同于 `net/http` 库里的路由函数，gin将request和response都封装到 gin.Context 上下文中了。最后使用`r.Run("localhost:8888")`绑定ip和端口，其实也可以用`http.ListenAndServe("localhost:8888", r)`函数
 
 ## Gin HTML模板渲染
 
@@ -947,7 +926,9 @@ func main() {
 
 浏览器输入`http://localhost:8888/`就可以访问到这个页面，而且有后台传入的数据。
 
-如果在`mytemplates`文件夹有多级目录，就需要额外写法，见`gindemo3`。
+### 多级模板目录
+
+如果在`mytemplates`文件夹有多级目录，就需要额外写法，见`gindemo3`，或`gindemo4`。
 
 如果项目文件树是这样的：
 
@@ -1365,9 +1346,1037 @@ send发送之后我们看到结果：
 
 ## 路由分组
 
+> 见 gindemo4
+
+上述的学习我们都将所有的路由配置，以及路由配置的页面的业务处理逻辑到写main文件里，但大型服务器这样方式肯定是不适用的，也不适合团队开发。
+
+下面演示简单的路由分组。
+
+``` go
+package main
+
+import (
+	"github.com/gin-gonic/gin"
+)
+
+func returnHTML() {
+	r := gin.Default()
+
+	// 路由分组 默认页面
+	defaultRouters := r.Group("/") // 对默认页面进行分组
+	{
+		defaultRouters.GET("/", func(ctx *gin.Context) {
+			ctx.JSON(200, "这里是网页默认首页")
+		})
+		defaultRouters.GET("/index", func(ctx *gin.Context) {
+			ctx.JSON(200, "这里是网页默认首页2222")
+		})
+
+	}
+	// 路由分组 api页面
+	apiRouters := r.Group("/api")
+	{
+		apiRouters.GET("/", func(ctx *gin.Context) {
+			ctx.JSON(200, "这里是api首页")
+		})
+		apiRouters.GET("/userlist", func(ctx *gin.Context) { //这里从基于/api 开始写地址就行
+			ctx.JSON(200, "这里是api页面的 userlist")
+		})
+	}
+	// 路由分组 后台页面
+	adminRouters := r.Group("/admin")
+	{
+		adminRouters.GET("/", func(ctx *gin.Context) {
+			ctx.JSON(200, "这里是admin首页")
+		})
+		adminRouters.GET("/adminlist", func(ctx *gin.Context) {
+			ctx.JSON(200, "这里是admin页面的 adminlist")
+		})
+	}
+
+	r.Run("localhost:8888")
+}
+
+func main() {
+	returnHTML()
+}
+```
+
+下面演示**每个分组的路由单独抽离成一个文件**。
+
+``` go
+/* 现在目录是这样的
+- gindemo4
+	- main.go
+	- go.mod
+	- routers  // 这些go都在首行声明 package routers
+		- adminRouters.go
+		- apiRouters.go
+		- DefaultRouter.go
+*/
+// DefaultRouter.go 的内容示例如下
+package routers
+
+import "github.com/gin-gonic/gin"
+
+func DefaultRoutersInit(r *gin.Engine) {
+	// 路由分组 默认页面
+	defaultRouters := r.Group("/") // 对默认页面进行分组
+	{
+		defaultRouters.GET("/", func(ctx *gin.Context) {
+			ctx.HTML(200, "default/index.html", gin.H{ // 第二个参数传入的仍然是 html 页面首行自己定义的 名字
+				"name": "这是  首页",
+			})
+		})
+		defaultRouters.GET("/index", func(ctx *gin.Context) {
+			ctx.JSON(200, "这里是网页默认首页2222")
+		})
+	}
+}
+```
+
+我们在 主函数 main.go 中引用这些分组路由：
+
+``` go
+package main
+
+import (
+	"github.com/gin-gonic/gin"
+	"github.com/mygin/gindemo4/routers"
+)
+
+// 写法和放在一个文件里写的示例是一样的。
+func returnHTML() {
+	r := gin.Default()
+	r.LoadHTMLGlob("mytemplates/**/*") // 加载模板，二级目录
+	routers.AdminRoutersInit(r)
+	routers.DefaultRoutersInit(r)
+	routers.ApiRoutersInit(r)
+
+	r.Run("localhost:8888")
+}
+
+func main() {
+	returnHTML()
+}
+```
+
+## 重定向 
+
+``` go
+r.GET("cdx", func(ctx *gin.Context) {
+		ctx.Redirect(http.StatusMovedPermanently, "http://www.baidu.com")
+	})
+	r.GET("cdx2", func(ctx *gin.Context) {
+		ctx.Redirect(http.StatusMovedPermanently, "admin") // 写相对路径，跳到本域名下的地址
+	})
+```
+
+## 控制器controller
+
+上一节将配置了路由分组。在大型项目中，路由文件只是配置路由，具有对路由怎么处理的业务逻辑是应该放在控制器里面的。因此这一节演示如何对路由对应的处理逻辑进行抽离。还可以控制器继承。
+
+> 见 gindemo5
+
+``` go
+项目目录如下
+- main.go
+- routers
+	- adminRouters.go
+	...
+- controllers
+	- admin
+		- baseController.go // 给别人继承的
+		- userController.go
+		- articleController.go
+	...
+```
+
+`adminRouters.go ` 如下：
+
+``` go
+package routers
+
+import (
+	"github.com/gin-gonic/gin"
+	"github.com/mygin/gindemo5/controllers/admin"
+)
+
+func AdminRoutersInit(r *gin.Engine) {
+	// 路由分组 后台页面
+	adminRouters := r.Group("/admin")
+	{
+		adminRouters.GET("/", admin.AdminIndex)
+		adminRouters.GET("/adminlist", func(ctx *gin.Context) {
+			ctx.JSON(200, "这里是admin页面的 adminlist")
+		})
+		adminRouters.GET("/user", admin.User)
+		adminRouters.GET("/user/add", admin.UserAdd)
+		adminRouters.GET("/user/edit", admin.UserEdit)
+		adminRouters.GET("/article", admin.ArticleController{}.Index)
+		adminRouters.GET("/article/add", admin.ArticleController{}.Add)
+		adminRouters.GET("/article/edit", admin.ArticleController{}.Edit)
+		adminRouters.GET("/article/success", admin.ArticleController{}.BaseController.Success) // 控制器继承，使用父控制器的方法
+	}
+}
+```
+
+` baseController.go`如下：
+
+``` go
+package admin
+
+import "github.com/gin-gonic/gin"
+
+type BaseController struct{}
+
+func (b BaseController) Success(c *gin.Context) {
+	c.JSON(200, "成功")
+}
+
+func (b BaseController) Error(c *gin.Context) {
+	c.JSON(200, "失败")
+}
+```
+
+` userController.go`如下：
+
+``` go
+package admin
+
+import "github.com/gin-gonic/gin"
+
+// 控制器抽离方法 1 ：只把路由对应的处理函数换个地方写。
+// 定义函数，让路由那里去引用，其实和直接在路由那里去写函数没多大差别
+func AdminIndex(ctx *gin.Context) {
+	ctx.JSON(200, "这里是admin首页")
+}
+func User(ctx *gin.Context) {
+	ctx.JSON(200, "这里是admin页面的 user")
+}
+func UserAdd(ctx *gin.Context) {
+	ctx.JSON(200, "这里是admin页面的 user的 add 页面")
+}
+func UserEdit(ctx *gin.Context) {
+	ctx.JSON(200, "这里是admin页面的 user的 edit 页面")
+}
+```
+
+` articleController.go`如下：
+
+``` go
+package admin
+
+import "github.com/gin-gonic/gin"
+
+// 控制器抽离方法 2 ：把路由对应的处理函数放在一个结构体中，
+// 这样的好处是结构体可以继承，可以调用父结构体里面的方法。还可以实现接口
+
+type ArticleController struct {
+	BaseController // 控制器继承，适合继承一些通用的模板类的控制器
+}
+
+func (a ArticleController) Index(ctx *gin.Context) {
+	a.Success(ctx) // 使用继承来的方法
+	ctx.JSON(200, "这里是admin页面的 Article")
+}
+func (a ArticleController) Add(ctx *gin.Context) {
+	ctx.JSON(200, "这里是admin页面的 Article 的 add 页面")
+}
+func (a ArticleController) Edit(ctx *gin.Context) {
+	ctx.JSON(200, "这里是admin页面的 Article 的 edit 页面")
+}
+```
+
+## Gin中间件
+
+gin框架允许开发者在处理请求的过程中，加入用户自己的钩子（hook）函数。这个钩子函数就是中间件。中间件适合处理一些公共的业务逻辑，比如**登录验证、权限验证、数据分页、记录日志、耗时统计**等
+
+中间件的功能，通俗的讲，就是匹配路由之前和匹配路由完成之后执行的一系列操作。
+
+实际上大多数业务逻辑用不上中间件。
+
+> 见示例 gindemo6
+
+我们点开GET函数的签名：
+
+``` go
+// GET is a shortcut for router.Handle("GET", path, handlers).
+func (group *RouterGroup) GET(relativePath string, handlers ...HandlerFunc) IRoutes {
+	return group.handle(http.MethodGet, relativePath, handlers)
+}
+```
+
+可以看到，GET函数可以传入**多个handler处理器**，POST等同理。这些handler，最后一个函数就是路由的处理程序，中间的这些函数都是中间件。
+
+``` go
+func zjj(ctx *gin.Context) {
+	fmt.Println("中间的这些函数都是中间件 2 ")
+}
+
+r.GET("/zjj", func(ctx *gin.Context) {
+		fmt.Println("中间的这些函数都是中间件 1 ")
+	}, zjj, func(ctx *gin.Context) {
+		ctx.String(200, "这最后一个函数就是路由的处理程序")
+	})
+```
+
+这些handlers的**执行顺序就是它们的定义顺序**，因此路由处理函数总是落后于中间件运行。
+
+### 统计程序的执行时间
+
+使用`ctx.Next()`方法：
+
+``` go
+	r.GET("/zjj", func(ctx *gin.Context) {
+		fmt.Println("中间件 1 上")
+		startTime := time.Now().UnixNano()
+		ctx.Next() // 直接去执行下一个中间件去了
+		endTime := time.Now().UnixNano()
+		fmt.Println("执行用时：", endTime-startTime)
+		fmt.Println("中间件 1 下")
+	}, func(ctx *gin.Context) {
+		fmt.Println("中间件 2 上")
+		ctx.Next() // 又去执行下一个中间件去了
+		fmt.Println("中间件 2  下")
+	}, func(ctx *gin.Context) {
+		fmt.Println("中间件 3 ")
+	}, func(ctx *gin.Context) {
+		fmt.Println("路由的处理函数 1")
+		ctx.String(200, "这最后一个函数就是路由的处理程序")
+		fmt.Println("路由的处理函数 2")
+	})
+
+/* 访问 http://localhost:8888/zjj 后，控制台打印：
+中间件 1 上
+中间件 2 上
+中间件 3
+路由的处理函数 1
+路由的处理函数 2
+中间件 2  下
+执行用时： 0
+中间件 1 下
+*/
+```
+
+由上例可以看出，`c.Next()`会直接去执行下一个中间件，而且如果有多个`c.Next()`，会使用类似于栈的方式进行返回。使用`c.Next()`可以轻易地计算出中间件的和路由处理函数的执行时间。
+
+### 终止调用
+
+``` go
+	r.GET("/zz", func(ctx *gin.Context) {
+		fmt.Println("Abort 可以终止调用剩余的其他中间件和处理函数")
+		ctx.Abort()
+		fmt.Println("Abort 之后")
+	}, func(ctx *gin.Context) {
+		fmt.Println("路由的处理函数 1")
+		ctx.String(200, "这最后一个函数就是路由的处理程序")
+	})
+/*
+Abort 可以终止调用剩余的其他中间件和处理函数
+Abort 之后
+*/
+```
+
+由示例看出，Abort 可以终止调用剩余的其他中间件和处理函数，而不会终止自己函数的调用。
+
+### 全局中间件
+
+``` go
+ ...
+	r.AdminRoutersInit(r) // 里面的请求不会被加入中间件
+// 在这上面注册的请求处理不会被加入全局中间件
+	r.Use(zjj1, zjj2)
+// 在此处加入全局中间件，会使之后注册的请求处理，默认带有全局中间件
+	r.GET("/qjzjj", func(ctx *gin.Context) {
+		fmt.Println("路由的处理函数 1")
+		ctx.String(200, "这最后一个函数就是路由的处理程序")
+	})
+	r.ApiRoutersInit(r) // 这里面的请求就会被加入中间件
+
+func zjj1(ctx *gin.Context) {
+	fmt.Println("加入到全局中间件 1")
+}
+
+func zjj2(ctx *gin.Context) {
+	fmt.Println("加入到全局中间件 2")
+}
+/*
+加入到全局中间件 1
+加入到全局中间件 2
+路由的处理函数 1
+*/
+```
+
+所以使用全局中间件时一定要注意全局中间件加入的位置，因为它会影响所有在它之后加入的请求处理！而且即使 404 ，405 的页面也会进入全局中间价处理，此时一般就判断页面状态然后返回前端相应的提示即可。
+
+### 在路由分组中配置
+
+``` go
+// 方法1：在r.Group函数中配置
+defaultRouters := r.Group("/",zjj) 
+//2 方法1：在r.Group函数后面使用Use配置
+defaultRouters := r.Group("/") 
+r.Use(zjj)
+```
+
+``` go
+func defaultZjj1(ctx *gin.Context) {
+	fmt.Println("打印 默认页面 中间件1")
+}
+func defaultZjj2(ctx *gin.Context) {
+	fmt.Println("打印 默认页面 中间件2")
+}
+
+func DefaultRoutersInit(r *gin.Engine) {
+	// 路由分组 默认页面
+	defaultRouters := r.Group("/", defaultZjj1) // 对默认页面进行分组
+	{
+		defaultRouters.GET("/", func(ctx *gin.Context) {
+			fmt.Println("打印 首页 中间件")
+		}, index.IndexController{}.Index)
+		defaultRouters.GET("/intr", index.IndexController{}.Intr)
+	}
+	r.Use(defaultZjj2)
+}
+```
+
+当我们访问` http://localhost:8888/` 时，打印：
+
+``` go
+打印 默认页面 中间件1
+打印 首页 中间件
+```
+
+当我们访问一个不存在的页面时` http://localhost:8888/bucunzai` 时，打印：
+
+``` go
+打印 默认页面 中间件2
+```
+
+由结果可知，在请求组`/`中，只有defaultZjj1被加进去了，defaultZjj2没有被加进去。
+
+### 中间件共享数据
+
+我们知道，中间件使用的函数模板必须是固定的，参数和返回值我们不能修改。所以当我们需要在中间件之间共享数据，或者中间件与控制器之间共享数据时，我**需要使用`ctx.Set(key string, value any)`函数来设置变量，之后通过`value, has := ctx.Get(key)`来获取变量**。（即使获取不到也不会报错，value会等于nil）
+
+``` go
+func ApiRoutersInit(r *gin.Engine) {
+	// 路由分组 api页面
+	apiRouters := r.Group("/api", func(ctx *gin.Context) {
+		ctx.Set("name", "tomcat")
+		fmt.Println("这里是api的中间件，给每个api下的页面都加了。setname")
+	})
+	{
+		apiRouters.GET("/", api.ApiController{}.Index)
+		apiRouters.GET("/userlist", api.ApiController{}.User)
+	}
+}
+
+....
+
+func (a ApiController) Index(ctx *gin.Context) {
+	ctx.JSON(200, "这里是api首页")
+	name, has := ctx.Get("name") 
+	if has {
+		// 这里name是any类型，使用类型断言得到我们想要的类型
+		v, _ := name.(string)
+		fmt.Println("收到来自 api 的 name 字段 ", v)
+	} else {
+		fmt.Println("没有收到")
+	}
+}
+```
+
+如上所示，我们现在`/api`路径下设置了中间件变量，当我们访问`api`下的任何目录时，都会可以使用该中间件变量。
+
+但是如果访问非`/api`路径，那就一定得不到这个变量。
+
+### 默认中间件
+
+我们之间创建路由都是通过` r := gin.Default()`，其实这种方式已经帮我们注册了两个默认中间件，我们查看其方法签名：
+
+``` go
+// Default returns an Engine instance with the Logger and Recovery middleware already attached.
+func Default() *Engine {
+	debugPrintWARNINGDefault()
+	engine := New()
+	engine.Use(Logger(), Recovery())
+	return engine
+}
+```
+
+可以看到，已经由`Logger(), Recovery()`两个中间件了。我们一般推荐就使用默认引擎，因为这两个默认中间件都很好用。
+
+- `Logger()`：将日志写入 `gin.DefaultWriter`，即使配置了`GIN_MODE=release`。
+- `Recovery()`：此zjj会 recover 所以的panic，并返回500 的状态码，方便我们处理错误。
+
+如果我们不想使用默认路由引擎，我们可以直接使用`r := gin.New()`来创建一个普通的路由引擎。我们查看`New()`的签名。
+
+``` go
+func New() *Engine {
+	debugPrintWARNINGNew()
+	engine := &Engine{
+		RouterGroup: RouterGroup{
+			Handlers: nil,
+			basePath: "/",
+			root:     true,
+		},
+		FuncMap:                template.FuncMap{},
+		RedirectTrailingSlash:  true,
+		RedirectFixedPath:      false,
+		HandleMethodNotAllowed: false,
+		ForwardedByClientIP:    true,
+		RemoteIPHeaders:        []string{"X-Forwarded-For", "X-Real-IP"},
+		TrustedPlatform:        defaultPlatform,
+		UseRawPath:             false,
+		RemoveExtraSlash:       false,
+		UnescapePathValues:     true,
+		MaxMultipartMemory:     defaultMultipartMemory,
+		trees:                  make(methodTrees, 0, 9),
+		delims:                 render.Delims{Left: "{{", Right: "}}"},
+		secureJSONPrefix:       "while(1);",
+		trustedProxies:         []string{"0.0.0.0/0", "::/0"},
+		trustedCIDRs:           defaultTrustedCIDRs,
+	}
+	engine.RouterGroup.engine = engine
+	engine.pool.New = func() any {
+		return engine.allocateContext(engine.maxParams)
+	}
+	return engine
+}
+```
+
+### 中间件使用goroutine
+
+当在中间件或请求处理的handler中启动新的goroutine时，**不能直接使用原始的上下文`c *gin.Context`。只能使用其副本`c.Copy()`。**
+
+``` go
+	r.GET("/routine", func(ctx *gin.Context) {
+		go func() {
+			// 不适用 ctx 的话就无所谓
+			fmt.Println("开始了一个新的协程，耗时5秒")
+			time.Sleep(time.Second * 5)
+			fmt.Println("新的协程任务完毕")
+            // 这里创建的goroutine不需要加入等待组，因为主程序不会主动退出
+		}()
+		ccp := ctx.Copy()
+		go func() {
+			fmt.Println("开始了一个新的协程 2 ，耗时5秒")
+			time.Sleep(time.Second * 5)
+			fmt.Println(ccp.Request.URL)
+			fmt.Println("新的协程任务2 完毕")
+		}()
+		ctx.String(200, "开启新的goroutine不能使用原始的 ctx *gin.Context")
+	})
+
+/*
+开始了一个新的协程，耗时5秒
+开始了一个新的协程 2 ，耗时5秒
+新的协程任务完毕
+/routine
+新的协程任务2 完毕
+*/
+```
+
+### 自定义Model
+
+其实就是封装公共函数。
+
+如果我们的web项目比较大，有一些功能是通用的，想让这些功能可以在多个控制器、多个模板中进行复用，那么我们可以把公共的功能抽取出来作为一个模块Model。Model是一个逐渐抽象的过程。
+
+但是model 一般翻译为模型，与这里的用法不太匹配。按照这里的功能，叫`utils` 更为合适。
+
+> 可能是想通过这里的Model，控制器Controller，还有模板template作为v，去作为MVC架构。
+
+> 见gindemo7
+
+我们新建一个utils文件夹，新建tools.go，加入一个通用的方法
+
+``` go
+package utils
+
+import (
+	"fmt"
+	"time"
+)
+
+func UnixToTime(timeStamp int) string {
+	fmt.Println("时间戳为 ", timeStamp)
+	t := time.Unix(int64(timeStamp), 0)
+	return t.Format("2006-01-02 15:04:05")
+}
+```
+
+然后我们可以在其他任何地方使用此函数，比如我们把它传到前端html页面作为模板函数。
+
+``` go
+// 给html模板加入函数，放在加载模板之前
+	r.SetFuncMap(template.FuncMap{"UnixToTime": utils.UnixToTime})
+	r.LoadHTMLGlob("mytemplates/**/*") // 加载模板，二级目录
+```
+
+html页面：
+
+``` html
+<br />
+    <p>12345789 格式化为 {{UnixToTime 123456789}}</p>
+    <p>{{.timeStamp}} 格式化为 {{UnixToTime .timeStamp}}</p> 
+```
+
+>  timeStamp 需要在后端传入
+
+结果展示：
+
+![image-20240302114930873](img/image-20240302114930873.png)
+
+## 文件上传
+
+> 见gindemo8
+
+需注意：在上传文件的form表单上面需要加入`enctype="multipart/form-data"`
+
+### 单文件上传
+
+首先准备一个html，页面命名为`admin/userAdd.html`
+
+``` html
+{{define "admin/userAdd.html"}}
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Document</title>
+  </head>
+  <body>
+    <p>演示文件上传</p>  <!-- form表单中action的地址写法尽量从/开始写，这样它才会从web服务器的根地址开始查找，不然就是从当前页面地址开始查找 -->
+    <form action="/admin/user/doUpload" method="POST" enctype="multipart/form-data">
+      用户名：<input type="text" , name="username" />
+      <br />
+      头 像：<input type="file" name="face" />
+      <br />
+      <input type="submit" value="上传" />
+    </form>
+  </body>
+</html>
+{{end}}
+```
+
+后端加入访问该页面的路由和handler
+
+``` go
+adminRouters := r.Group("/admin")
+	{
+		...
+		adminRouters.GET("/user/add", admin.UserAdd)
+    }
+...
+func UserAdd(ctx *gin.Context) {
+	ctx.HTML(200, "admin/userAdd.html", nil) // 我们没有传入的数据 写个空就行
+}
+```
+
+然后加入上传后的页面handler，路由就是form写的`admin/user/doUpload`：
+
+``` go
+func AdminRoutersInit(r *gin.Engine) {
+    r.MaxMultipartMemory = 1 << 10 // 为 multiparty forms 设置较低的内存限制，单位是Byte，默认是32MB
+	// 路由分组 后台页面
+	adminRouters := r.Group("/admin")
+	{
+		...
+		adminRouters.POST("/user/doUpload", admin.DoUpload)
+    }
+    
+    
+```
+
+然后我们完成DoUpload方法：
+
+``` go
+func DoUpload(ctx *gin.Context) {
+	fmt.Println("在这里收到图片，然后才准备保存到后台")
+	username := ctx.PostForm("username")
+	file, err := ctx.FormFile("face") // 通过函数获取file
+	if err == nil {
+		// 设置保存路径，一般就放在静态文件里面
+		dst := path.Join("./static/upload", username, file.Filename) // Join方法会帮我们加入 / 拼接
+		ctx.SaveUploadedFile(file, dst)                              // 通过函数保存file ，API都给我们写好了，即使没有static/upload文件夹里没有username这个路径也会帮我们创建
+		ctx.JSON(http.StatusOK, gin.H{
+			"上传?":       http.StatusOK,
+			"username：": username,
+			"保存路径：":     dst,
+		})
+	} else {
+		log.Println("错误：", err)
+	}
+}
+```
+
+### 多文件上传
+
+一个简单的方式实现多文件上传就是在表单里多加几个file类型的input，然后后台在DoUpload方法中多写几遍保存的代码。没什么好说的。
+
+另一种比较方便的多文件上传的方法是在form表单中给上传的文件设置相同的`name[]`。见下例
+
+``` html
+{{define "admin/userAddMore.html"}}
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Document</title>
+  </head>
+  <body>
+    <p>演示多文件上传</p>
+    <form
+      action="/admin/user/doUploadMore"
+      method="POST"
+      enctype="multipart/form-data"
+    >
+      用户名：<input type="text" , name="username" />
+      <br />
+      文件1：<input type="file" name="file[]" />
+      <br />
+      文件2：<input type="file" name="file[]" />
+      <br />
+      文件3：<input type="file" name="file[]" />
+      <br />
+      <input type="submit" value="上传" />
+    </form>
+  </body>
+</html>
+{{end}}
+```
+
+将form表单中的文件name都命名为`file[]`。
+
+后端代码与上传单文件一样，只有处理的handler不一样
+
+``` go
+func DoUploadMore(ctx *gin.Context) {
+	fmt.Println("在这里收到图片，然后才准备保存到后台")
+	username := ctx.PostForm("username")
+	form, _ := ctx.MultipartForm()
+	files := form.File["file[]"]
+	for _, file := range files {
+		// 设置保存路径，一般就放在静态文件里面
+		dst := path.Join("./static/upload", username, file.Filename) // Join方法会帮我们加入 / 拼接
+		ctx.SaveUploadedFile(file, dst)
+	}
+	ctx.JSON(http.StatusOK, gin.H{
+		"上传?":       http.StatusOK,
+		"username：": username,
+	})
+}
+```
+
+### 按日期存储文件
+
+上传同名文件时，后上传会顶替掉前一个文件。解决方法就是在后台保存文件时文件名称加上时间。同时，按日期保存图片也是更好的文件管理的方法。
+
+``` go
+func DoUploadByTime(ctx *gin.Context) {
+	fmt.Println("在这里收到图片，然后才准备保存到后台")
+	now := time.Now()
+	today := now.Format("2006-01-02")
+	t := now.Format("150405")
+	username := ctx.PostForm("username")
+	file, err := ctx.FormFile("face") // 通过函数获取file
+	if err == nil {
+		// 设置保存路径，一般就放在静态文件里面
+		dst := path.Join("./static/upload", today, t+"_"+file.Filename) // Join方法会帮我们加入 / 拼接
+		ctx.SaveUploadedFile(file, dst)                                 // 通过函数保存file ，API都给我们写好了，即使没有static/upload文件夹里没有username这个路径也会帮我们创建
+		ctx.JSON(http.StatusOK, gin.H{
+			"上传?":       http.StatusOK,
+			"username：": username,
+			"保存路径：":     dst,
+		})
+	} else {
+		log.Println("错误：", err)
+	}
+}
+```
+
+## Gin中的cookie
+
+http是无状态的协议。如果我们要实现多个页面之间共享数据，我们需要使用cookie或者session。
+
+cookie是存储在访问者的计算机中的，让我们用同一个浏览器访问同一域名时带有的共享数据。cookie实现的常见功能包括：
+
+1. 保持用户登录状态
+2. 保存用户浏览的历史
+3. 猜你喜欢，智能推荐
+4. 加入购物车
+
+Cookie的缺点: 不安全，明文;增加带宽消耗;可以被禁用;cookie有上限
+
+> 见 gindemo9
+
+### 设置和获取cookie
+
+设置cookie设置函数`ctx.SetCookie(name, value string, maxAge int, path, domain string, secure, httpOnly bool)`，获取的函数`Cookie(name string)`。签名如下：
+
+``` go
+func (c *Context) SetCookie(name, value string, maxAge int, path, domain string, secure, httpOnly bool) {
+	if path == "" {
+		path = "/"
+	}
+	http.SetCookie(c.Writer, &http.Cookie{
+		Name:     name,  // cookie 的key ，或 name
+		Value:    url.QueryEscape(value),  // cookie 的值
+		MaxAge:   maxAge, // 过期时间 单位时 秒。将maxAge 设置为负数表示删除这个cookie
+		Path:     path,	// cookie 生效的路径，一般写 /，表示当前网站下都有效
+		Domain:   domain, // cookie 对应的域，设置为域名
+		SameSite: c.sameSite,
+		Secure:   secure,  // cookie是否在https协议下才生效
+		HttpOnly: httpOnly, // 是否允许前端（如js，applet）操作cookie
+	})
+}
+
+func (c *Context) Cookie(name string) (string, error) {
+	cookie, err := c.Request.Cookie(name)
+	if err != nil {
+		return "", err
+	}
+	val, _ := url.QueryUnescape(cookie.Value)
+	return val, nil
+}
+```
+
+由签名可以看出，cookie里面只能保存字符串，如果需要保存其他结构体，可以使用json字符串转义。
+
+使用示例：
+
+``` go
+type IndexController struct{}
+
+func (i IndexController) Index(ctx *gin.Context) {
+	ctx.SetCookie("username", "张三", 3600, "/", "localhost", false, true)
+	ctx.HTML(200, "default/index.html", gin.H{ // 第二个参数传入的仍然是 html 页面首行自己定义的 名字
+		"name": "这是  首页",
+	})
+}
+func (i IndexController) Intr(ctx *gin.Context) {
+	username, err := ctx.Cookie("username") // 获取失败会返回错误 http: named cookie not present。所以必须先set，再get
+	if err != nil {
+		fmt.Println("获取cookie出错，请检查，err：", err)
+		return
+	}
+	ctx.JSON(200, "这里是网页介绍页面2222。username = "+username)
+}
+```
+
+我们首先访问localhost后，会设置该cookie，然后可以再其他任何界面中获得。我们在前端查看cookie：
+
+![image-20240302233852124](img/image-20240302233852124.png)
+
+要删除cookie只需要调用`ctx.SetCookie(...,maxAge<0,...)`即可。
+
+### 不同域共享cookie
+
+多个二级域名下如何共享cookie，一般用于在多个二级域名下同步登录用户。比如在a.tqt.com和b.tqt.com下共享cookie。做法是首先在a.tqt.com下设置cookie，然后再b.tqt.com中获取刚才设置的cookie。
+
+比如我们登录哔哩哔哩，在前端中查看cookie：
+
+![image-20240303103424086](img/image-20240303103424086.png)
+
+大部分的cookie所在的域都是`.bilibili.com`，包括保存了登录状态的cookie。此时我们进入b站的一个二级域名`music.bilibili.com`。能够看到在此域名下仍然保持着登录状态。
+
+为了进行测试，我们首先让我们在本地拥有多个域名。
+
+在`C:\Windows\System32\drivers\etc`下修改host文件，新增下面两项：
+
+``` txt
+127.0.0.1       a.tqt.com
+127.0.0.1       b.tqt.com
+```
+
+把程序监听的端口设置为80，然后设置cookie。
+
+``` go
+func (i IndexController) Index(ctx *gin.Context) {
+	ctx.SetCookie("username", "张三", 3600, "/", ".tqt.com", false, true)
+	ctx.HTML(200, "default/index.html", gin.H{ // 第二个参数传入的仍然是 html 页面首行自己定义的 名字
+		"name": "这是  首页",
+	})
+}
+```
+
+设置cookie的域直接是` .tqt.com`，让此cookie 可以在任何二级域名得到访问。
+
+## Gin中的session
+
+session域cookie类似，也是一种记录用户状态的机制，不过session 是保存在服务器中的。
+
+**当客户端浏览器第一次访问服务器时并发送请求时， 服务器会创建一个session对象，生成一个类似于`key:value` 的键值对，然后将 value 保存到服务器，将`key` （放在cookie中）返送到客户端。客户端下次访问时会带上这个key（放在cookie中），服务器找到对应的 session，让服务端知道是哪一个用户发来的请求。**
+
+Gin没有提成session功能，我们需要使用第三方提供的session 中间件来使用。我们使用https://github.com/gin-contrib/sessions。此中间件支持的存储引擎包括cookie，memstore，redis，memcached，mongodb。
+
+下载并安装：
+
+``` go
+go get github.com/gin-contrib/sessions
+```
+
+> 见例程 gindemo9
+
+### 设置和获取cookie
+
+在main.go中，让所有的路由都可以使用session。
+
+``` go
+	// 配置session中间件，gin中的session本质是中间件
+	store := cookie.NewStore([]byte("secret")) // 创建 store一个基于cookie的存储引擎，secret 是用来加密的密钥
+	r.Use(sessions.Sessions("mysession", store)) // 配置中间件，此中间件要放在所有路由的上面，让下面的路由都可以使用 session
+	routers.DefaultRoutersInit(r)
+	routers.AdminRoutersInit(r)
+	routers.ApiRoutersInit(r)
+```
+
+在一个controller中使用session 的示例：
+
+``` go
+package index
+
+import (
+	"fmt"
+
+	"github.com/gin-contrib/sessions"
+	"github.com/gin-gonic/gin"
+)
+
+type IndexController struct{}
+
+func (i IndexController) Index(ctx *gin.Context) {
+	ctx.SetCookie("username", "张三", 3600, "/", "localhost", false, true) // 设置cookie
+
+	// 获取 session 对象
+	session := sessions.Default(ctx)
+	session.Set("userId", 7890)         // 设置session 中的数据
+	session.Set("userDesc", "张三的描述：人类") // 设置session 中的数据
+	session.Save()                      // 保存设置的session的值
+
+	ctx.HTML(200, "default/index.html", gin.H{ // 第二个参数传入的仍然是 html 页面首行自己定义的 名字
+		"name": "这是  首页",
+	})
+}
+func (i IndexController) Intr(ctx *gin.Context) {
+	username, err := ctx.Cookie("username") // 获取失败会返回错误 http: named cookie not present。所以必须先set，再get
+
+	// 获取 session 对象
+	session := sessions.Default(ctx)
+	userId := session.Get("userId")     // 如果没有获得也不会报错，返回的类型即使nil而已
+	userDesc := session.Get("userDesc") // 返回的是any类型，视情况使用类型断言获取类型
+
+	if err != nil {
+		fmt.Println("获取cookie出错，请检查，err：", err)
+		return
+	}
+	res := fmt.Sprintf("这里是网页介绍页面2222。username = %v, userId = %v , userDesc = %v \n", username, userId, userDesc)
+	ctx.JSON(200, res)
+}
+```
+
+我们访问前端页面确实看到cookie中有我们设置的一个session 的 key，当然加密了。
+
+![image-20240303112529395](img/image-20240303112529395.png)
+
+我们关闭浏览器后重新直接进入相应页面，仍然能够获得相关cookie和session 的值
+
+![image-20240303112659534](img/image-20240303112659534.png)
+
+### 分布式系统使用session
+
+假如我们的系统使用nginx负载均衡，gin服务部署在多台服务器上了，我们在gin1机器中设置了session，如果使用上述方法保存在程序中的话，如果此时用户被分配到gin2去获取服务，gin2中就无法获得相应的session了。
+
+<img src="img/image-20240303112912858.png" alt="image-20240303112912858" style="zoom:50%;" />
+
+这是一般做法是将session保存在外置的数据库中，如redis，mysql中。
+
+此例中使用redis。
+
+首先打开redis，然后配置redis做存储引擎
+
+``` go
+// 配置session中间件，使用redis做存储引擎
+	store, _ := redis.NewStore(10, "tcp", "localhost:6379", "", []byte("secreet"))
+	r.Use(sessions.Sessions("mysession", store)) // 配置中间件，此中间件要放在所有路由的上面，让下面的路由都可以使用 session
+```
+
+然后浏览器访问页面后，我们去redis中查看
+
+![image-20240303115824490](img/image-20240303115824490.png)
+
+### 设置session过期时间
+
+因为gin中session是基于cookie的，所以我们可以在设置session 的时候，像设置cookie的过期时间一样设置session 的过期时间。
+
+``` go
+	// 获取 session 对象
+	session := sessions.Default(ctx)
+	// 设置session 的过期时间
+	session.Options(sessions.Options{MaxAge: 3600})  // MaxAge 设为负数删除该session ，单位 秒
+```
+
+结构体`sessions.Options` 和cookie的结构体 `http.SetCookie` 很像
+
+``` go
+type Cookie struct {
+	Name  string
+	Value string
+
+	Path       string    // optional
+	Domain     string    // optional
+	Expires    time.Time // optional
+	RawExpires string    // for reading cookies only
+
+	// MaxAge=0 means no 'Max-Age' attribute specified.
+	// MaxAge<0 means delete cookie now, equivalently 'Max-Age: 0'
+	// MaxAge>0 means Max-Age attribute present and given in seconds
+	MaxAge   int
+	Secure   bool
+	HttpOnly bool
+	SameSite SameSite
+	Raw      string
+	Unparsed []string // Raw text of unparsed attribute-value pairs
+}
+               
+type Options struct {
+	Path   string
+	Domain string
+	// MaxAge=0 means no 'Max-Age' attribute specified.
+	// MaxAge<0 means delete cookie now, equivalently 'Max-Age: 0'.
+	// MaxAge>0 means Max-Age attribute present and given in seconds.
+	MaxAge   int
+	Secure   bool
+	HttpOnly bool
+	// rfc-draft to preventing CSRF: https://tools.ietf.org/html/draft-west-first-party-cookies-07
+	//   refer: https://godoc.org/net/http
+	//          https://www.sjoerdlangkemper.nl/2016/04/14/preventing-csrf-with-samesite-cookie-attribute/
+	SameSite http.SameSite
+}
+```
 
 
 
+## 总结
+
+一个使用gin的web服务器在后端的文件树大概是这样的
+
+```go
+- controllers  	// 放页面请求的处理的handler
+- midllewares  	// 放中间件，页面请求的处理之间执行的动作
+- routers		// 不同页面和子页面的路由设置
+- static		// 静态文件，需要设置加入到gin中
+- templates 	// 前端模板文件，需要加载，路径严格
+- utils			// 一共通用的处理函数
+- go.mad
+- go.sum
+- main.go
+```
 
 # 数据结构
 
