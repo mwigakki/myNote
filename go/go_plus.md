@@ -2360,19 +2360,467 @@ type Options struct {
 }
 ```
 
+## Gorm
 
+Gorm 是Golang 的一个orm 框架。`orm(Object/Relational Mapping )`：对象-关系映射。
+
+GORM 官方支持的数据库类型有：MySQL, PostgreSQL, SQLite, SQL Server 和 TiDB
+
+下载：
+
+``` go
+go get gorm.io/driver/mysql
+go got gorm.io/gorm
+```
+
+官方文档： https://gorm.io/zh_CN/docs/index.html
+
+官方提供连接mysql 数据库的版本。
+
+``` go
+import (
+  "gorm.io/driver/mysql"
+  "gorm.io/gorm"
+)
+
+func main() {
+  // 参考 https://github.com/go-sql-driver/mysql#dsn-data-source-name 获取详情
+  dsn := "user:pass@tcp(127.0.0.1:3306)/dbname?charset=utf8mb4&parseTime=True&loc=Local"
+  db, err := gorm.Open(mysql.Open(dsn), &gorm.Config{})
+}
+```
+
+> **注意：**想要正确的处理 `time.Time` ，您需要带上 `parseTime` 参数， ([更多参数](https://github.com/go-sql-driver/mysql#parameters)) 要支持完整的 UTF-8 编码，您需要将 `charset=utf8` 更改为 `charset=utf8mb4` 查看 [此文章](https://mathiasbynens.be/notes/mysql-utf8mb4) 获取详情
+
+> 见例程 gindemo10，我们在gin 项目中使用gorm 
+
+### 配置连接
+
+为了把连接数据库的对象暴露给所有控制器，我们将连接数据库模块化放入 model 文件夹中，命名 core.go。
+
+``` go
+package utils
+
+import (
+	"fmt"
+	"log"
+
+	"gorm.io/driver/mysql"
+	"gorm.io/gorm"
+)
+
+var Db *gorm.DB
+var err error
+
+// 该包被引用时，包中的init方法会被默认执行。init()方法不能有参数和返回值
+func init() {
+	username := "root"
+	password := "123456"
+	dbname := "myschool"
+	//参考 https://github.com/go-sql-driver/mysql#dsn-data-source-name 获取详情
+	dsn := fmt.Sprintf("%s:%s@tcp(127.0.0.1:3306)/%s?charset=utf8mb4&parseTime=True&loc=Local", username, password, dbname) // 由 gorm 官方提供
+	Db, err = gorm.Open(mysql.Open(dsn), &gorm.Config{})
+	if err != nil {
+		log.Panicln(err)
+	}
+}
+```
+
+为了实现简单地操作数据库表，需要设计每个表对应的模型（结构体），实现数据库对象和关系的映射。一般和上面的go文件都放在 model 里面就行。如下面的 student.go
+
+``` go
+package model
+
+import "fmt"
+
+// 建立结构体名称和数据库 表的名称一样，但注意一定要大写，当然，字段首字母也一定要大写。一般驼峰命名规则。
+type Student struct {
+	Id      int
+	Name    string
+	Gender  string
+	Goodat  string
+	Height  int
+	Balance float64
+}
+
+func (s Student) TableName() string {
+	return "student" // 返回 数据库中 对应表的 名字，此时我们操作Student 对象，就会操作数据库中的student 表
+}
+```
+
+至此我们的数据库对象建立好了，此时开启我们的gin项目。下面是gin项目的主函数
+
+``` go
+package main
+
+import (
+	"github.com/gin-gonic/gin"
+	"github.com/mygin/gindemo10/routers"
+)
+ 
+func returnHTML() {
+	r := gin.New()
+	r.LoadHTMLGlob("mytemplates/**/*") // 加载模板，二级目录
+	r.Static("/static", "./static")    // 第一个参数写请求的相对地址，第二个参数写文件的目录地址
+
+	routers.DefaultRoutersInit(r)
+	routers.AdminRoutersInit(r) 	// 在这里面包括了用户的各种操作
+	routers.ApiRoutersInit(r)
+	r.Run("localhost:8888")
+}
+
+func main() {
+	returnHTML()
+}
+
+/********** AdminRoutersInit() 函数如下 ***********/
+func AdminRoutersInit(r *gin.Engine) {
+	// 路由分组 后台页面
+	adminRouters := r.Group("/admin")
+	{
+		adminRouters.GET("/", admin.AdminIndex)
+		adminRouters.GET("/adminlist", func(ctx *gin.Context) {
+			ctx.JSON(200, "这里是admin页面的 adminlist")
+		})
+		adminRouters.GET("/user", admin.User)
+		adminRouters.GET("/user/add", admin.UserAdd)
+		adminRouters.GET("/user/edit", admin.UserEdit)
+		adminRouters.GET("/article", admin.ArticleController{}.Index)
+		adminRouters.GET("/article/add", admin.ArticleController{}.Add)
+		adminRouters.GET("/article/edit", admin.ArticleController{}.Edit)
+		adminRouters.GET("/article/success", admin.ArticleController{}.BaseController.Success) // 控制器继承，使用父控制器的方法
+	}
+}
+```
+
+### 使用gorm的API
+
+使用gorm的API就不写原生sql，不太好，增加学习成本，不推荐。
+
+#### 查询
+
+[查询 | GORM - The fantastic ORM library for Golang, aims to be developer friendly.](https://gorm.io/zh_CN/docs/query.html)
+
+首先我们配置 /admin/user 页面的handler，展示所有的用户。
+
+``` go
+func User(ctx *gin.Context) {
+	// ----------- 查询数据库，得到所有用户
+	users := []model.Student{}
+	model.Db.Find(&users) // 甚至不写 sql，直接查询
+
+	ctx.JSON(200, users) // 简单起见，直接展示。
+}
+```
+
+![image-20240305231944875](img/image-20240305231944875.png)
+
+也可以配置条件查询。比如前端传入查询某种性别的所有人，那么前端请求`http://localhost:8888/admin/user?gender=女`
+
+``` go
+func User(ctx *gin.Context) {
+	gender := ctx.Query("gender") // 得到url中传入的值
+	var users []model.Student
+	if gender == "" {
+		// 查询数据库，得到所有用户
+		users = []model.Student{}
+		model.Db.Find(&users) // 甚至不写 sql，直接查询
+		ctx.JSON(200, users)  // 简单起见，直接展示。
+	} else if gender == "男" || gender == "女" {
+		// 查询指定性别的用户
+		model.Db.Where("gender = ?", gender).Find(&users) //  ? 问号是占位符，可以看到gorm是流式调用
+		ctx.JSON(200, users)                              // 简单起见，直接展示。
+	} else {
+		ctx.JSON(200, "没有此性别："+gender)
+	}
+}
+```
+
+官方教程[查询 | GORM - The fantastic ORM library for Golang, aims to be developer friendly.](https://gorm.io/zh_CN/docs/query.html) 还有非常多的案例，需要哪个就去看看。
+
+#### 新增
+
+[创建 | GORM - The fantastic ORM library for Golang, aims to be developer friendly.](https://gorm.io/zh_CN/docs/create.html)
+
+我们在 "/user/add" 路由下去新增数据。
+
+``` go
+func UserAdd(ctx *gin.Context) {
+	user := model.Student{
+		Id:      9,
+		Name:    "qury",
+		Gender:  "女",
+		Goodat:  "Basketball",
+		Height:  199,
+		Balance: 125.63,
+	}
+	model.Db.Create(&user)
+
+	ctx.JSON(200, gin.H{
+		"title":       "这里是admin页面的 user的 add 页面\n" + "新增成功",
+		"new student": user,
+	})
+}
+```
+
+#### 修改
+
+[更新 | GORM - The fantastic ORM library for Golang, aims to be developer friendly.](https://gorm.io/zh_CN/docs/update.html)
+
+我们 "/user/edit" 路由下去修改数据。
+
+``` go
+func UserEdit(ctx *gin.Context) {
+	stu := model.Student{Id: 5} // 准备修改 id为5的记录
+	model.Db.Find(&stu)         // 先把他查询出来
+	fmt.Println(stu)
+	stu.Name = "u钢铁板块i了" // 直接修改
+	model.Db.Save(&stu)  // 修改后保存即可，save会保存传入的所有字段
+	model.Db.Find(&stu)  // 再把他查询出来
+	fmt.Println(stu)
+	ctx.JSON(200, gin.H{
+		"title":   "这里是admin页面的 user的 edit 页面 ",
+		"student": stu,
+	})
+}
+/* 打印控制台输出如下：
+8:43:14 app         | {5 elisabiier 男 Sport 169 56.7}
+8:43:14 app         | {5 u钢铁板块i了 男 Sport 169 56.7}
+可以看到实现数据库的修改了
+*/
+```
+
+一般用上面哪种方法，但也可以修改指定的列：
+
+``` go
+func UserEdit(ctx *gin.Context) {
+	stu1 := model.Student{} // 准备修改 的记录
+	// 更新单列
+	model.Db.Model(&stu1).Where("id = ?", 6).Update("name", "新名字 pony").Update("gender", "女")
+	stu2 := model.Student{} // 准备修改 的记录
+	// 更新多列
+	model.Db.Model(&stu2).Where("gender = ?", "男").Updates(map[string]any{"height": 198, "balance": 299})
+	ctx.JSON(200, gin.H{
+		"title": "这里是admin页面的 user的 edit 页面 ",
+	})
+}
+```
+
+#### 删除
+
+[删除 | GORM - The fantastic ORM library for Golang, aims to be developer friendly.](https://gorm.io/zh_CN/docs/delete.html)
+
+``` go
+func UserDel(ctx *gin.Context) {
+	stu1 := model.Student{Id: 9} // 准备 删除 的记录，两种删除方法
+	model.Db.Delete(&stu1)
+	model.Db.Where("name = ?", "tyu").Delete(&model.Student{})
+	ctx.JSON(200, gin.H{
+		"title": "这里是admin页面的 user的 delete 页面 ",
+	})
+}
+```
+
+### 使用原生sql
+
+[SQL 构建器 | GORM - The fantastic ORM library for Golang, aims to be developer friendly.](https://gorm.io/zh_CN/docs/sql_builder.html#原生-SQL)
+
+下面的示例是对 student 表进行增删改查。
+
+#### 查询
+
+``` go
+func User(ctx *gin.Context) {
+	gender := ctx.Query("gender")
+	var stus []model.Student
+	if gender == "" {
+		// 查询数据库，得到所有用户
+		// 理论上 db.Exec 可以执行所有的sql，但是为了得到返回值，查询时使用Raw
+		model.Db.Raw("SELECT * from student ").Scan(&stus)
+		model.Db.Find(&stus) 
+		ctx.JSON(200, stus) 
+	} else if gender == "男" || gender == "女" {
+		// 查询指定性别的用户
+		model.Db.Raw("SELECT * from student where gender = ", gender).Scan(&stus)
+		ctx.JSON(200, stus) 
+	} else {
+		ctx.JSON(200, "没有此性别："+gender)
+	}
+}
+```
+
+#### 增加删除修改
+
+``` go
+func UserAdd(ctx *gin.Context) {
+	user := model.Student{
+		Id:      9,
+		Name:    "qury",
+		Gender:  "女",
+		Goodat:  "Basketball",
+		Height:  199,
+		Balance: 125.63,
+	}
+	model.Db.Exec("insert into student values (?,?,?,?,?,?)", user.Id, user.Name, user.Gender, user.Goodat, user.Height, user.Balance)
+
+	ctx.JSON(200, gin.H{
+		"title":       "这里是admin页面的 user的 add 页面\n" + "新增成功",
+		"new student": user,
+	})
+}
+func UserEdit(ctx *gin.Context) {
+	model.Db.Exec("update student set name = ?  where id = 1", "1号新改的名字")
+	ctx.JSON(200, gin.H{
+		"title": "这里是admin页面的 user的 edit 页面 ",
+	})
+}
+func UserDel(ctx *gin.Context) {
+	model.Db.Exec("delete from student where id = ?", 9)
+	ctx.JSON(200, gin.H{
+		"title": "这里是admin页面的 user的 delete 页面 ",
+	})
+}
+```
+
+### 多表关联查询
+
+[【Gin+Gorm】Gin GORM 多表关联查询 一对一、 一对多_哔哩哔哩_bilibili](https://www.bilibili.com/video/BV1XY4y1t76G/?p=72&spm_id_from=pageDriver&vd_source=b223a33d3e538f8afa1020f731ad95a0)
+
+## go-ini配置
+
+[go-ini/ini: 超赞的 Go 语言 INI 文件操作 (unknwon.io)](https://ini.unknwon.io/)
+
+go-ini：地表 **最强大**、**最方便** 和 **最流行** 的 Go 语言 INI 文件操作库
+
+首先下载它：
+
+``` go
+go get gopkg.in/ini.v1 
+```
+
+### 使用示例
+
+conf/app.ini 文件示例如下：
+
+``` ini
+# --------- 根section里配置 ------------
+
+app_name = gindemo10 gin
+# possible values: DEBUG, INFO, WARNING, ERROR, FATAL
+log_level = DEBUG
+
+# --------- 根section里配置 ------------
+
+# -------- 设置不同的section 的内容 ---------
+[mysql]
+ip = 127.0.0.1
+port = 3006
+user = root
+password = 123456
+database = myschool
+
+[redis]
+
+ip = 127.0.0.1
+port = 6379
+```
+
+下面的是示例代码：
+
+``` go
+package main
+
+import (
+	"fmt"
+	"os"
+
+	"gopkg.in/ini.v1"
+)
+
+func main() {
+	// 演示 go-ini 模块的使用
+
+	// ------- 从 ini 文件读取 --------
+	conf, err := ini.Load("../conf/app.ini") // 得到conf对象
+	if err != nil {
+		fmt.Printf("Fail to read file : %v", err)
+		os.Exit(0)
+	}
+	// .Section("") 表示从根section的配置里找.Key("app_name")，
+	appName := conf.Section("").Key("app_name").String()
+	// .Section("mysql") 表示从mysql section的配置里找.Key("ip")，
+	mysqlIp := conf.Section("mysql").Key("ip").String()
+	fmt.Println(appName, mysqlIp)
+
+	// ------- 向 ini 文件写入 --------
+	// 修改一个已有的数据
+	conf.Section("mysql").Key("ip").SetValue("localhost")
+	// 增加一个数据
+	conf.Section("").Key("admin_path").SetValue("/admin")
+	// 调用 SaveTo 才能保存到文件啊
+	conf.SaveTo("../conf/app.ini")
+}
+```
+
+###  gin 项目使用
+
+> 在项目gindemo10中，新建conf文件夹，在其中新建文件 app.ini，在其中我们配置我们自己的 ini 配置文件，用上面的。
+
+在gin 项目的model文件夹的core.go文件中，会完成所有的配置，因此，我们将ini 配置读取都放在core 文件中。
+
+加入读取ini文件的 core.go的代码如下：
+
+``` go
+package model
+
+import (
+	"fmt"
+	"log"
+	"os"
+
+	"gopkg.in/ini.v1"
+	"gorm.io/driver/mysql"
+	"gorm.io/gorm"
+)
+
+var Db *gorm.DB
+var err error
+
+// 该包被引用时，包中的init方法会被默认执行。init()方法不能有参数和返回值
+func init() {
+	// ------- 从 ini 文件读取 --------
+	conf, err := ini.Load("./conf/app.ini") // 注意此处地址，因为此文件是被外面的main.go 引用的，所有ini文件地址相对于main.go 写
+	if err != nil {
+		fmt.Printf("Fail to read file : %v", err)
+		os.Exit(0)
+	}
+	ip := conf.Section("mysql").Key("ip").String()
+	port := conf.Section("mysql").Key("port").String()
+	username := conf.Section("mysql").Key("user").String()
+	password := conf.Section("mysql").Key("password").String()
+	dbname := conf.Section("mysql").Key("database").String()
+	//参考 https://github.com/go-sql-driver/mysql#dsn-data-source-name 获取详情
+	dsn := fmt.Sprintf("%s:%s@tcp(%s:%s)/%s?charset=utf8mb4&parseTime=True&loc=Local", username, password, ip, port, dbname) // 由 gorm 官方提供
+	Db, err = gorm.Open(mysql.Open(dsn), &gorm.Config{})
+	if err != nil {
+		log.Panicln(err)
+	}
+}
+```
 
 ## 总结
 
 一个使用gin的web服务器在后端的文件树大概是这样的
 
 ```go
+- conf			// 配置文件
 - controllers  	// 放页面请求的处理的handler
 - midllewares  	// 放中间件，页面请求的处理之间执行的动作
+- models		// 放数据库连接的模型
 - routers		// 不同页面和子页面的路由设置
 - static		// 静态文件，需要设置加入到gin中
 - templates 	// 前端模板文件，需要加载，路径严格
-- utils			// 一共通用的处理函数
+- utils			// 一共通用的处理函数，工具函数
 - go.mad
 - go.sum
 - main.go
