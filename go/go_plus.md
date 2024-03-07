@@ -3984,3 +3984,322 @@ func main() {
 }
 ```
 
+# gopacket包
+
+我们希望通过golang实现以下功能：
+
+- 数据包捕获：捕获流经网卡的原始数据包
+- 自定义数据包发送：构造任何格式的原始数据包
+- 流量采集与统计：采集网络中的流量信息
+- 规则过滤：提供自带规则过滤功能，按需要选择过滤规则
+
+选择使用谷歌的包github.com/google/gopacket。**gopacket**是基于 libpcap（数据包捕获函数库）的，该库提供的C函数接口用于捕捉经过指定网络接口的数据包，该接口应该是被设为混杂模式。著名的软件TCPDUMP就是在Libpcap的基础上开发而成的。Libpcap提供的接口函数实现和封装了与数据包截获有关的过程。Libpcap可以在绝大多数Linux平台上运行。
+
+安装：`go get github.com/google/gopacket`，
+
+它的官方文档：`https://pkg.go.dev/github.com/google/gopacket`
+
+同时，它要求linux平台安装 `libpcap` 库，安装：`sudo apt install libpcap-dev`。但一般机器都装的有这个
+
+我们使用gopacket实现了网络带内遥测INT的功能。包括两个go文件，`probeLayer.go`和`main.go`。主要解释都在注释里了。不解释了
+
+`probeLayer.go`
+
+``` go
+package main
+
+import (
+	"bytes"
+	"encoding/binary"
+	"fmt"
+	"log"
+	"os"
+
+	"github.com/google/gopacket"
+)
+
+const TYPE_PROBE = 0x0812 // 2066
+const LEN_PROBE_DATA_TYPE = 18
+
+type Probe struct {
+	HopCnt byte
+}
+
+type ProbeFwd struct {
+	egressSpec byte // 指定的INT的出端口
+}
+
+// 共18个字节
+type ProbeData struct {
+	bosAndSwid byte // 第一位是bos，后7位是swid
+	port       byte
+	byteCnt    uint32
+	lastTime   [6]byte
+	curTime    [6]byte
+}
+
+// 创建自定义数据结构
+// 需要实现gopacket.Layer接口中的函数LayerType()、LayerContents()、LayerPayload()
+// 实现 gopacket.SerializableLayer 接口的 SerializeTo 函数以便可以序列化数据来构造数据包
+type ProbeLayer struct {
+	Probe     Probe
+	ProbeData []ProbeData
+	ProbeFwd  []ProbeFwd
+}
+
+// 注册自定义层类型，我可以方便地使用它。这里这是在程序中唯一定义它，不能直接给MAC层后用
+// 第一册参数是ID，自定义层得使用2000以上的数字，且唯一
+// 注册 LayerTypeProbe 这个类型变量，为了给 LayerType() 这个函数返回一个我们自定义的类型
+var LayerTypeProbe = gopacket.RegisterLayerType(
+	TYPE_PROBE, // 这里的数字随便写一个大于2000的就行，只要在程序中是唯一的就行
+	gopacket.LayerTypeMetadata{
+		Name:    "LayerTypeProbe", // 只是名字而已，不需要和哪里对应
+		Decoder: gopacket.DecodeFunc(DecodeProbeLayer),
+	},
+)
+
+// 要能够将ProbeLayerType 序列化发送，需要实现这个方法
+// SerializeTo将该层的序列化形式写入SerializationBuffer
+// opts 表示该层是否有固定长度和检验和校验的要求
+func (p *ProbeLayer) SerializeTo(b gopacket.SerializeBuffer, opts gopacket.SerializeOptions) error {
+	bytes, err := b.PrependBytes(1 + LEN_PROBE_DATA_TYPE*len(p.ProbeData) + len(p.ProbeFwd)) // 声明一个有一定 长度 的[]byte
+	if err != nil {
+		return err
+	}
+	// 把结构体对象 p 中的数据序列化到 bytes 中
+	bytes[0] = p.Probe.HopCnt
+	idx := 1
+	// 下面的代码一般不会执行，因为INT包发送前是没有probeData数据的
+	for i := 0; i < len(p.ProbeData); i++ {
+		bytes[idx] = p.ProbeData[i].bosAndSwid
+		bytes[idx+1] = p.ProbeData[i].port
+		binary.BigEndian.PutUint32(bytes[idx+2:], p.ProbeData[i].byteCnt)
+		copy(bytes[idx+6:idx+12], p.ProbeData[i].lastTime[:])
+		copy(bytes[idx+12:idx+18], p.ProbeData[i].curTime[:])
+		idx += LEN_PROBE_DATA_TYPE
+	}
+	for i := 0; i < len(p.ProbeFwd); i++ {
+		bytes[idx] = p.ProbeFwd[idx-1].egressSpec
+		idx += 1
+	}
+
+	return nil
+}
+
+// 自定义层的名字，直接打印数据包时，显示的就是这里的内容
+func (p *ProbeLayer) String() string {
+	return fmt.Sprintf("Probe.HopCnt:%v; the length of ProbeFwd and ProbeData:%v; ", p.Probe.HopCnt, len(p.ProbeFwd))
+}
+
+func (p *ProbeLayer) CanDecode() gopacket.LayerClass {
+	return LayerTypeProbe
+}
+func (p *ProbeLayer) LayerType() gopacket.LayerType {
+	// 把自定义层的对象序列化时会调用这个函数，数据包解码时也会调用这个函数
+	return LayerTypeProbe
+}
+
+// 这里返回自定义层的内容，Probe ProbeFwd ProbeData
+func (p *ProbeLayer) LayerContents() []byte {
+	buf := new(bytes.Buffer)
+	// golang默认使用小端序存放数据，例如 var a int32=3，在内存中就是00000011 00000000 00000000 00000000
+	// 但是 网络传输时一般使用大端
+	err := binary.Write(buf, binary.BigEndian, p.ProbeFwd)
+	if err != nil {
+		log.Println("序列化Probe首部ProbeFwd失败，err:", err)
+		os.Exit(0)
+	}
+	err = binary.Write(buf, binary.BigEndian, p.ProbeData)
+	if err != nil {
+		log.Println("序列化Probe负载ProbeData失败，err:", err)
+		os.Exit(0)
+	}
+	res := []byte{p.Probe.HopCnt}
+	return append(res, buf.Bytes()...)
+}
+
+// 返回负载，我们这个INT好像没负载
+func (p *ProbeLayer) LayerPayload() []byte {
+	return nil
+}
+
+// 好像没用
+func (p *ProbeLayer) DecodeFromBytes(data []byte, df gopacket.DecodeFeedback) error {
+	p.Probe.HopCnt = data[0]
+	hopCnt := int(data[0]) // 经过了几个(次)交换机
+	idx := 1
+	// 解析构造probeData
+	probeData := []ProbeData{}
+	for i := 0; i < hopCnt; i += 1 {
+		probeData = append(probeData, ProbeData{
+			bosAndSwid: data[idx],
+			port:       data[idx+1],
+			byteCnt:    binary.BigEndian.Uint32(data[idx+2 : idx+6]), // uint32(data[4]) | uint32(data[5])<<8 | uint32(data[6])<<16 | uint32(data[7])<<24,
+			lastTime:   [6]byte(data[idx+6 : idx+12]),                // [6]byte{data[8], data[9], data[10], data[11], data[12], data[13]},
+			curTime:    [6]byte(data[idx+12 : idx+18]),               // [6]byte{data[14], data[15], data[16], data[17], data[18], data[19]},
+		})
+		idx += LEN_PROBE_DATA_TYPE // ProbeDataType 长18个字节
+	}
+
+	// 解析构造probeFwd
+	probeFwd := []ProbeFwd{}
+	for i := 0; i < hopCnt; i += 1 {
+		probeFwd = append(probeFwd, ProbeFwd{data[idx]})
+		idx += 1
+	}
+
+	p.ProbeFwd = probeFwd
+	p.ProbeData = probeData
+	return nil
+}
+
+// 自定义解码函数
+// 收到数据包轮到自定义类型解码时，对应的字节切片data使用这个函数构造出p
+func DecodeProbeLayer(data []byte, p gopacket.PacketBuilder) error {
+	probeLayer := &ProbeLayer{}
+	probeLayer.Probe.HopCnt = data[0]
+	hopCnt := int(data[0]) // 经过了几个(次)交换机
+	idx := 1
+	// 解析构造probeData
+	probeData := []ProbeData{}
+	for i := 0; i < hopCnt; i += 1 {
+		probeData = append(probeData, ProbeData{
+			bosAndSwid: data[idx],
+			port:       data[idx+1],
+			byteCnt:    binary.BigEndian.Uint32(data[idx+2 : idx+6]), // uint32(data[4]) | uint32(data[5])<<8 | uint32(data[6])<<16 | uint32(data[7])<<24,
+			lastTime:   [6]byte(data[idx+6 : idx+12]),                // [6]byte{data[8], data[9], data[10], data[11], data[12], data[13]},
+			curTime:    [6]byte(data[idx+12 : idx+18]),               // [6]byte{data[14], data[15], data[16], data[17], data[18], data[19]},
+		})
+		idx += LEN_PROBE_DATA_TYPE // ProbeDataType 长18个字节
+	}
+	// 解析构造probeFwd
+	probeFwd := []ProbeFwd{}
+	for i := 0; i < hopCnt; i += 1 {
+		probeFwd = append(probeFwd, ProbeFwd{data[idx]})
+		idx += 1
+	}
+	probeLayer.ProbeFwd = probeFwd
+	probeLayer.ProbeData = probeData
+	p.AddLayer(probeLayer) // 因为我们的probeLayer 类型实现了gopacket.Layer 接口的三个方法，所以这里可以直接加
+	return p.NextDecoder(gopacket.LayerTypePayload)
+	// 调用下一层的解码方法，但我们的下一层就是负载了，所以写 nil 也行，一般写p.NextDecoder(在本层中记录的下层协议类型)
+}
+```
+
+`main.go`
+
+``` go
+package main
+
+import (
+	"log"
+	"net"
+	"strconv"
+
+	"github.com/google/gopacket"
+	"github.com/google/gopacket/layers"
+	"github.com/google/gopacket/pcap"
+)
+
+// 构造INT 包
+func buildINT(handle *pcap.Handle) []byte {
+	// 构造MAC层
+	srcMAC, _ := net.ParseMAC("08:00:00:00:01:11") // 需要读网络设备得到，实测下来它不是必需的
+	dstMAC, _ := net.ParseMAC("0a:ee:ee:16:d1:64")
+	ethernetLayer := &layers.Ethernet{
+		SrcMAC:       srcMAC,
+		DstMAC:       dstMAC,
+		EthernetType: TYPE_PROBE,
+	}
+	probe := &ProbeLayer{
+		Probe:     Probe{0},
+		ProbeFwd:  []ProbeFwd{{4}, {1}, {4}, {1}, {3}, {2}, {3}, {2}, {1}}, // 折返的INT。
+		ProbeData: []ProbeData{},
+	}
+	// 序列化到一个缓冲区，
+	buffer := gopacket.NewSerializeBuffer()
+	// 序列化 构造数据包
+	err := gopacket.SerializeLayers(buffer, gopacket.SerializeOptions{},
+		ethernetLayer, probe) // 在最后的 加入 INT探测的数据结果 。
+	if err != nil {
+		log.Println("Error creating packet:", err)
+		return nil
+	}
+	// 把序列化字节转为 []byte
+	outgoingPacket := buffer.Bytes()
+	// log.Println(len(outgoingPacket), outgoingPacket[14:]) // 可以看到，如果包太短了，会把MAC后的所有负载加长到 60 字节
+	// 发送数据包
+	err = handle.WritePacketData(outgoingPacket)
+	if err != nil {
+		log.Println("Error sending packet:", err)
+		return nil
+	}
+	log.Println("Packet sent successfully!")
+	// return outgoingPacket
+	return nil
+}
+func main() {
+	deviceName := "eth0"
+	// 这里才是把自定义层注册到MAC层之后！！！
+	layers.EthernetTypeMetadata[TYPE_PROBE] = layers.EnumMetadata{
+		DecodeWith: gopacket.DecodeFunc(DecodeProbeLayer),
+		Name:       "ProbeLayer", // 这里的名字没有要求，只会打印时显示的名字而已。重要的是[下一层协议号] 这里要写的和收到的包的对应MAC层协议号一致
+	}
+	handle, err := pcap.OpenLive(deviceName, 1600, true, pcap.BlockForever) // OpenLive()打开网络设备。1.监听的网络接口名，2.捕获的数据包保留的最大字节数。
+	// 3.表示设置为混杂模式，true即允许捕获网络接口上的所有数据包，而不仅仅是发送给本机的数据包。设置为false则表示非混杂模式。
+	// 4.pcap.BlockForever：表示捕获数据包时阻塞的超时时间。在这里，设置为pcap.BlockForever表示永远阻塞直到捕获到数据包。
+	if err != nil {
+		log.Println("Error opening device:", err)
+		return
+	}
+
+	defer handle.Close()
+	buildINT(handle) // 发送包
+	// 设置过滤器，只捕获指定端口的数据包
+	filter := "ether proto " + strconv.Itoa(TYPE_PROBE)
+	err = handle.SetBPFFilter(filter)
+	if err != nil {
+		log.Fatal(err)
+	}
+	// 返回一个已经初始化的PacketSource对象，
+	packetSource := gopacket.NewPacketSource(handle, handle.LinkType())
+	for packet := range packetSource.Packets() { // 如果packetSource.Packets() 没有数据包可用，程序就会阻塞
+		for _, layer := range packet.Layers() {
+			// 得到数据包每层的内容，INT包就两层，MAC层和Probe层
+			log.Println(layer.LayerType().LayerTypes(), layer)
+		}
+		probeLayer := packet.Layer(LayerTypeProbe) // 传入的参数需要和 LayerType() 返回的类型一样
+		if probeLayer != nil {
+			//  packet.Layer（）返回的是gopacket.Layer 接口类型，我们需要用类型断言得到我们自己的类型
+			probe, _ := probeLayer.(*ProbeLayer)
+			log.Println(probe.ProbeFwd)
+			for _, d := range probe.ProbeData {
+				log.Println(d)
+			}
+		}
+	}
+}
+
+/*
+	// 用这里的raw数据构造整个数据包，可以用来测试
+	packet := gopacket.NewPacket(
+		[]byte{1, 2, 3, 4, 5, 6,
+			6, 5, 4, 3, 2, 1,
+			8, 18,
+			2, 1, 2,
+			1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18,
+			1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18},
+		layers.LayerTypeEthernet,
+		gopacket.Default,
+	)
+	fmt.Println(packet)
+	layerType := gopacket.LayerType(TYPE_PROBE)
+	if layerType == gopacket.LayerTypeZero {
+		fmt.Println("自定义层注册失败")
+	} else {
+		fmt.Println(layerType.String())
+		fmt.Println("自定义层注册成功")
+	}
+*/
+```
+

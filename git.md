@@ -1058,8 +1058,8 @@ git push --set-upstream origin master
 
 # 问题汇总
 
-当使用`git pull` 或者 `git push` 时提示：`There is no tracking information for the current branch.
-Please specify which branch you want to merge with.`，说明当前`pull`对象没有远程分支的跟踪信息，即本地分支和远程分支没有关联起来。我们查看提交情况`git log --pretty=oneline`发现：
+1. 当使用`git pull` 或者 `git push` 时提示：`There is no tracking information for the current branch.
+    Please specify which branch you want to merge with.`，说明当前`pull`对象没有远程分支的跟踪信息，即本地分支和远程分支没有关联起来。我们查看提交情况`git log --pretty=oneline`发现：
 
 ![image-20230908162258120](img/image-20230908162258120.png)zh
 
@@ -1075,3 +1075,23 @@ git branch --set-upstream-to=origin/master master
 ![image-20230908162653941](img/image-20230908162653941.png)
 
 已经有远程分支的信息了，而且落后本地两个版本。此时就可以正常使用`git push`推送到远程。
+
+2. 使用`git pull` 或者 `git push` 时提示
+
+``` bash
+ssh: connect to host github.com port 22: Connection timed out
+fatal: Could not read from remote repository.
+
+Please make sure you have the correct access rights
+and the repository exists.
+```
+
+这时就打开本机的config文件，windows下在 `C:\Users\[自己用户]\.ssh`，linux下在`~/.ssh/`。在config文件最后添加 
+
+``` txt
+Host github.com
+ Hostname ssh.github.com
+ Port 443
+```
+
+Then, run the command `ssh -T git@github.com` to confirm if the issue is fixed.

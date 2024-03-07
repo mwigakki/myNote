@@ -1931,7 +1931,7 @@ Options:
 
 > 更多命令见https://www.linuxtop.cn/command/screen.html
 
-通常情况下，使用一下`基础命令`即可。注意：命令区分大小写
+通常情况下，使用一下`基础命令`即可。注意：命令区分大小写，不同用户开的screen是相互隔离的。
 
 ### 1. 帮助查询
 
@@ -3573,7 +3573,7 @@ wordsssss ![img1](path1) 文字字![img2](path2)
     - **安装命令**： `sudo apt install sshpass`
         **连接命令**：` sshpass -p "密码" ssh 192.168.199.151 "其他sh命令"`
         加上命令：`-o StrictHostKeyChecking=no`  可以跳过keyChecking，）就不用输yes/no了
-        	例：`sshpass -p 'onl' ssh -o StrictHostKeyChecking=no 192.168.199.151`
+        	例：`sshpass -p 'onl' ssh -o StrictHostKeyChecking=no root@192.168.199.151`
 
 - **使用服务器ssh连接交换机时出现Permission denied, please try again错误，无法连接；而使用交换机连交换机就可以连接**
     - **原因**：服务器的用户都是普通用户，而交换机的用户都是root
@@ -4136,8 +4136,10 @@ in your /home/[用户名]//.bashrc ? [yes|no]
 
 如果错过了这里也可以自己手动去`/home/[用户名]/.bashrc`文件的最后添加环境变量。内容如下：
 
+> **强烈建议不要让conda自己生成它的环境变量，直接像下面那样自己写就是了。**
+
 ``` shell
-export PATH=/home/[用户名]/anaconda3/bin:$PATH
+export PATH=$PATH:/home/[用户名]/anaconda3/bin:
 ```
 
 之后还会提醒我们是否安装vscode，一般输入no即可。

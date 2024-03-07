@@ -29,30 +29,32 @@ https://www.topgoer.com/
 
 https://www.kandaoni.com/news/19058.html#
 
+官方安装教程：[Download and install - The Go Programming Language (google.cn)](https://golang.google.cn/doc/install)
+
 1. 首先到[官网](https://golang.google.cn/doc/install)下载最新Go for Linux 安装包。
 
     ``` shell
-    wget https://golang.google.cn/dl/go1.21.5.linux-amd64.tar.gz
+    wget https://golang.google.cn/dl/go1.21.7.linux-amd64.tar.gz
     ```
 
 2. 将安装包放在` ~/Downloads`处
 
-3. 解压go环境到指定位置` usr/local `下：**`:~/Documents$ sudo tar -C /usr/local -xzf go1.21.5.linux-amd64.tar.gz`**
+3. 解压go环境到指定位置` usr/local `下：:~/Documents$ **`sudo tar -C /usr/local -xzf go1.21.7.linux-amd64.tar.gz`**
 
 4. 然后是添加变量：
    - 执行 `sudo vim /etc/profile`，在该文件最后插入：
    
    - ``` shell
-     export GOPATH=$HOME/gopath
+     export GOPATH=$HOME/go
      export GOROOT=/usr/local/go
      export PATH=$PATH:$GOROOT/bin:$GOPATH/bin
      
      # 没有 GOPATH=$HOME/gopath 这个目录就新建
      ```
    
-5. 使添加的环境生效：使用：**`source /etc/profile`**，可能没有生效，此时重启即可
+5. 使添加的环境生效：使用：**`source /etc/profile`**，可能没有生效，此时重启即可（其他用户如果没有）
 
-6. 测试是否成功：使用：**`go version`**
+6. 测试是否成功：使用：**`go version`**（其他用户如果显示没有结果就用其他用户source 一遍）
 
 7. 添加模板和代理:
    - 模板：**`go env -w GO111MODULE=on`**
@@ -169,9 +171,9 @@ func (a Address) newAddress(p string, c string) {
 - 1：表示程序非正常退出，一般用于表示一般性错误。
 - 其他非零值：表示不同类型的错误或异常情况，可以根据需要自定义。
 
-## 4.  编译
+## 4.  编译运行
 
-使用`go build`
+### 使用`go build`
 
 1. 当下项目目录下执行 `go build` :
 
@@ -196,6 +198,20 @@ func (a Address) newAddress(p string, c string) {
 ​		`go install`
 
 ​		然后我们在任何地方打开cmd 都可以直接使用xx.exe来执行这个文件，因为GOPATH是添加到环境变量中的
+
+### 使用`go run .`
+
+我们一般直接使用`go run main.go` 就能运行了，但有时又有问题，如下面的例子。
+
+在目录`qw`下定义`main.go`和`as.go`，两个go文件都在开头声明了`package main`。main.go中有main函数，as.go中有结构体 animal，我们想在main.go中使用 animal，此时我们不需要import，因为在一个package中。我们可以直接在main.go使用animal。而且即使animal开头小写声明为私有的也可以使用，因为在一个包里面就算在一个编译环境中。
+
+但是我们运行`go run main.go`却发现提示我们 undefine: animal。而且如果我们先`go build`在执行可执行文件又能够正常运行了。
+
+这是因为`go run main.go`只运行了 main.go 一个文件。这是我们需要使用 `go run .` 命令，该命令会**将当前目录下的所有文件作为一个 package 进行编译和运行**。这样可以确保所有文件中的符号都能够被正确识别。
+
+另外，也可以尝试在使用 `go run` 命令时指定要编译的文件列表，例如 `go run main.go pp.go`，这样可以确保所有依赖的文件都被包含在编译过程中。
+
+
 
 ### 交叉编译
 
@@ -3770,7 +3786,7 @@ this is animal  tom
 */
 ```
 
-
+通过自定义类型可以是一些私有的类型换个名变成公有的类型。
 
 
 
@@ -5276,14 +5292,14 @@ import _ "github.com/go-sql-driver/mysql"
 
 ### package使用总结
 
-- 包的位置应在 `<GOPATH>\src\`文件夹中。
-- 而在不在 `<GOPATH>\src\`文件夹而在其他地方写go程序也可以，此时这个程序中不同目录层级要相互引用包时就是用`import [相对路径]`，如`import ./subfolder1/pkg`。（即使vscode显示这个import语法有误也没关系，它还是可以运行）。然而在go mod模式下，import后跟相对路径是不被支持的。这时我们就引用包所在位置相对于项目的绝对路径即可。比如项目 `go mod` 文件中首行`module github.com/demo4`，自己的包在`github.com/demo4/tmp`下，那我们就这样引用`import github.com/demo4/tmp` 就行。
+- 包的位置应在 `<GOPATH>\src\`文件夹中。如果是go mod模式就无所谓
+- 而在不在 `<GOPATH>\src\`文件夹而在其他地方写go程序也可以，此时这个程序中不同目录层级要相互引用包时就是用`import [相对路径]`，如`import ./subfolder1/pkg`。（即使vscode显示这个import语法有误也没关系，它还是可以运行）。然而在go mod模式下，import后跟相对路径是不被支持的。这时我们就**引用包所在位置相对于项目的绝对路径**即可。比如项目 `go mod` 文件中首行`module github.com/demo4`，自己的包在`github.com/demo4/tmp`下，那我们就这样引用`import github.com/demo4/tmp` 就行。
 - 每个go程序都需要有一个名为main的包（即使用package main 开头的go文件，这个go文件里必须要有main函数，这里才是程序入口）。且一个go 程序只能有一个main函数程序入口。
 - import 后可跟别名alias，可自定义，调用时写`<alias>.函数名()`，对于自定义的包强烈推荐加别名，且建议和包名相同。
 - **别名设为` .`时**， 相当于将该包中的函数和类型直接放在本文件中了。其中的函数可直接调用
 - **import包文件夹名（路径）**（而不是自己在go文件中写的package name），就会import此包文件夹下的所有*.go文件，即包文件夹中的所有可见的函数都可用。
 - 在同一包文件夹下的不同*.go文件中第一行的 package <包名> 必须相同，强烈建议和包文件夹名相同。
-- **只能 import包文件夹，不能以 `/` 结尾，也不能是具体的 go 文件**
+- **只能 import包文件夹，而且后面跟的是文件夹路径/文件名，不是package名，不能以 `/` 结尾，也不能是具体的 go 文件**
 - import 只会引用当前文件夹下的所有go文件，**不会递归引用其中的文件夹**。要引用其中的文件夹，需再次import
 - `import “fldr_pkg1”` 如果fldr_pkg1文件夹中的go文件在开头写的是`package pkg1`，import后也要使用`pkg1.XX`来调用其中的函数。
 
@@ -8366,6 +8382,18 @@ main.go:4:2: no required module provides package github.com/gin-gonic/gin; to ad
 - 运行 go get package@version 将会升级到指定的版本号version
 - 运行go get如果有版本的更改，那么go.mod文件也会更改
 
+进一步，整理或清理`go.mod`文件里的依赖项比较麻烦，可以使用命令 `go mod tidy` 清理。
+
+具体来说，`go mod tidy` 的功能包括：
+
+1. 删除 `go.mod` 文件中未使用的依赖项。
+2. 确保 `go.mod` 文件中列出的依赖项版本与您的代码中实际使用的依赖项版本一致。
+3. 检查并更新依赖项的版本，以保持它们与您的代码中使用的版本兼容
+
+
+
+
+
 ## #标准库之math
 
 ### 随机数
@@ -8951,3 +8979,6 @@ www.txt里面的文字
 - `panic()` : 用于错误处理，见14
 - `recover()` : 用于错误处理，见14
 
+
+
+vscode  远程连接服务器go开发，但vscode没有代码检查和错误提示。需要下载gopls并更新。
