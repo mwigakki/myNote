@@ -202,6 +202,49 @@ nothing to commit, working tree clean
 为什么GitHub需要SSH Key呢？因为GitHub需要识别出你推送的提交确实是你推送的，而不是别人冒充的，而Git支持SSH协议，所以，GitHub只要知道了你的公钥，就可以确认只有你自己才能推送。
 当然，GitHub允许你添加多个Key。假定你有若干电脑，你一会儿在公司提交，一会儿在家里提交，只要把每台电脑的Key都添加到GitHub，就可以在每台电脑上往GitHub推送了。
 
+### 配置多个公钥
+
+1. 按照上面的步骤已经配置了一个ssh key了。我们用不同的邮箱注册了另一个github账号。假设账号名为 account2。邮箱为` account2@123.com`。然后我们打开Shell（Windows下打开Git Bash或CMD），给这个邮箱创建SSH Key：
+
+```bash
+ssh-keygen -t rsa -C "account2@123.com"
+
+# 然后它会提示我们保存到哪个文件
+Generating public/private rsa key pair.
+Enter file in which to save the key (C:\Users\a/.ssh/id_rsa):
+# 这里我们为了防止把之前的ssh key文件重写了，需要键入新的保存的文件名，如 github2_id_rsa
+```
+
+然后提示我们输入密码啥的都不管，直接回车。看到如下显示就成功了。它就会生成`github2_id_rsa`和`github2_id_rsa.pub`两个文件。
+
+``` bas
+The key fingerprint is:
+SHA256:gsgpgNOVQF8OPUGVATYnd0OiMNozvIMaTPGhiRgwXBU luotong@bjtu.edu.cn
+The key's randomart image is:
++---[RSA 3072]----+
+|*o++*EX+*++      |
+|+==*oBo*.o .     |
+|*+o.* o.         |
+|+o + =           |
+|o.= + . S        |
+| +   . .         |
+|.                |
+|                 |
+|                 |
++----[SHA256]-----+
+```
+
+2. 然后就想之前一样，使用account2账号登陆[GitHub](https://github.com/)，点击头像`setting`，“`SSH and GPG Keys`”页面：然后，点“`New SSH Key`”，填上任意Title，在Key文本框里粘贴`github2_id_rsa.pub`文件的内容，最后add即可。
+
+3. 我们使用新建的账号account2 在github上新建一个仓库，然后把新仓库clone到本地。在本地此仓库中，我们使用`git config user.name`发现显示的是我们第一个账号，即此电脑git 的全局账号，但是我们想让此仓库使用我们刚刚新建的账号account2 。于是设置一下：
+
+``` bash
+git config user.name "{name}"
+git config user.email "account2@123.com"
+```
+
+在本地仓库修改commit后，使用`git push`推送，提示让我们去网页输入账号密码。输入完成后即可推送成功。
+
 ### 添加远程仓库
 登陆GitHub，然后，在右上角找到`Create a new repo`按钮，然后...，创建一个新的仓库。
 
@@ -212,6 +255,7 @@ nothing to commit, working tree clean
 
 添加后，远程库的名字就是`origin`，这是Git默认的叫法，也可以改成别的，但是origin这个名字一看就知道是远程库。
 下一步，就可以把本地库的所有内容推送到远程库上：
+
 > git push -u origin master
 
 把本地库的内容推送到远程，用`git push`命令，实际上是把当前分支`master`**推送**到远程。

@@ -59,6 +59,7 @@ https://www.kandaoni.com/news/19058.html#
 7. 添加模板和代理:
    - 模板：**`go env -w GO111MODULE=on`**
    - 代理：**`go env -w GOPROXY=http://goproxy.io,direct`**
+   - 或者使用这个代理：**`go env -w GOPROXY=http://goproxy.cn,direct`**
 
 > vscode 编辑go代码时需要给当前的环境安装 gopls，使用命令`go install -v golang.org/x/tools/gopls@latest`安装 
 
@@ -5973,8 +5974,8 @@ func main() {
 	startTime := time.Now()			// 单位是 ns
 	// 你的程序
     time.Sleep(2 * time.Second) // btw，time.Sleep()里面的默认单位是纳秒
-	endTime := time.Now()
-	fmt.Printf("%d us\n", endTime.Sub(startTime) / 1000)
+	endTime := time.Now()  // 这里的单位都是 ns
+	fmt.Printf("%d us\n", endTime.Sub(startTime) / 1000)  // 这里的单位都是 ns
 }
 ```
 
@@ -8177,6 +8178,8 @@ flag.DurationVar(&delay, "d", 0, "时间间隔")
 flag.Parse()	// 解析
 ```
 
+使用：`go run main.go -name="111" -city="222" -age=33`
+
 ##### 3) flag.Parse()
 
 通过以上两种方法定义好命令行 flag 参数后，**需要通过调用` flag.Parse() `来对命令行参数进行解析**。
@@ -8403,10 +8406,24 @@ import (
 	"fmt"
 	"math/rand"
 )
-func f2() {
-	rand.Seed(time.Now().UnixNano())// 随机数种子
+func main() {
+	for i := 0; i < 20; i++ {
+        // 直接生成随机数，不需要先设置随机数种子
+		fmt.Println(rand.Intn(10)) // 输入结果 [0, 10）
+	}
+}
+
+func f1() {
+	rand.Seed(time.Now().UnixNano())// 随机数种子 Go1.20 将这种随机数种子的方法弃用了 使用 f2的方法
 	for i := 0; i < 10; i++ {
         fmt.Println(rand.Intn(10))  // [0,10)
+	}
+}
+func f2() {
+	source := rand.NewSource(int64(52))  // 参数就是自己填入的种子，如果想每一次随机得到不一样的结果就填当前时间戳
+	randNumGenerator := rand.New(source)
+	for i := 0; i < 20; i++ {
+		fmt.Println(randNumGenerator.Intn(10))
 	}
 }
 ```

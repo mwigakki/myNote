@@ -2826,6 +2826,69 @@ func init() {
 - main.go
 ```
 
+# go-redis
+
+Redis是一种流行的**内存键值数据库**,被广泛用于构建高性能的缓存和消息队列应用。
+
+**go-redis简介**:
+
+go-redis是一个Go语言中非常流行的Redis客户端库。相比于其他Go语言Redis客户端,它具有以下优点:
+
+1. API友好,命令名称和参数与Redis原生命令一致,使用简单方便。
+2. 支持完整的Redis命令集,覆盖了字符串、哈希、列表、集合、有序集合、HyperLogLog等数据结构。
+3. 支持连接池,可以有效控制连接数,避免频繁创建连接。
+4. 支持Pipeline和事务,可以打包多个命令减少网络开销。
+5. 支持发布订阅Pub/Sub和键空间通知等功能。
+6. 支持哨兵和集群模式,提供高可用能力。
+7. 代码维护活跃,持续有新功能加入。
+8. 在Github上拥有1.5万+星,是最流行的Go Redis客户端。
+    总之,go-redis是一个功能完备、易用性高的Redis客户端库,它覆盖了Redis的绝大部分功能,是Go语言连接Redis的首选方案。
+
+**go-redis使用demo**:
+
+``` go
+package main
+
+import (
+    "fmt"
+
+    "github.com/go-redis/redis"
+)
+
+// 创建redis客户端
+func newClient() *redis.Client {
+    client := redis.NewClient(&redis.Options{
+        Addr:     "localhost:6379", // redis地址
+        Password: "",               // 密码
+        DB:       0,                // 使用默认数据库
+    })
+    return client
+}
+
+func main() {
+
+    // 创建客户端
+    client := newClient()
+    defer client.Close() 
+
+    // 设置key
+    err := client.Set("name", "john", 0).Err() // 第三个参数传入过期时间，0表示不会过期
+    if err != nil {
+        panic(err)
+    }
+
+    // 获取key
+    val, err := client.Get("name").Result()
+    if err != nil {
+        panic(err)
+    }
+    fmt.Println("name", val)
+
+}
+```
+
+
+
 # 数据结构
 
 ## 2. 递归

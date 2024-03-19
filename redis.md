@@ -36,7 +36,7 @@ Redis 与其他 key - value 缓存产品有以下三个特点：
 
 # 2. Redis 安装
 
-**windows下安装**见：
+### windows下安装
 
 **下载地址：**https://github.com/tporadowski/redis/releases。
 
@@ -76,20 +76,13 @@ get myKey
 
 可以看到已经成功了。
 
-**在 Ubuntu 系统安装 Redis **可以使用以下命令:
-
-```bash
-# sudo apt update
-# sudo apt install redis-server
-```
-
-### 启动 Redis
+#### 启动 Redis
 
 ```shell
 # redis-server
 ```
 
-### 查看 redis 是否启动？
+#### 查看 redis 是否启动
 
 同时这条命令就是启动 redis 客户端会连接本地的 redis 服务：
 
@@ -121,6 +114,25 @@ PONG
 > ```
 >
 > 就可以避免中文乱码了。
+
+###  Ubuntu 安装 Redis 
+
+使用以下命令:
+
+```bash
+sudo apt update
+sudo apt install redis-server # 遇到询问 yes/no 填yes
+```
+
+一旦安装完成，redis服务会自动启动，要检查redis的状态，使用命令：
+
+``` bash
+sudo systemctl status redis-server
+```
+
+显示 `Active: active (running) ` 就行。
+
+此时我们使用 `redis-cli`就可进入redis 用户命令行了。
 
 # 3. Redis 配置
 
