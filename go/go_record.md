@@ -2293,6 +2293,8 @@ func main(){
 }
 ```
 
+就算删除map中没有的元素也不会报错。
+
 ### 清空 map 中的所有元素
 
 有意思的是，Go语言中并没有为 map 提供任何清空所有元素的函数、方法，清空 map 的唯一办法就是重新 make 一个新的 map，不用担心垃圾回收的效率，Go语言中的并行垃圾回收效率比写一个清空函数要高效的多。
@@ -4344,7 +4346,7 @@ func main() {
 
 #### 嵌套匿名字段
 
-上面user结构体中嵌套的`Address`结构体也可以采用匿名字段的方式（不常用），例如：
+上面user结构体中嵌套的`Address`结构体也可以采用匿名字段的方式（匿名结构体在作为接口的适配器层比较常用），例如：
 
 ```go
 //Address 地址结构体
@@ -4601,6 +4603,10 @@ func (p *Person) SetDreams(dreams map[int]string) {
 
 接口可以是任何类型，可以保存任何类型的值，所以接口在内存中即需要保存类型又需要保存值。
 
+建议函数传入和返回接口时都不要使用指针，直接传入或返回接口，**因为接口本身就可以接收结构体和结构体指针**。
+
+接口该有的方法是每个实现结构体都有的方法的抽象，以及返回结构体需要使用的成员变量。
+
 ### 定义
 
 每个接口类型由任意个方法签名组成，接口的定义格式如下：
@@ -4688,7 +4694,48 @@ func main() {
 }
 ```
 
-### 一个类型实现多个接口，多个类型实现一个接口，
+### 接口的适配器层
+
+一个接口可能有多个方法，我们只想实现其中的部分方法，这时可以先用另一个结构体实现接口，我们的结构体再继承那个结构体。
+
+``` go
+package main
+
+import "fmt"
+
+type Animal interface {
+	Speak() string
+	Species() string
+}
+
+type Dog struct{}
+
+func (d Dog) Speak() string {
+	return "wang wang wang"
+}
+
+func (d Dog) Species() string {
+	return "dog"
+}
+
+type Husky struct {
+	Dog // Husky 有Dog 的匿名结构体，必须匿名
+}
+
+func (h Husky) Species() string {
+	return "哈士奇"
+}
+
+func main() {
+	var a Animal = Husky{} // Husky 没有实现Animal 所有方法也能实例化，因为Husky 继承的Dog实现了Animal 所有方法
+	fmt.Println(a.Speak())
+	fmt.Println(a.Species())
+}
+```
+
+### 实现多个接口
+
+一个类型可实现多个接口，多个类型可以实现一个接口，
 
 ``` go
 type cat struct{}
@@ -4778,6 +4825,49 @@ func main() {
     
     m := &Dog{Name: "旺财"}
 	m.speak()	// 这样是没问题的
+}
+```
+
+### 值接收者和指针接收者是不一样的
+
+``` go
+package main
+
+import "fmt"
+
+type Animal interface {
+	Speak() string
+}
+
+type Dog struct{}
+
+// Dog 结构体实现了Animal的方法
+func (d Dog) Speak() string {
+	return "Woof!"
+}
+
+func getAnimal() Animal {
+	return Dog{}
+}
+
+// 因为Dog 结构体实现了Animal的方法，所以即可以返回 Dog实例，也可以返回Dog实例的引用
+func getAnimal2() Animal {
+	return &Dog{} // 这里是golang 的语法糖
+}
+
+type Cat struct{}
+
+func (c *Cat) Speak() string {
+	return "MIMI!"
+}
+func getAnimal3() Animal { // 这里要求返回接口类型，实际上返回的是结构体对象的指针！！通常我们不能返回接口的指针！！
+	return &Cat{}
+	// return  Cat{}  // 因为是 *Cat 实现了Animal的方法，所以Animal只能接收 *Cat，不能接收 Cat
+}
+func main() {
+	fmt.Println(getAnimal().Speak())  // Output: Woof!
+	fmt.Println(getAnimal2().Speak()) // Output: Woof!
+	fmt.Println(getAnimal3().Speak()) // Output: MIMI!
 }
 ```
 
@@ -5067,7 +5157,7 @@ x.(T)
 - x：表示接口类型的变量
 - T：表示断言`x`可能是的类型。
 
-该语法返回两个参数，第一个参数是`x`转化为`T`类型后的变量，第二个值是一个布尔值，若为`true`则表示断言成功，为`false`则表示断言失败。
+该语法返回两个参数，第一个参数是`x`转化为`T`类型后的指针变量，第二个值是一个布尔值（可以不接收），若为`true`则表示断言成功，为`false`则表示断言失败。
 
 举个例子：
 
@@ -6000,7 +6090,7 @@ func main() {
 	log.Println("这是一条很普通的日志。")
 	v := "很普通的"
 	log.Printf("这是一条%s日志。\n", v)
-	log.Fatalln("这是一条会触发fatal的日志。")
+    log.Fatalln("这是一条会触发fatal的日志。")	// fatal会调用 os.Exit(1) 直接退出程序
 	log.Panicln("这是一条会触发panic的日志。")
 }
 ```
@@ -7559,7 +7649,7 @@ func main() {
 
 在某些场景下我们可能需要**同时从多个通道接收数据**。通道在接收数据时，如果没有数据可以被接收那么当前 goroutine 将会发生阻塞。Go 语言内置了`select`关键字，使用它可以同时响应多个通道的操作。
 
-Select 的使用方式类似于之前学到的 switch 语句，它也有一系列 case 分支和一个默认的分支。每个 case 分支会对应一个通道的通信（接收或发送）过程。select 会一直等待，直到其中的某个 case 的通信操作完成时，就会执行该 case 分支对应的语句。具体格式如下：
+Select 的使用方式类似于之前学到的 switch 语句，它也有一系列 case 分支和一个默认的分支。每个 case 分支会对应一个通道的通信（接收或发送）过程。select **会一直等待**，直到其中的某个 case 的通信操作完成时，就会执行该 case 分支对应的语句。具体格式如下：
 
 ```go
 select {
@@ -7570,7 +7660,7 @@ case data := <-ch2:
 case ch3 <- 10:
 	//...
 default:
-	//默认操作，使用时小心，所有分支执行不了就执行，default执行很快。
+	//默认操作，使用时小心，所有分支执行不了就立马执行default，（但如果没有default 就会阻塞，如果希望能够阻塞，但有想要设置最长阻塞时间，可以给default）
 }
 ```
 
@@ -7578,7 +7668,40 @@ Select 语句具有以下特点。
 
 - 可处理一个或多个 channel 的发送/接收操作。
 - 如果多个 case 同时满足，select 会**随机**选择一个执行。哪个能成走哪个。
-- 对于没有 case 的 select 会一直阻塞，可用于阻塞 main 函数，防止退出。
+- 对于没有 case 的 select 会一直阻塞，可用于阻塞 main 函数，防止退出，用法就是 `select {}`。
+
+如果没有default 就会阻塞，如果希望能够阻塞，但有想要设置最长阻塞时间，可以给default设置一下，如下：
+
+``` go
+package main
+
+import (
+    "fmt"
+    "time"
+)
+
+func makeTimeout(ch chan bool, t int) {
+    time.Sleep(time.Second * time.Duration(t))
+    ch <- true
+}
+
+func main() {
+    c1 := make(chan string, 1)
+    c2 := make(chan string, 1)
+    timeout := make(chan bool, 1)
+
+    go makeTimeout(timeout, 2)
+
+    select {
+    case msg1 := <-c1:
+        fmt.Println("c1 received: ", msg1)
+    case msg2 := <-c2:
+        fmt.Println("c2 received: ", msg2)
+    case <-timeout:
+        fmt.Println("Timeout, exit.")
+    }
+}
+```
 
 下面的示例代码能够在终端打印出10以内的奇数，我们借助这个代码片段来看一下 select 的具体使用。
 
@@ -7612,8 +7735,15 @@ func main() {
 - 第一次循环时 i = 1，select 语句中包含两个 case 分支，此时由于通道中没有值可以接收，所以`x := <-ch` 这个 case 分支不满足，而`ch <- i`这个分支可以执行，会把1发送到通道中，结束本次 for 循环；
 - 第二次 for 循环时，i = 2，由于通道缓冲区已满，所以`ch <- i`这个分支不满足，而`x := <-ch`这个分支可以执行，从通道接收值1并赋值给变量 x ，所以会在终端打印出 1；
 - 后续的 for 循环以此类推会依次打印出3、5、7、9。
-
 - 将make里面的容量改为10试试看
+
+select 与 switch 原理很相似，但它的使用场景更特殊，需要知道如下几点区别：
+
+- select 只能用于 channel 的操作(写入/读出)，而 switch 则更通用一些；
+- select 的 case 是随机的，而 switch 里的 case 是顺序执行；
+- select 要注意避免出现死锁，同时也可以自行实现超时机制；
+- select 里没有类似 switch 里的 fallthrough 的用法；
+- select 不能像 switch 一样接函数或其他表达式。
 
 ## 25. 标准库之sync
 
@@ -7626,6 +7756,8 @@ func main() {
 - wg.Wait() 开始等，阻塞直到计数器变为0
 
 ### 锁
+
+> 锁都是不需要初始化，import就可以直接使用的
 
 有时候我们的代码中可能会存在多个 goroutine 同时操作一个资源（临界区）的情况，这种情况下就会发生`竞态问题`（数据竞态）。
 
@@ -8393,7 +8525,230 @@ main.go:4:2: no required module provides package github.com/gin-gonic/gin; to ad
 2. 确保 `go.mod` 文件中列出的依赖项版本与您的代码中实际使用的依赖项版本一致。
 3. 检查并更新依赖项的版本，以保持它们与您的代码中使用的版本兼容
 
+## 28. go test
 
+Go 通过标准库的 testing 包和 Go 命令行工具 test 相关命令，在语言层面，提供了一整套全面的测试机制。
+
+测试函数编写的基本要求为：
+
+- 测试源码的文件名以 `_test.go` 结尾。
+- 测试函数的函数名以 `Test` 开头，如`TestXxxx`。
+- 函数签名为 `func (t *testing.T)`。
+- 基准测试(benchmark)的参数是 `*testing.B`，TestMain 的参数是 `*testing.M` 类型。
+
+### 举例
+
+Go 语言推荐测试文件和源代码文件放在一块，在`/t1/calc.go`中的代码如下：
+
+``` go
+package main
+
+func Add(a int, b int) int {
+	return a + b
+}
+
+func Mul(a int, b int) int {
+	return a * b
+}
+```
+
+那么给它写一个测试用例 `/t1/calc_test.go`
+
+``` go
+package main
+
+import "testing"
+
+func TestAdd(t *testing.T) {  // 函数命名不一定非要 Test[待侧的函数名]
+	if ans := Add(1, 2); ans != 3 {
+		t.Error("1+2 = 3？ ，但是得到", ans) // Error 遇到错误不会停止测试
+	}
+}
+func TestMul(t *testing.T) {
+	if ans := Add(2, 2); ans != 4 {
+		t.Fatal("2*2 = 4？ ，但是得到", ans) // Fatal 遇到错误停止测试 直接返回
+	}
+}
+```
+
+运行 `go test`，该 package 下所有的测试用例都会被执行。
+
+``` bash
+$ go test -v  # 加了-v 显示了更多内容
+=== RUN   TestAdd
+--- PASS: TestAdd (0.00s)
+=== RUN   TestMul
+--- PASS: TestMul (0.00s)
+PASS
+ok      github.com/studyGo1/28gotest/t1 0.202s
+```
+
+如果只想运行其中的一个用例，例如 `TestAdd`，可以用 `-run` 参数指定，该参数支持通配符 `*`，和部分正则表达式，例如 `^`、`$`。
+
+### 子测试
+
+子测试是 Go 语言内置支持的，可以在某个测试用例中，根据测试场景使用 `t.Run`创建不同的子测试用例：
+
+``` go
+func TestMul(t *testing.T) {
+	t.Run("pos", func(t *testing.T) {
+		if Mul(2, 3) != 6 {
+			t.Fatal("fail")
+		}
+	})
+	t.Run("neg", func(t *testing.T) {
+		if Mul(2, -3) != -6 {
+			t.Fatal("fail")
+		}
+	})
+}
+```
+
+运行：
+
+``` bash
+$ go test -run TestMul/pos  -v
+=== RUN   TestMul
+=== RUN   TestMul/pos
+--- PASS: TestMul (0.00s)        
+    --- PASS: TestMul/pos (0.00s)
+PASS
+ok      github.com/studyGo1/28gotest/t1 0.218s  
+```
+
+对于多个子测试的场景，更推荐如下的写法(table-driven tests)：
+
+``` go
+//  calc_test.go
+func TestMul(t *testing.T) {
+	cases := []struct {
+		Name           string
+		A, B, Expected int
+	}{
+		{"pos", 2, 3, 6},
+		{"neg", 2, -3, -6},
+		{"zero", 2, 0, 0},
+	}
+
+	for _, c := range cases {
+		t.Run(c.Name, func(t *testing.T) {
+			if ans := Mul(c.A, c.B); ans != c.Expected {
+				t.Fatalf("%d * %d expected %d, but %d got",
+					c.A, c.B, c.Expected, ans)
+			}
+		})
+	}
+}
+```
+
+所有用例的数据组织在切片 `cases` 中，看起来就像一张表，借助循环创建子测试。这样写的好处有：
+
+- 新增用例非常简单，只需给 cases 新增一条测试数据即可。
+- 测试代码可读性好，直观地能够看到每个子测试的参数和期待的返回值。
+- 用例失败时，报错信息的格式比较统一，测试报告易于阅读。
+
+对一些重复的逻辑，抽取出来作为公共的帮助函数(helpers)，可以增加测试代码的可读性和可维护性。不举例了。
+
+### setup 和 teardown
+
+如果在同一个测试文件中，每一个测试用例运行前后的逻辑是相同的，一般会写在 setup 和 teardown 函数中。例如执行前需要实例化待测试的对象，如果这个对象比较复杂，很适合将这一部分逻辑提取出来；执行后，可能会做一些资源回收类的工作，例如关闭网络连接，释放文件等。标准库 `testing` 提供了这样的机制：
+
+```go
+func setup() {
+	fmt.Println("Before all tests")
+}
+
+func teardown() {
+	fmt.Println("After all tests")
+}
+
+func Test1(t *testing.T) {
+	fmt.Println("I'm test1")
+}
+
+func Test2(t *testing.T) {
+	fmt.Println("I'm test2")
+}
+
+func TestMain(m *testing.M) {
+	setup()
+	code := m.Run()
+	teardown()
+	os.Exit(code)
+}
+```
+
+- 在这个测试文件中，包含有2个测试用例，`Test1` 和 `Test2`。
+- 如果测试文件中包含函数 `TestMain`，那么生成的测试将调用 TestMain(m)，而不是直接运行测试。
+- 调用 `m.Run()` 触发所有测试用例的执行，并使用 `os.Exit()` 处理返回的状态码，如果不为0，说明有用例失败。
+- 因此可以在调用 `m.Run()` 前后做一些额外的准备(setup)和回收(teardown)工作。
+
+执行 `go test`，将会输出
+
+```go
+$ go test
+Before all tests
+I'm test1
+I'm test2
+PASS
+After all tests
+ok      example 0.006s
+```
+
+### Benchmark 基准测试
+
+基准测试用例的定义如下：
+
+```go
+func BenchmarkName(b *testing.B){
+    // ...
+}
+```
+
+- 函数名必须以 `Benchmark` 开头，后面一般跟待测试的函数名
+- 参数为 `b *testing.B`。
+- 执行基准测试时，需要添加 `-bench` 参数。
+
+例如，我们将最上面写的Mul函数的测试改成：
+
+``` go
+func BenchmarkMul(b *testing.B) {
+	// ... 耗时操作
+	b.ResetTimer() // 重置定时器（可选）
+	for i := 0; i < b.N; i++ {
+		Mul(i, 2)
+	}
+}
+```
+
+进行基准测试：
+
+``` bash
+$ go test -benchmem -bench . 
+goos: windows
+goarch: amd64
+pkg: github.com/studyGo1/28gotest/t1
+cpu: 11th Gen Intel(R) Core(TM) i7-11800H @ 2.30GHz
+BenchmarkMul-16         1000000000               0.2390 ns/op          0 B/op          0 allocs/op
+PASS
+ok      github.com/studyGo1/28gotest/t1 0.481s
+```
+
+输出结果执行了十亿次，每次0.239ns。
+
+基准测试报告每一列值对应的含义如下：
+
+```go
+type BenchmarkResult struct {
+    N         int           // 迭代次数
+    T         time.Duration // 基准测试花费的时间
+    Bytes     int64         // 一次迭代处理的字节数
+    MemAllocs uint64        // 总的分配内存的次数
+    MemBytes  uint64        // 总的分配内存的字节数
+}
+```
+
+使用 `RunParallel` 测试并发性能
 
 
 

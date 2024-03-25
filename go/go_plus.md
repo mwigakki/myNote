@@ -6,6 +6,771 @@ https://www.topgoer.com/
 
 [数据结构和算法（Golang实现） - 《数据结构和算法（Golang实现）》 - 书栈网 · BookStack](https://www.bookstack.cn/read/hunterhug-goa.c/README.md)
 
+# 数据结构
+
+## 2. 递归
+
+#### 递归实现斐波那契数列
+
+``` go
+func Fibonacci(n int) int {
+	if n == 1 || n == 2 {
+		return 1
+	}
+	return Fibonacci(n-1) + Fibonacci(n-2)
+}
+```
+
+#### 递归实现二分查找
+
+``` go
+func BinarySearch(nums []int, target, left, right int) int {
+	if left > right {
+		return -1
+	}
+	mid := (left + right) / 2
+	if nums[mid] == target {
+		return mid
+	} else if nums[mid] > target {
+		return BinarySearch(nums, target, left, mid-1)
+	} else {
+		return BinarySearch(nums, target, mid+1, right)
+	}
+}
+```
+
+#### 非递归实现二分查找
+
+``` go
+func BinarySearch2(nums []int, target int) int {
+	left, mid, right := 0, -1, len(nums)-1
+	for left <= right {
+		mid = (left + right) / 2
+		if nums[mid] == target {
+			return mid
+		} else if nums[mid] > target {
+			right = mid - 1
+		} else {
+			left = mid + 1
+		}
+	}
+	return -1
+}
+```
+
+## 3. 链表
+
+#### 单链表
+
+``` go
+type LinkNode struct {
+	val      int
+	nextNode *LinkNode
+}
+
+
+func main() {
+	var n4 LinkNode = LinkNode{4, nil}
+	var n3 LinkNode = LinkNode{3, &n4}
+	var n2 LinkNode = LinkNode{2, &n3}
+	var n1 LinkNode = LinkNode{1, &n2}
+	// 这里tmp是LinkNode指针类型，因为struct是值类型不能用来==nil，
+	for tmp := &n1; tmp != nil; tmp = tmp.nextNode {
+		fmt.Println(tmp.val)
+	}
+}
+```
+
+#### 双向链表
+
+go自带的包container/list就是双向链表
+
+导入list包：`import  list "container/list"`
+
+``` go
+// list中的元素
+type Element struct {
+	next, prev *Element
+	list *List
+	Value any
+}
+// 由Element来维护前后指针
+type List struct {
+	root Element // sentinel list element, only &root, root.prev, and root.next are used
+	len  int     // current list length excluding (this) sentinel element
+}
+// 初始化或清空list
+func (l *List) Init() *List {
+	l.root.next = &l.root
+	l.root.prev = &l.root
+	l.len = 0
+	return l
+}
+// 可以看出，List一直有一个不可读取的root节点，
+```
+
+需要注意的是使用List时，不会直接用List对象，因为list里的函数的caller几乎都是Element，不是List，所以一般用List.Back()。其他插值，删除等等方法参见[Go语言标准库文档中文版 | Go语言中文网 | Golang中文社区 | Golang中国 (studygolang.com)](https://studygolang.com/pkgdoc)
+
+#### 环链表
+
+go自带的包container/ring就是环链表
+
+导入ring包：`import  ring "container/ring"`
+
+``` go
+// 只是环的一个元素，因为只要拿一个环的一个元素就拿到了整个环
+type Ring struct {
+	next, prev *Ring
+	Value      any // 可以直接改
+}
+// New creates a ring of n elements.
+func New(n int) *Ring {
+	if n <= 0 {
+		return nil
+	}
+	r := new(Ring)
+	p := r
+	for i := 1; i < n; i++ {
+		p.next = &Ring{prev: p}
+		p = p.next
+	}
+	p.next = r
+	r.prev = p
+	return r
+}
+```
+
+## 4. 栈
+
+go没有自带的栈类型，我们可以用数组(切片)或者列表来实现
+
+- **数组实现**：能快速随机访问存储的元素，通过下标 `index` 访问，支持随机访问，查询速度快，但存在元素在数组空间中大量移动的操作，增删效率低。
+
+- **链表实现**：只支持顺序访问，在某些遍历操作中查询速度慢，但增删元素快
+
+#### 数组实现
+
+``` go
+// 实现数组栈 ArrayStack1
+type ArrayStack struct {
+	array []int // 底层切片
+	size  int
+	lock  sync.Mutex
+}
+
+// 入栈
+func (stack *ArrayStack) Push1(v int) {
+	stack.lock.Lock()
+	defer stack.lock.Unlock()
+	stack.array = append(stack.array, v)
+	stack.size++
+}
+
+// 出栈
+func (stack *ArrayStack) Pop1() int {
+	stack.lock.Lock()
+	defer stack.lock.Unlock()
+	if stack.size <= 0 {
+		panic("stack is empty.")
+	}
+	v := stack.array[stack.size-1]
+	stack.size--
+	stack.array = stack.array[:stack.size]
+	return v
+	/*
+		如果切片偏移量向前移动 stack.array[0 : stack.size-1]，
+		表明最后的元素已经不属于该数组了，数组变相的缩容了。
+		此时，切片被缩容的部分并不会被回收，仍然占用着空间，
+		所以空间复杂度较高，但操作的时间复杂度为：O(1)。
+
+		如果我们创建新的数组 newArray，然后把老数组的元素复制到新数组，
+		就不会占用多余的空间，但移动次数过多，时间复杂度为：O(n)。
+	*/
+}
+
+func (stack *ArrayStack) Peek1() int {
+	if stack.size == 0 {
+		panic("stack is empty.")
+	}
+	return stack.array[stack.size-1]
+}
+func (stack *ArrayStack) Size1() int {
+	return stack.size
+}
+func (stack *ArrayStack) IsEmpty() bool {
+	return stack.size == 0
+}
+```
+
+#### 链表实现
+
+``` go
+// 实现链表栈 LinkStack
+type LinkStack struct {
+	root *LinkNode // 链表起点
+	size int
+	lock sync.Mutex
+}
+type LinkNode struct {
+	Next  *LinkNode
+	value int
+}
+
+// 入栈
+// 如果把root当作栈底的话，那么入栈出栈等等都要一直把整个栈找一遍找到栈顶，时间复杂度为O(n)，不合适
+// 故把root当作栈顶
+func (stack *LinkStack) Push2(v int) {
+	stack.lock.Lock()
+	defer stack.lock.Unlock()
+	node := LinkNode{value: v}
+	if stack.root == nil {
+		stack.root = &node
+	} else {
+		node.Next = stack.root
+		stack.root = &node
+	}
+	stack.size++
+}
+
+// 出栈
+func (stack *LinkStack) Pop2() int {
+	if stack.size <= 0 {
+		panic("empty")
+	}
+	stack.lock.Lock()
+	defer stack.lock.Unlock()
+	result := stack.root.value
+	stack.root = stack.root.Next
+	stack.size--
+	return result
+}
+
+// 获得栈顶
+func (stack *LinkStack) Peek2() int {
+	if stack.size <= 0 {
+		panic("empty")
+	}
+	return stack.root.value
+}
+
+// 栈大小
+func (stack *LinkStack) Size2() int {
+	return stack.size
+}
+
+// 栈是否为空
+func (stack *LinkStack) IsEmpty2() bool {
+	return stack.size == 0
+}
+```
+
+## 5. 队列
+
+#### 实现数组队列 ArrayQueue
+
+``` go
+// 实现数组队列 ArrayQueue
+type ArrayQueue struct {
+	array []int
+	size  int
+	lock  sync.Mutex
+}
+
+func (queue *ArrayQueue) Add(v int) {
+	queue.lock.Lock()
+	defer queue.lock.Unlock()
+	queue.array = append(queue.array, v)
+	queue.size++
+}
+
+func (queue *ArrayQueue) Remove() int {
+	if queue.size <= 0 {
+		panic("empty")
+	}
+	queue.lock.Lock()
+	defer queue.lock.Unlock()
+	v := queue.array[0]
+	queue.array = queue.array[1:]
+	queue.size--
+	return v
+}
+
+```
+
+#### 实现链表队列 LinkQueue
+
+``` go
+// 实现链表队列 LinkQueue
+type LinkQueue struct {
+	root *LinkNode
+	size int
+	lock sync.Mutex
+}
+type LinkNode struct {
+	Next  *LinkNode
+	Value int
+}
+
+// 入队
+func (queue *LinkQueue) Add2(v int) {
+	queue.lock.Lock()
+	defer queue.lock.Unlock()
+	node := LinkNode{Value: v}
+	// 当然加在链头链尾都可以，只是时间复杂度不一样
+	// 但入队出队的的时间复杂度总是一个O(n),一个O(1)
+	if queue.root == nil {
+		queue.root = &node
+	} else {
+		tmp := queue.root
+		for ; tmp.Next != nil; tmp = tmp.Next {
+		}
+		tmp.Next = &node
+	}
+	queue.size = queue.size + 1
+}
+
+// 出队
+func (queue *LinkQueue) Remove2() int {
+	queue.lock.Lock()
+	defer queue.lock.Unlock()
+	if queue.size <= 0 {
+		panic("empty")
+	}
+	tmp := queue.root
+	v := tmp.Value
+	queue.root = tmp.Next
+	queue.size--
+	return v
+}
+```
+
+## 6. 集合
+
+`Set` 可以没有顺序关系，也可以按值排序，算一种特殊的不可重复列表。一般实现无序不重复的集合。
+
+因为我们知道字典的键是不重复的，所以只要我们不考虑字典的值，就可以实现集合，我们来实现存整数的集合 `Set`：
+
+``` go
+type set struct {
+	m    map[int]struct{} // 值使用空结构体不会占空间
+	size int
+	lock sync.RWMutex // 读写锁
+}
+
+func NewSet(cap int) *set {
+	tmp := make(map[int]struct{}, cap)
+	return &set{m: tmp}
+}
+
+func (s *set) Add(item int) {
+	s.lock.Lock()
+	defer s.lock.Unlock()
+	s.m[item] = struct{}{}
+	s.size = len(s.m)
+}
+
+func (s *set) Remove(item int) {
+	s.lock.Lock()
+	defer s.lock.Unlock()
+	_, has := s.m[item]
+	if has {
+		delete(s.m, item)
+		s.size = len(s.m)
+	}
+}
+func (s *set) Has(item int) bool {
+	s.lock.RLock()
+	defer s.lock.RUnlock()
+	_, has := s.m[item]
+	return has
+}
+
+// 查看集合大小
+func (s *set) Len() int {
+	return s.size
+}
+
+// 集合是够为空
+func (s *set) IsEmpty() bool {
+	if s.Len() == 0 {
+		return true
+	}
+	return false
+}
+
+// 清除集合所有元素
+func (s *set) Clear() {
+	s.lock.Lock()
+	defer s.lock.Unlock()
+	s.m = make(map[int]struct{})
+	s.size = 0
+}
+
+// 将集合转化为列表
+func (s *set) List() []int {
+	s.lock.Lock()
+	defer s.lock.Unlock()
+	ans := make([]int,0)
+	fmt.Println(s.size)
+	for k := range s.m {
+		ans = append(ans, k)
+	}
+	return ans
+}
+func main() {
+	s := NewSet(0)
+	s.Add(1)
+	s.Add(2)
+	s.Add(3)
+	s.Remove(3)
+	fmt.Print(s.Has(4))
+	s.Remove(4)
+	fmt.Println(s.m)
+	fmt.Println(s.List())
+
+}
+```
+
+## 7. 树
+
+树是一种比较高级的基础数据结构，由 `n` 个有限节点组成的具有层次关系的集合。（算树的高度或深度时不算根节点这一层）
+
+树的定义：
+
+1. 有节点间的层次关系，分为父节点和子节点。
+2. 有唯一一个根节点，该根节点没有父节点。
+3. 除了根节点，每个节点有且只有一个父节点。
+4. 每一个节点本身以及它的后代也是一棵树，是一个递归的结构。
+5. 没有后代的节点称为叶子节点，没有节点的树称为空树
+
+### 二叉树
+
+- **二叉树**：每个节点最多只有两个儿子节点的树。
+
+- **满二叉树**：叶子节点与叶子节点之间的高度差为 `0` 的二叉树，即整棵树是满的，树呈满三角形结构。
+
+- **完全二叉树**：完全二叉树是由满二叉树而引出来的，设二叉树的深度为 `k`，除第 `k` 层外，其他各层的节点数都达到最大值，且第 `k` 层所有的节点都连续集中在最左边。数组也可以用来表示二叉树，一般用来表示完全二叉树。
+
+树根据子节点的多寡，有二叉树，三叉树，四叉树等，我们这里主要介绍二叉树。
+
+**二叉树的数学特征**
+
+1. 高度为 `h≥0` 的二叉树至少有 `h+1` 个结点，比如最不平衡的二叉树就是退化的线性链表结构，所有的节点都只有左儿子节点，或者所有的节点都只有右儿子节点。
+2. 高度为 `h≥0` 的二叉树至多有 `2^h+1` 个节点，比如这棵树是满二叉树。
+3. 含有 `n≥1` 个结点的二叉树的高度至多为 `n-1`，由 `1` 退化的线性链表可以反推。
+4. 含有 `n≥1` 个结点的二叉树的高度至少为 `logn`，由 `2` 满二叉树可以反推。
+5. 在二叉树的第 `i` 层，至多有 `2^(i-1)` 个节点，比如该层是满的。
+
+``` go
+type TreeNode struct {
+	Data  int
+	Left  *TreeNode
+	Right *TreeNode
+}
+type ArrayQueue struct {
+	array []*TreeNode
+	size  int
+	lock  sync.Mutex
+}
+
+func (queue *ArrayQueue) Add(v *TreeNode) {
+	queue.lock.Lock()
+	defer queue.lock.Unlock()
+	queue.array = append(queue.array, v)
+	queue.size++
+}
+
+func (queue *ArrayQueue) Remove() *TreeNode {
+	if queue.size <= 0 {
+		panic("empty")
+	}
+	queue.lock.Lock()
+	defer queue.lock.Unlock()
+	v := queue.array[0]
+	queue.array = queue.array[1:]
+	queue.size--
+	return v
+}
+
+/*
+构建一棵树后，我们希望遍历它，有四种遍历方法：
+	先序遍历：先访问根节点，再访问左子树，最后访问右子树。
+	后序遍历：先访问左子树，再访问右子树，最后访问根节点。
+	中序遍历：先访问左子树，再访问根节点，最后访问右子树。(这三种都是深度优先遍历)
+	层次遍历：每一层从左到右访问每一个节点。（此即为广度优先遍历）
+*/
+
+// 先序遍历
+func PreOrder(tree *TreeNode) {
+	fmt.Print(tree.Data, " ")
+	if tree.Left != nil {
+		PreOrder(tree.Left)
+	}
+	if tree.Right != nil {
+		PreOrder(tree.Right)
+	}
+}
+
+// 中序遍历
+func MidOrder(tree *TreeNode) {
+	if tree == nil {
+		return
+	}
+	PreOrder(tree.Left)
+	fmt.Print(tree.Data, " ")
+	PreOrder(tree.Right)
+}
+
+// 后序遍历
+func PostOrder(tree *TreeNode) {
+	if tree == nil {
+		return
+	}
+	// 先打印左子树
+	PostOrder(tree.Left)
+	// 再打印右字树
+	PostOrder(tree.Right)
+	// 再打印根节点
+	fmt.Print(tree.Data, " ")
+}
+
+// 层次遍历
+func LayerOrder(tree *TreeNode) {
+	if tree == nil {
+		return
+	}
+	queue := new(ArrayQueue)
+	queue.Add(tree)
+	for queue.size > 0 {
+		element := queue.Remove()
+		fmt.Print(element.Data, " ")
+		if element.Left != nil {
+			queue.Add(element.Left)
+		}
+		if element.Right != nil {
+			queue.Add(element.Right)
+		}
+	}
+}
+```
+
+## 8. 排序
+
+### 交换排序
+
+#### 冒泡排序
+
+比如现在有一堆乱序的数，比如：`5 9 1 6 8 14 6 49 25 4 6 3`。
+
+第一轮迭代：从第一个数开始，**依次比较相邻的两个数（一直这样做）**，如果前面一个数比后面一个数大，那么交换位置，直到处理到最后一个数，最后的这个数是最大的。
+
+第二轮迭代：因为最后一个数已经是最大了，现在重复第一轮迭代的操作，但是只处理到倒数第二个数。
+
+第三轮迭代：因为最后一个数已经是最大了，最后第二个数是次大的，现在重复第一轮迭代的操作，但是只处理到倒数第三个数。
+
+``` go
+// 交换排序之冒泡排序
+func BubbleSort(nums []int) {
+	for i := 0; i < len(nums)-1; i++ {
+		for j := 0; j < len(nums)-i-1; j++ {
+			if nums[j] > nums[j+1] {
+				nums[j], nums[j+1] = nums[j+1], nums[j]
+			}
+		}
+	}
+}
+```
+
+冒泡排序的平均时间复杂度为：`O(n^2)`。
+
+冒泡排序交换和比较的次数相加是一个和 `N` 有关的平方数，所以冒泡排序的最好和最差时间复杂度都是：`O(n^2)`。
+
+冒泡排序算法是**稳定**的，因为如果两个相邻元素相等，是不会交换的，保证了稳定性的要求。
+
+#### 快速排序
+
+快速排序通过一趟排序将要排序的数据分割成独立的两部分，其中一部分的所有数据都比另外一部分的所有数据都要小，然后再按此方法对这两部分数据分别进行快速排序，整个排序过程可以递归进行，以此达到整个数据变成有序序列。
+
+步骤如下：
+
+1. 先从数列中取出一个数作为基准数。一般取第一个数。
+2. 分区过程，将比这个数大的数全放到它的右边，小于或等于它的数全放到它的左边。
+3. 再对左右区间重复第二步，直到各区间只有一个数。
+
+``` go
+// 交换排序之快速排序
+func QuickSort(nums []int, left, right int) {
+	if right > left {
+		mid := partition(nums, left, right)
+		QuickSort(nums, left, mid-1)
+		QuickSort(nums, mid+1, right)
+	}
+}
+
+// 快排的分割函数(nums[right]是有值的)
+func partition(nums []int, left, right int) int {
+	for i := left + 1; i <= right; i++ {
+		if nums[i] <= nums[left] {
+			nums[i], nums[left] = nums[left], nums[i]
+			left = i
+		} else { // 把较大的数往后放
+			nums[i], nums[right] = nums[right], nums[i]
+			right--
+			i--
+		}
+	}
+	return left
+}
+```
+
+快速排序的平均时间复杂度为：`O(nlogn)`。
+
+最差的情况下，每次都不能平均地切分，每次切分都因为基准数是最大的或者最小的，不能分成两个数列，这样时间复杂度变为了 `T(n) = T(n-1) + O(n)`，按照主定理计算可以知道时间复杂度为：`O(n^2)`
+
+快速排序是不稳定的，因为切分过程中进行了交换，相同值的元素可能发生位置变化。
+
+**改进**
+
+- **切分**的结果极大地影响快速排序的性能，为了避免切分不均匀情况的发生，有几种方法改进：
+
+1. 每次进行快速排序切分时，先将数列随机打乱，再进行切分，这样随机加了个震荡，减少不均匀的情况。当然，也可以随机选择一个基准数，而不是选第一个数。
+2. 每次取数列头部，中部，尾部三个数，取三个数的中位数为基准数进行切分。
+
+>  方法 1 相对好，而方法 2 引入了额外的比较操作，一般情况下我们可以随机选择一个基准数。
+
+快速排序可以继续进行算法改进。
+
+1. 在**小规模数组的情况下，直接插入排序**的效率最好，当快速排序递归部分进入小数组范围，可以切换成直接插入排序。
+2. 排序数列可能存在大量重复值，使用三向切分快速排序，将数组分成三部分，大于基准数，等于基准数，小于基准数，这个时候需要维护三个下标。
+3. 使用伪尾递归减少程序栈空间占用，使得栈空间复杂度从 `O(logn)~log(n)` 变为：`O(logn)`。
+
+#### 归并排序
+
+我们先介绍两个有序的数组合并成一个有序数组的操作。
+
+1. 先申请一个辅助数组，长度等于两个有序数组长度的和。
+2. 从两个有序数组的第一位开始，比较两个元素，哪个数组的元素更小，那么该元素添加进辅助数组，然后该数组的元素变更为下一位，继续重复这个操作，直至数组没有元素。
+3. 返回辅助数组。
+
+归并排序就是不端地进行归并操作，
+
+![image-20220521204838520](\img\image-20220521204838520.png)
+
+``` go
+// 自顶而下归并排序，排序范围是[begin, end)
+func MergeSort(nums []int, begin, end int) {
+	if end-begin > 1 { // 至少要两个数才需要归并
+		mid := begin + (end-begin)/2
+		MergeSort(nums, begin, mid)
+		MergeSort(nums, mid, end)
+		merge(nums, begin, mid, end)
+	}
+}
+
+// 完成一次归并，例如把[1,4,2,3]mid=2, 归并为[1,2,3,4]
+func merge(nums []int, begin, mid, end int) {
+	// 申请额外的空间来合并两个有序数组，这两个数组是 nums[begin,mid),array[mid,end)
+	leftSize := mid - begin
+	rightSize := end - mid
+	newNums := make([]int, 0, leftSize+rightSize)
+	l, r := begin, mid
+	for l < mid && r < end {
+		if nums[l] < nums[r] {
+			newNums = append(newNums, nums[l])
+			l++
+		} else {
+			newNums = append(newNums, nums[r])
+			r++
+		}
+	}
+	newNums = append(newNums, nums[l:mid]...)
+	newNums = append(newNums, nums[r:end]...)
+	for i := 0; i < len(newNums); i++ {
+		nums[begin+i] = newNums[i]
+	}
+}
+```
+
+时间复杂度是 `O(nlogn)`。
+
+### 选择排序
+
+#### 简单选择排序
+
+选择排序，一般我们指的是简单选择排序，也可以叫直接选择排序，它不像冒泡排序一样相邻地交换元素，而是**通过选择最小的元素，放到最前面去，每轮迭代只需交换一次**。虽然交换次数比冒泡少很多，但效率和冒泡排序一样的糟糕。
+
+现在有一堆乱序的数，比如：`5 9 1 6 8 14 6 49 25 4 6 3`。
+
+第一轮迭代，从第一个数开始，左边到右边进行扫描，找到最小的数 1，与数列里的第一个数交换位置。
+
+第二轮迭代，从第二个数开始，左边到右边进行扫描，找到第二小的数 3，与数列里的第二个数交换位置。
+
+第三轮迭代，从第三个数开始，左边到右边进行扫描，找到第三小的数 4，与数列里的第三个数交换位置。
+
+第N轮迭代：….
+
+``` go 
+// 选择排序之简单选择排序
+func SelectSort(nums []int) {
+	for i := 0; i < len(nums)-1; i++ {
+		min := nums[i]
+		idx := -1
+		for j := i; j < len(nums); j++ {
+			if nums[j] < min {
+				min = nums[j]
+				idx = j
+			}
+		}
+		nums[i], nums[idx] = nums[idx], nums[i]
+	}
+}
+```
+
+最佳和最坏时间复杂度仍然是：`O(n^2)`。
+
+**改进**
+
+上面的算法需要从某个数开始，一直扫描到尾部，我们可以优化算法，使得复杂度减少一半。
+
+我们每一轮，除了找最小数之外，还找最大数，然后分别和前面和后面的元素交换，这样循环次数减少一半
+
+#### 堆排序
+
+
+
+### 插入排序
+
+#### 直接插入排序
+
+每次把一个数插到已经排好序的数列里面形成新的排好序的数列，以此反复。
+
+``` go
+// 插入排序之直接插入排序
+func InsertSort(nums []int) {
+	tmp := 0
+	for i := 1; i < len(nums); i++ {
+		tmp = nums[i]
+		for k := i - 1; k >= 0; k-- {
+			if nums[k] > tmp {
+				nums[k+1], nums[k] = nums[k], nums[k+1]
+			} else {
+				break
+			}
+		}
+	}
+}
+```
+
+直接插入排序的平均复杂度是`O(n^2)`
+
+数组规模 `n` 较小的大多数情况下，我们可以使用插入排序，它比冒泡排序，选择排序都快，甚至比任何的排序算法都快。
+
+数列中的**有序性越高，插入排序的性能越高**，因为待排序数组有序性越高，插入排序比较的次数越少。
+
+#### 希尔排序
+
+
+
 # 网络和网页应用
 
 本部分内容主要基于：
@@ -573,38 +1338,38 @@ http.ListenAndServe("localhost:8888", nil)
 
 简单地发送请求（简单看看就行，不可取）
 
-``` go
-package main
-
-import (
-	"fmt"
-	"io/ioutil"
-	"net/http"
-)
-
-var urls = []string{
-	"http://www.baidu.com",
-	"http://p4.org",
-}
-
-func main() {
-	for _, url := range urls {
-		resp, err := http.Head(url) // 向指定的URL发送HEAD，用来简单地判断url是否可以到达
-		if err != nil {
-			fmt.Println("Error:", url, err)
-		}
-		fmt.Println(url, ":", resp.Status)
-	}
-	// 发送http请求去访问哔哩哔哩
-	resp2, err := http.Get("http://www.bilibili.com")
-	if err != nil {
-		fmt.Println("Error:", err)
-	}
-	data, _ := ioutil.ReadAll(resp2.Body)
-	fmt.Println(string(data))
-	fmt.Println(resp2.Header)
-}
-```
+> ``` go
+> package main
+> 
+> import (
+> 	"fmt"
+> 	"io/ioutil"
+> 	"net/http"
+> )
+> 
+> var urls = []string{
+> 	"http://www.baidu.com",
+> 	"http://p4.org",
+> }
+> 
+> func main() {
+> 	for _, url := range urls {
+> 		resp, err := http.Head(url) // 向指定的URL发送HEAD，用来简单地判断url是否可以到达
+> 		if err != nil {
+> 			fmt.Println("Error:", url, err)
+> 		}
+> 		fmt.Println(url, ":", resp.Status)
+> 	}
+> 	// 发送http请求去访问哔哩哔哩
+> 	resp2, err := http.Get("http://www.bilibili.com")
+> 	if err != nil {
+> 		fmt.Println("Error:", err)
+> 	}
+> 	data, _ := ioutil.ReadAll(resp2.Body)
+> 	fmt.Println(string(data))
+> 	fmt.Println(resp2.Header)
+> }
+> ```
 
 **下面的代码完整的发送HTTP请求的规范写法**
 
@@ -2821,7 +3586,7 @@ func init() {
 - static		// 静态文件，需要设置加入到gin中
 - templates 	// 前端模板文件，需要加载，路径严格
 - utils			// 一共通用的处理函数，工具函数
-- go.mad
+- go.mod
 - go.sum
 - main.go
 ```
@@ -2889,770 +3654,1551 @@ func main() {
 
 
 
-# 数据结构
+# Zinx框架
 
-## 2. 递归
+Zinx 是一个基于Golang的轻量级T并发服务器框架，是基于TCP长连接的，而像beego或gin都是基于http的。
 
-#### 递归实现斐波那契数列
+[Introduction (介绍) (yuque.com)](https://www.yuque.com/aceld/tsgooa/gx01meg5ow4pftac)
+
+教程：[Golang轻量级并发服务器框架zinx (yuque.com)](https://www.yuque.com/aceld/npyr8s)
+
+zinx源代码 :https://github.com/aceld/zinx
+
+Zinx 框架：
+
+<img src="img/image-20240318123903331.png" alt="image-20240318123903331" style="zoom:67%;" />
+
+下面由浅入深的实现Zinx框架
+
+## 最基础的Zinx框架
+
+首先Zinx构建Zinx的最基本的两个模块`ziface`和`znet`。
+
+- `ziface`主要是存放一些Zinx框架的全部模块的抽象层接口类，Zinx框架的最基本的是服务类接口`iserver`，封装连接的接口`iconnection`，都定义在ziface模块中。
+- `znet`模块是zinx框架中网络相关功能的实现，所有网络相关模块都会定义在`znet`模块中。
 
 ``` go
-func Fibonacci(n int) int {
-	if n == 1 || n == 2 {
-		return 1
-	}
-	return Fibonacci(n-1) + Fibonacci(n-2)
+└── zinx
+    ├── ziface
+    │   └── iconnection.go
+    │   └── iserver.go
+    └── znet
+        └── connection.go
+        └── server.go
+```
+
+### 封装的服务层
+
+`zinx/ziface/iserver.go`：
+
+``` go
+package ziface
+
+// 定义服务器接口
+type IServer interface {
+	// 开始
+	Start()
+	// 结束
+	Stop()
+	// 运行
+	Serve()
 }
 ```
 
-#### 递归实现二分查找
+对应的实现，`zinx/znet/server.go`
 
 ``` go
-func BinarySearch(nums []int, target, left, right int) int {
-	if left > right {
-		return -1
+package znet
+
+import (
+	"errors"
+	"fmt"
+	"log"
+	"net"
+
+	"github.com/zinx/ziface"
+)
+
+// IServer的接口实现
+type Server struct {
+	Name      string
+	IPVersion string
+	IP        string
+	Port      int
+}
+
+// 开始服务器
+func (s *Server) Start() {
+	// 开启一个tcp 服务器
+	go func() { // 防止start 函数等待连接阻塞
+		// 1 获取一个 TCP 的addr
+		fmt.Printf("[start] Server Listenner at IP %s, Port %d is starting\n", s.IP, s.Port)
+		addr, err := net.ResolveTCPAddr(s.IPVersion, fmt.Sprintf("%s:%d", s.IP, s.Port)) // 得到一个tcp句柄
+		if err != nil {
+			log.Panic(err)
+		}
+		// 2 监听服务器的地址
+		listenner, err := net.ListenTCP(s.IPVersion, addr)
+		if err != nil {
+			log.Panic(err)
+		}
+		log.Printf("start Zinx server %s successfully\n", s.Name)
+		// 3 阻塞，等待客户端连接，处理客户端连接业务，读写
+		for {
+			// 如果有客户端连接，此函数便有返回了，然后将conn传给我们自定的连接对象
+			conn, err := listenner.AcceptTCP()
+			if err != nil {
+				log.Println("accept err:", err)
+				continue
+			}
+			// 客户端连接server 成功
+			var cid uint32
+			dealConn := NewConnection(conn, cid, CallbackToClient)
+			cid++
+			go dealConn.Start() // 每个客户端应该异步开启连接，所以这里需要使用 goroutine
+		}
+	}()
+}
+
+// 自己实现的回调函数，即收到用户数据后，对用户数据的处理函数 (理论上此方法不应在框架中写，而应该由使用该框架开发的人员自己写了传入)
+func CallbackToClient(conn *net.TCPConn, buf []byte, n int) error {
+	// 暂时就实现简单的，把用户发来的数据打印出来，并回传给client
+	fmt.Println("[Callback] Client say: ", string(buf[:n]))
+	_, err := conn.Write(buf[:n])
+	if err != nil {
+		fmt.Println("[Callback] write err : ", err)
+		return errors.New("callback error .")
 	}
-	mid := (left + right) / 2
-	if nums[mid] == target {
-		return mid
-	} else if nums[mid] > target {
-		return BinarySearch(nums, target, left, mid-1)
+	return nil
+}
+
+// 结束服务器
+func (s *Server) Stop() {
+
+}
+
+// 运行服务器
+func (s *Server) Serve() {
+	// 启动server 的服务功能
+	s.Start()
+	// TODO 完成额外业务
+	// 用户调用Serve后，即开启服务器了，此时应阻塞住，
+	select {}
+}
+
+// 初始化 Server 模块
+func NewServer(name string) ziface.IServer {
+	s := &Server{
+		Name:      name,
+		IPVersion: "tcp4",
+		IP:        "0.0.0.0",
+		Port:      8999,
+	}
+	return s
+}
+```
+
+### 封装的连接层
+
+`zinx/ziface/iconnection.go`：
+
+``` go
+package ziface
+
+import "net"
+
+// 定义连接 模块的抽象层
+
+type IConnection interface {
+	// 启动连接，让当前连接准备开始工作
+	Start()
+	// 关闭连接。结束连接的工作
+	Stop()
+	// 获取当前连接绑定的 conn
+	GetTCPConnection() *net.TCPConn
+	// 获取连接ID
+	GetConnID() uint32
+	// 获取客户端的TCP状态 IP和Port
+	RemoteAddr() net.Addr
+	// 发送数据
+	Send(data []byte) error
+}
+
+// 定义一个处理连接所绑定的业务的方法
+// 通过第一个参数得到连接的信息，通过第二三个参数得到处理的数据
+// 每一个IConnection 的实现都应该有这个成员属性
+type HandleFunc func(*net.TCPConn, []byte, int) error // 它的意义在于将读数据的方法与处理数据的方法进行解耦以及抽象
+```
+
+`zinx/znet/connection.go`：
+
+``` go
+package znet
+
+import (
+	"fmt"
+	"net"
+
+	"github.com/zinx/ziface"
+)
+
+type Connection struct {
+	//  socket TCP套接字 c
+	Conn *net.TCPConn
+	//  链接ID
+	ConnID uint32
+	//  链接的状态（是否关闭）
+	isClosed bool
+	//  与当前连接所绑定的处理业务的方法
+	HandleApi ziface.HandleFunc
+	//  等待连接被动退出的channel（管理连接状态，连接断开要通知此channel
+	ExitChan chan bool
+}
+
+func NewConnection(c *net.TCPConn, connID uint32, CallbackApi ziface.HandleFunc) *Connection {
+	return &Connection{
+		c, connID, false, CallbackApi, make(chan bool, 1),
+	}
+}
+
+// 启动连接，让当前连接准备开始工作
+func (c *Connection) Start() {
+	fmt.Println("connection start. Connection id = ", c.ConnID)
+	// 启动 当前连接的 读数据的业务goroutine
+	go c.StartReader()
+}
+
+// 关闭连接。结束连接的工作
+func (c *Connection) Stop() {
+	fmt.Println("connection stop. Connection id = ", c.ConnID)
+	// 如果已经关闭就不管了
+	if !c.isClosed {
+		c.isClosed = true
+		// 关闭socket 连接
+		c.Conn.Close()
+		// 回收资源
+		close(c.ExitChan)
+	}
+}
+
+// 获取当前连接绑定的 c
+func (c *Connection) GetTCPConnection() *net.TCPConn {
+	return c.Conn
+}
+
+// 获取连接ID
+func (c *Connection) GetConnID() uint32 {
+	return c.ConnID
+}
+
+// 获取客户端的TCP状态 IP和Port
+func (c *Connection) RemoteAddr() net.Addr {
+	return c.Conn.RemoteAddr()
+}
+
+// 发送数据
+func (c *Connection) Send(data []byte) error {
+	return nil
+}
+
+// 连接的read 业务方法
+func (c *Connection) StartReader() {
+	fmt.Println("Reader goroutine is running ... ")
+	defer fmt.Println("connID = ", c.ConnID, " reader is exit.")
+	defer c.Stop()
+
+	for {
+		// 模拟简单的读取
+		buf := make([]byte, 512)
+		n, err := c.Conn.Read(buf)
+		if err != nil {
+			fmt.Println("receive buf err : ", err)
+			continue
+		}
+		// 调用连接所绑定的 HandleApi
+		err = c.HandleApi(c.Conn, buf, n) // 把客户端传来是数据交给 handler 处理
+		if err != nil {
+			fmt.Println("connId = ", c.ConnID, " handle is err :", err)
+			continue
+		}
+	}
+}
+```
+
+### 测试
+
+在其他地方利用上述框架实现一个server，并写一个client与之通信，完成测试
+
+`myDemo/ZinxV0.1/server.go`
+
+``` go
+package main
+
+import "github.com/zinx/znet"
+
+/*
+基于 zinx开发的服务器端应用程序
+*/
+func main() {
+	// 1 创建一个server 句柄，使用 zinx 的api
+	s := znet.NewServer("[zinx V0.1]")
+	// 2 启动server
+	s.Serve()
+}
+```
+
+`myDemo/ZinxCient/main.go`
+
+```go
+package main
+
+import (
+	"fmt"
+	"net"
+	"time"
+)
+
+func main() {
+	fmt.Println("client start ...")
+	// 1 连接客户端，得到conn对象
+	conn, err := net.Dial("tcp", "127.0.0.1:8999")
+	if err != nil {
+		fmt.Println("client start err,err = ", err)
+	}
+	for {
+		// 2 使用 conn 链接进行读写
+		_, err = conn.Write([]byte("Hello Zinx!"))
+		if err != nil {
+			fmt.Println("client write err,err = ", err)
+			return
+		}
+		buf := make([]byte, 512)
+		n, err := conn.Read(buf)
+		if err != nil {
+			fmt.Println("client Read err,err = ", err)
+			return
+		}
+		fmt.Println("Server call back: ", string(buf[:n]))
+		time.Sleep(time.Second)
+	}
+}
+```
+
+## Zinx基础路由模块
+
+上面的代码`zinx/ziface/iconnection.go` 中，连接conn处理业务的函数 `type HandleFunc func(*net.TCPConn, []byte, int) error`写死了，我们需要定一些`interface{}`来让用户填写任意格式的连接处理业务方法。
+
+### 抽象request
+
+- 我们将一次请求封装成一个 Request，这个request中就两个属性，连接 IConnection和数据Data。
+
+`zinx/ziface/irequest.go`：
+
+``` go
+package ziface
+
+type IRequest interface {
+	// 得到当前连接
+	GetConnection() IConnection
+	// 得到当前请求的消息数据
+	GetData() []byte
+}
+```
+
+`zinx/znet/request.go`：
+
+``` go
+package znet
+
+import "github.com/zinx/ziface"
+
+type Request struct {
+	//  当前连接
+	conn ziface.IConnection
+	//  当前请求的消息数据
+	data []byte
+}
+
+// 得到当前连接
+func (r *Request) GetConnection() ziface.IConnection {
+	return r.conn
+}
+
+// 得到当前请求的消息数据
+func (r *Request) GetData() []byte {
+	return r.data
+}
+```
+
+### 抽象router
+
+- 同时将基础路由模块抽象成一个IRouter。路由模块主要定义了处理业务的方法。（包括之前和之后）。同时为了方便拓展, 我们定义一个实现了IRouter的基类 BaseRouter ,  之后只需要继承基类 BaseRouter 就可以了, 不需要实现接口IRouter 中的每一个方法了。
+
+> 这里的路由我们应理解为：我们提供一个指令，通过路由就可以找到它对应的处理方式
+
+`zinx/ziface/irouter.go`：
+
+``` go
+package ziface
+
+// 路由抽象接口，其中的数据都是IRequest
+type IRouter interface {
+	// 在处理 conn 业务之前的钩子方法
+	PreHandle(IRequest)
+	// 处理 conn 业务的主方法
+	Handle(IRequest)
+	// 在处理 conn 业务之后的钩子方法
+	PostHandle(IRequest)
+}
+```
+
+`zinx/znet/router.go`：
+
+``` go
+package znet
+
+import "github.com/zinx/ziface"
+
+// 定义实现 IRouter 的基类，但这个基类不具体实现任何方法
+// 用户实现自己的router时，先嵌入这个基类，然后对这个基类的方法进行重写就好了
+// 有点像适配层，对接口进行隔离
+// 当然用户也可以不继承，直接实现 IRouter 也行。
+// 只是实现接口的话就必须三个方法都实现，继承基类的话就可以按需求实现想实现的方法即可
+type BaseRouter struct{}
+
+// 在处理 conn 业务之前的钩子方法
+func (br *BaseRouter) PreHandle(reqeust ziface.IRequest) {}
+
+// 处理 conn 业务的主方法
+func (br *BaseRouter) Handle(reqeust ziface.IRequest) {}
+
+// 在处理 conn 业务之后的钩子方法
+func (br *BaseRouter) PostHandle(reqeust ziface.IRequest) {}
+```
+
+### 集成router模块
+
+- IServer 中增加路由添加功能
+- Server 添加 router 成员并继承路由添加方法
+- Connection 添加 router 成员（一般来讲，一个connection 对应一个router）
+- 在 Connection  中调用已经注册的router 去处理业务
+
+每个connection 得到的数据都封装成request，然后将request 交给router 进行处理
+
+使用Zinx的开发者就可以自己实现处理conn 的数据的router 了。
+
+> 代码修改太多，不写了。
+
+### 全局配置
+
+我们把很多的配置参数抽象出来，写到配置文件中。使用zinx框架的开发者自己写配置文件, 框架不自带，但是框架有全局的配置解析模块。
+
+> /utils/globalObj.go
+
+``` go
+package utils
+
+import (
+	"encoding/json"
+	"os"
+
+	"github.com/zinx/ziface"
+)
+
+/*
+	存储一切zinx 框架使用的全局参数，供其他模块使用
+	一些参数应该通过 zinx.json由用户去配置
+*/
+
+type GlobalObj struct {
+	// server 的配置
+	TcpServer ziface.IServer // 当前zinx 全局的server对象
+	Host      string         // 当前服务器监听的IP
+	Port      int            // 当前服务器监听的tcp 端口
+	Name      string         // 当前服务器名称
+	// zinx 的配置
+	Version        string // 当前 zinx 版本号
+	MaxConn        int    // 当前服务器主机允许的最大连接数
+	MaxPackageSize uint32 // 当前框架数据包的最大值
+}
+
+// 定义全局对外的globalObj 对象
+var GlobalObject *GlobalObj
+
+// 提供init方法 初始化对象
+func init() {
+	GlobalObject = &GlobalObj{ // 现在配置一些默认值
+		Name:           "Zinx Server Appp",
+		Host:           "127.0.0.1",
+		Port:           8999,
+		Version:        "V0.4",
+		MaxConn:        1000,
+		MaxPackageSize: 4096,
+	}
+	GlobalObject.Reload("")
+}
+
+func (g *GlobalObj) Reload(filePath string) {
+	if filePath == "" {
+		filePath = "conf/zinx.json"
+	}
+	data, err := os.ReadFile(filePath)
+	if err != nil {
+		panic(err)
+	}
+	err = json.Unmarshal(data, &GlobalObject) // 会自动将data 接触成的数据装入 对象中
+	if err != nil {
+		panic(err)
+	}
+}
+```
+
+> 然后在开发者的项目目录下 /conf/zinx.json 中自己写配置即可。
+
+### 消息封装
+
+客户端发来的所有消息都放在了request 结构体中，但只有消息体，没有长度，没有类型，我们应该自己定义一种消息类型，把发来的消息都放在这种消息类型中。
+
+我们把消息封装在 `zinx/ziface/imessage.go`和 `zinx/znet/message.go`和文件中。
+
+``` go
+package ziface
+
+// 将请求的消息封装在message中
+type IMessage interface {
+	GetMsgId() uint32
+	GetMsgLen() uint32
+	GetDate() []byte
+
+	SetMsgId(uint32)
+	SetMsgLen(uint32)
+	SetDate([]byte)
+}
+```
+
+``` go
+package znet
+
+// 将请求的消息封装在message中
+type Message struct {
+	Id      uint32
+	DataLen uint32
+	Data    []byte
+}
+// 对接口方法进行实现 ，略
+```
+
+## 解决TCP粘包
+
+TCP对上层传下来的数据，首先会放在TCP内存里，除非传来了PSH标志，否则tcp会等此内存装满或到超时时间了才会进行发包。如果我们上层短时间内传入的多次数据总长小于了一个包的分片，那么很可能这些数据会被放在一个TCP包里被发送。而又因为TCP是流式数据传输，对端收到数据后并不知道数据的头尾，不知道这是一次数据还是多次数据。这就是TCP粘包。
+
+这里使用的方法是上层应用包对要传输的信息使用TLV格式化，如下所示：
+
+![image-20240320013408107](img/image-20240320013408107.png)
+
+### 对消息封装和解封
+
+在框架中我们要对message 消息进行TLV格式的封装。
+
+同时要针对message 进行TLV格式的拆包，先读取固定长度的head，得到消息内容的长度和消息的类型。再根据消息内容的长度，再次读出消息的内容。
+
+我们实现  datapack结构体来实现上述功能，当然也要它的接口IDatapack。
+
+## 将消息封装集成到zinx中
+
+### 把message 添加到request 属性中
+
+request 是将连接conn和数据data绑定在一起的结构体，之前data是直接读取出来的 []byte，现在改成 message 类型比较好。
+
+``` go
+package znet
+
+import "github.com/zinx/ziface"
+
+type Request struct {
+	//  当前连接
+	conn ziface.IConnection
+	//  当前请求的消息数据
+	msg ziface.IMessage
+}
+
+// 得到当前连接
+func (r *Request) GetConnection() ziface.IConnection {
+	return r.conn
+}
+
+// 得到当前请求的消息数据
+func (r *Request) GetData() []byte {
+	return r.msg.GetDate()
+}
+func (r *Request) GetMsgId() uint {
+	return uint(r.msg.GetMsgId())
+}
+func (r *Request) GetMsgLen() uint {
+	return uint(r.msg.GetMsgLen())
+}
+```
+
+IRequest 接口也应做修改，不演示了。
+
+### 修改server端使用TLV的封包拆包读写
+
+之前都是将conn 中传来的数据一次性全部读取到一个特别大的字节切片中，现在我们对收到的数据应该使用按TLV 的格式进行拆包。
+
+### 修改client端使用TLV的封包拆包读写
+
+之前都是将conn 中传来的数据一次性全部读取到一个特别大的字节切片中，现在我们对收到的数据应该使用按TLV 的格式进行拆包。
+
+不演示了
+
+## 添加多路由
+
+之前的代码中，使用zinx的开发者只能使用`s.AddRouter(mr)`方法添加一个路由，因为Server结构体中只有一个路由的变量。但我们希望有多个路由，针对不同的消息ID调用不同的handler进行处理。
+
+我们将这部分功能整合到一个消息管理模块中。
+
+该模块拥有的属性：
+
+- 消息ID 与 对应router 的映射 map
+
+拥有的方法：
+
+- 根据msgId索引得到对应的router 方法
+- 添加路由方法到 map 集合中
+
+`msgHandler.go`
+
+``` go
+package znet
+
+import (
+	"fmt"
+
+	"github.com/zinx/ziface"
+)
+
+type MessageHandle struct {
+	// 每一个消息ID所对应的处理方法
+	Apis map[uint32]ziface.IRouter
+}
+
+func NewMessageHandle() *MessageHandle {
+	return &MessageHandle{Apis: make(map[uint32]ziface.IRouter)}
+}
+
+// 调度，执行对应的router消息处理方法
+func (m *MessageHandle) DoMsgHanler(req ziface.IRequest) {
+	msgId := req.GetMsgId()
+	handler, has := m.Apis[msgId]
+	if !has {
+		fmt.Println("api msg id ", msgId, " is NOT FOUND! need register!")
+	}
+	handler.PreHandle(req)
+	handler.Handle(req)
+	handler.PostHandle(req)
+}
+
+// 给server添加具体的router 处理逻辑
+func (m *MessageHandle) AddRouter(msgID uint32, router ziface.IRouter) {
+	m.Apis[msgID] = router
+	fmt.Println("添加", router, " 成功")
+}
+```
+
+同时，进一步需要将server，connection 结构体中的router对象替换成 msghandler对象。不演示了。
+
+## 读写协程分离
+
+client建立与server 的连接之后，server会开辟一个reader和一个writer。client发送消息给server 时是发送给reader 了。reader 收到后进行一些处理，然后把需要回复给client的消息通过一个channel 发给writer，让writer去发送给client。
+
+<img src="img/image-20240322210759458.png" alt="image-20240322210759458" style="zoom:67%;" />
+
+因此首先给connection 对象添加一个`msgChan chan []byte` 成员。使用无缓冲的通道（即同步通道），在connection的new方法中声明如下`msgChan: make(chan []byte)`。
+
+其他要改的不写了，看代码吧。
+
+## 消息队列和多任务
+
+**现状：**
+
+现在zinx框架的流程是在，客户端给server发送一个数据后，在server端的reader线程会把数据封装成一个request，然后调用`go c.MsgHandler.DoMsgHanler(req)`，在其中也是调用server端开发者自己注册的handler方法，使用`handler.Handle(req)`去处理请求，一般在handler方法中，会使用`conn.SendMsg(msgID uint32, data []byte)` 去发送数据到客户端，而此方法中是使用 `c.msgChan <- sendData` 将封装好要发送的数据通过通道发给writer 线程。在writer 线程中才是真正使用向TCP连接中发送数据。
+
+**问题：**
+
+我们发现，每个client在 服务端都会使用三个goroutine，reader一个，writer一个，这两是应该的，`go c.MsgHandler.DoMsgHanler(req)` 还占一个。虽然golang 的并发调用非常快，但并发量太大时，仍然有一定的调度时间。而且主要的业务逻辑就是在`go c.MsgHandler.DoMsgHanler(req)`之中完成的，这个goroutine非常占CPU资源，当并发量上去了，CPU 压力也上去了。我们可以把它优化掉。
+
+**方法：**
+
+使用固定大小的线程池，让所有的用户处理逻辑在共用的线程池中取得线程取处理。代价是高并发时每个用户的处理时间都变长了。时间换空间。
+
+（当然，go的goroutine占用和切换都很轻量级，是否需要如上做法需根据具体业务考虑，此处学习思路）
+
+如下图所示：
+
+ ![image-20240324202058676](img/image-20240324202058676.png)
+
+此处需要做的事情包括：
+
+- **创建多个消息队列**，MessageHandle消息管理模块中添加属性：1. 当前的消息队列，2. worker 工作池的数量（两者数量一致）
+
+``` go
+// 每个server有一个MessageHandle属性，只是这个属性会同时传给所有connection
+type MessageHandle struct {
+	// 每一个消息ID所对应的处理方法
+	Apis map[uint32]ziface.IRouter
+	// 业务工作 worker池的worker  数量
+	WorkerPoolSize uint32
+	// 负责 worker 取任务的消息队列
+	TaskQueue []chan ziface.IRequest
+}
+
+func NewMessageHandle() *MessageHandle {
+	return &MessageHandle{
+		Apis:           make(map[uint32]ziface.IRouter),
+		WorkerPoolSize: utils.GlobalObject.WorkerPoolSize, // 在全局配置文件中读取
+		TaskQueue:      make([]chan ziface.IRequest, utils.GlobalObject.WorkerPoolSize), 
+	}
+}
+```
+
+- **创建多任务worker的工作池并启动**。1. 根据WorkerPoolSize去创建这么多的worker。2. 每个worker 使用一个goroutine，阻塞等待与当前worker对应的channel的消息。有消息处理就调用 `DoMsgHanler`
+
+``` go
+// 启动一个worker 工作池（只能执行一次）
+func (m *MessageHandle) StartWokerPool() {
+	for i := 0; i < int(m.WorkerPoolSize); i++ {
+		// 给当前的worker 对应的 channel 消息队列开辟空间
+		m.TaskQueue[i] = make(chan ziface.IRequest, utils.GlobalObject.MaxWorkerTaskLen)
+		// 启动当前的worker，阻塞等待消息
+		go m.StartWoker(i, m.TaskQueue[i])
+	}
+	// 也可以尝试 所有worker 共享一个队列
+}
+
+// 启动一个worker
+func (m *MessageHandle) StartWoker(workerId int, taskQueue chan ziface.IRequest) {
+	fmt.Println("[msgHandler] worker id = ", workerId, " is started ...")
+	// 不断阻塞等待消息任务
+	for {
+		request := <-taskQueue // 从任务队列中获得请求
+		m.DoMsgHanler(request)
+	}
+}
+
+// 清除消息队列的方法，当server 主动关闭时需要调用
+func (m *MessageHandle) ClearTaskQueue() {
+	for i := range m.TaskQueue {
+		close(m.TaskQueue[i])  // channel类型的数据都需要关闭
+	}
+}
+```
+
+- 将之前把消息发给goroutine （`go c.MsgHandler.DoMsgHanler(req)`） 换成把消息换成发给消息队列封装到下面这个函数中`SendMsgToTaskQueue`。保证每个worker 所接收到的任务是平均的，简单的实现一下，随机，轮询，消息整体hash取余，根据连接ID对worker数曲取余都行。
+
+``` go
+// 将消息交给 一个 taskQueue ，让一个worker 去处理
+func (m *MessageHandle) SendMsgToTaskQueue(req ziface.IRequest) {
+	// 1 将消息平均分配给不同的 worker
+	// 根据每个客户端的连接 ID 来分配 worker
+	workerId := req.GetConnection().GetConnID() % m.WorkerPoolSize
+	// 2 将消息发送给对应的worker 的TaskQueue
+	m.TaskQueue[workerId] <- req
+}
+```
+
+- 将消息队列集成到zinx框架中。1. 在server中开启工作池（保证只有一个）。2. 将客户端处理的消息，发送给工作池。
+
+## 连接管理
+
+zinx为了保证后端的及时响应，在超过一定量的客户端个数时，会拒绝再次链接。创建一个连接管理模块来实现功能，同时连接管理模块还要给zinx 框架提供创建连接完成以及销毁后要处理的一些业务（提供给开发者能够注册钩子函数hook）。
+
+### 简单实现
+
+定义一个连接管理的接口`IConnManager`和结构体`ConnManager`
+
+``` go
+package znet
+
+import (
+	"fmt"
+	"sync"
+
+	"github.com/zinx/ziface"
+)
+
+type ConnManager struct {
+	// 已经创建的connection 集合
+	conns map[uint32]ziface.IConnection
+	// 每个server 都有的MessageHandle 模块，其中用map 为每个消息ID 定义了handler方法（开发者自己加的），
+	// 如果这些handler 方法有增删改查，那么就有并发问题，所以需要一个锁
+	connLock sync.RWMutex // 保护连接集合的读写锁
+}
+
+func NewConnManager() *ConnManager {
+	return &ConnManager{
+		conns: make(map[uint32]ziface.IConnection),
+		// 锁就不初始化了，让它保持默认零值即可
+	}
+}
+
+// 增加连接
+func (cm *ConnManager) Add(conn ziface.IConnection) {
+	// 保护共享资源 map，加 写锁
+	cm.connLock.Lock()
+	defer cm.connLock.Unlock()
+	cm.conns[conn.GetConnID()] = conn
+	fmt.Println("connection (id= ", conn.GetConnID(), ") add to ConnManager successfuly")
+}
+
+// 删除连接
+func (cm *ConnManager) Remove(conn ziface.IConnection) {
+	// 保护共享资源 map，加 写锁
+	cm.connLock.Lock()
+	defer cm.connLock.Unlock()
+	delete(cm.conns, conn.GetConnID())
+}
+
+// 得到一个连接
+func (cm *ConnManager) Get(connId uint32) (ziface.IConnection, error) {
+	// 保护共享资源 map，加 读锁
+	cm.connLock.RLock()
+	defer cm.connLock.RUnlock()
+	if conn, has := cm.conns[connId]; has {
+		return conn, nil
 	} else {
-		return BinarySearch(nums, target, mid+1, right)
+		return nil, fmt.Errorf("connection id : %d NOT FOUND! ", connId)
+	}
+}
+
+// 总连接数
+func (cm *ConnManager) Len() int {
+	return len(cm.conns)
+}
+
+// 终止并清楚所有连接，关闭服务器时
+func (cm *ConnManager) Clear() {
+	// 保护共享资源 map，加 写锁
+	cm.connLock.Lock()
+	defer cm.connLock.Unlock()
+	for connId, conn := range cm.conns {
+		conn.Stop()
+		delete(cm.conns, connId)
+	}
+	fmt.Println("Clear All connections successfully! ")
+}
+```
+
+接下来就是将连接管理器集成到zinx中。
+
+- 将connManager 加入到server 模块中，加一个属性，同时关闭server时要清除所有的连接
+
+server.go 的修改
+
+``` go
+// IServer的接口实现
+type Server struct {
+	Name       string
+	IPVersion  string
+	IP         string
+	Port       int
+	MsgHandler ziface.IMessageHandle // 当前server注册的连接对应的处理处理业务的router
+	ConnMgr    ziface.IConnManager   // 该server的连接管理器
+}
+
+// 结束服务器
+func (s *Server) Stop() {
+	fmt.Println("Zinx Stopepd !!!")
+	s.ConnMgr.Clear()
+	s.MsgHandler.ClearTaskQueue()
+}
+```
+
+- 每次成功与客户端建立连接后将连接加入到connManager 中（需要判断是否超过了最大连接数）。这样的话在connection 结构体中就要加入 server 对象，（也是应该的，每个连接应该可以读取自己的server 的一些信息；当然了，这样会让程序更加耦合，所以也可以直接在server对连接加入连接管理器）
+
+``` go
+func NewConnection(tcpServer ziface.IServer, c *net.TCPConn, connID uint32, msgHandler ziface.IMessageHandle) *Connection {
+	conn := &Connection{ // 声明的msgChan 是不带缓冲区的，ExitChan 也是。
+		TcpServer:  tcpServer,
+		Conn:       c,
+		ConnID:     connID,
+		isClosed:   false,
+		ExitChan:   make(chan bool),
+		msgChan:    make(chan []byte),
+		MsgHandler: msgHandler,
+	}
+	// 将当前连接加入到连接管理器中
+	conn.TcpServer.GetConnMgr().Add(conn)
+	return conn
+}
+```
+
+- 每个断开一个连接，在connManager 中删除它
+
+``` go
+// 关闭连接。结束连接的工作
+func (c *Connection) Stop() {
+	fmt.Println("connection stop. Connection id = ", c.ConnID)
+	// 如果已经关闭就不管了
+	if !c.isClosed {
+		c.isClosed = true
+		// 关闭socket 连接
+		c.Conn.Close()
+		c.TcpServer.GetConnMgr().Remove(c) // 在连接管理器中删除自己
+		// 回收资源
+		close(c.ExitChan)
+		close(c.msgChan)
 	}
 }
 ```
 
-#### 非递归实现二分查找
+### 改良
+
+上述行为明显将连接管理器的方法让在connection 中，属于是让connection 自己去增加自己，自己去删除自己。我们对上述过程进行改良。
+
+首先在 connManager 对象中添加一个通道connChan，并把这个通道公开给connection对象。 connManager 中定义方法 `ConnManage`。在server中用一个goroutine 去执行它。它一直去读这个通道。（通常是阻塞的）。每次有客户端连接到服务器时，在连接的信息放入通信。方法 `ConnManage` 从通道中拿到后再执行添加操作。这样就不会出现上述方法耦合严重的问题了。（连接关闭时的行为同理。）
+
+据此：
+
+`connmanager.go` :
 
 ``` go
-func BinarySearch2(nums []int, target int) int {
-	left, mid, right := 0, -1, len(nums)-1
-	for left <= right {
-		mid = (left + right) / 2
-		if nums[mid] == target {
-			return mid
-		} else if nums[mid] > target {
-			right = mid - 1
+
+type ConnManager struct {
+	// 已经创建的connection 集合
+	conns map[uint32]ziface.IConnection
+	// 每个server 都有的MessageHandle 模块，其中用map 为每个消息ID 定义了handler方法（开发者自己加的），
+	// 如果这些handler 方法有增删改查，那么就有并发问题，所以需要一个锁
+	connLock sync.RWMutex            // 保护连接集合的读写锁
+	ConnChan chan ziface.IConnection // 每次客户端连接成功或断开连接会将会连接信息放进这个通道，connManage方法才去添加或删除这个连接
+}
+
+func NewConnManager() *ConnManager {
+	return &ConnManager{
+		conns:    make(map[uint32]ziface.IConnection),
+		ConnChan: make(chan ziface.IConnection, 32), // 暂时随便定义一个长度。高并发时长度太小会导致连接缓慢，因为通道满足还写入就会阻塞。但通道太长有浪费空间
+		// 锁就不初始化了，让它保持默认零值即可
+	}
+}
+
+/** 其他方法省略
+*/
+
+// 连接管理的方法，每次客户端连接成功或断开连接会将会连接信息放进通道，connManage方法从通道中读取后才去添加或删除这个连接
+func (cm *ConnManager) ConnManage() {
+	for {
+		conn := <-cm.ConnChan
+		// 如果该conn 在管理器中有就删除，没有就加入
+		if _, has := cm.conns[conn.GetConnID()]; has {
+			cm.Remove(conn)
 		} else {
-			left = mid + 1
+			cm.Add(conn)
 		}
+		fmt.Printf("[ConnManager] 当前连接人数=  %d, \n", cm.Len())
 	}
-	return -1
+
+}
+
+// 得到 与连接管理器通信的通道
+func (cm *ConnManager) GetConnChan() chan ziface.IConnection {
+	return cm.ConnChan
 }
 ```
 
-## 3. 链表
-
-#### 单链表
+`connection.go`:
 
 ``` go
-type LinkNode struct {
-	val      int
-	nextNode *LinkNode
-}
-
-
-func main() {
-	var n4 LinkNode = LinkNode{4, nil}
-	var n3 LinkNode = LinkNode{3, &n4}
-	var n2 LinkNode = LinkNode{2, &n3}
-	var n1 LinkNode = LinkNode{1, &n2}
-	// 这里tmp是LinkNode指针类型，因为struct是值类型不能用来==nil，
-	for tmp := &n1; tmp != nil; tmp = tmp.nextNode {
-		fmt.Println(tmp.val)
-	}
-}
-```
-
-#### 双向链表
-
-go自带的包container/list就是双向链表
-
-导入list包：`import  list "container/list"`
-
-``` go
-// list中的元素
-type Element struct {
-	next, prev *Element
-	list *List
-	Value any
-}
-// 由Element来维护前后指针
-type List struct {
-	root Element // sentinel list element, only &root, root.prev, and root.next are used
-	len  int     // current list length excluding (this) sentinel element
-}
-// 初始化或清空list
-func (l *List) Init() *List {
-	l.root.next = &l.root
-	l.root.prev = &l.root
-	l.len = 0
-	return l
-}
-// 可以看出，List一直有一个不可读取的root节点，
-```
-
-需要注意的是使用List时，不会直接用List对象，因为list里的函数的caller几乎都是Element，不是List，所以一般用List.Back()。其他插值，删除等等方法参见[Go语言标准库文档中文版 | Go语言中文网 | Golang中文社区 | Golang中国 (studygolang.com)](https://studygolang.com/pkgdoc)
-
-#### 环链表
-
-go自带的包container/ring就是环链表
-
-导入ring包：`import  ring "container/ring"`
-
-``` go
-// 只是环的一个元素，因为只要拿一个环的一个元素就拿到了整个环
-type Ring struct {
-	next, prev *Ring
-	Value      any // 可以直接改
-}
-// New creates a ring of n elements.
-func New(n int) *Ring {
-	if n <= 0 {
-		return nil
-	}
-	r := new(Ring)
-	p := r
-	for i := 1; i < n; i++ {
-		p.next = &Ring{prev: p}
-		p = p.next
-	}
-	p.next = r
-	r.prev = p
-	return r
-}
-```
-
-## 4. 栈
-
-go没有自带的栈类型，我们可以用数组(切片)或者列表来实现
-
-- **数组实现**：能快速随机访问存储的元素，通过下标 `index` 访问，支持随机访问，查询速度快，但存在元素在数组空间中大量移动的操作，增删效率低。
-
-- **链表实现**：只支持顺序访问，在某些遍历操作中查询速度慢，但增删元素快
-
-#### 数组实现
-
-``` go
-// 实现数组栈 ArrayStack1
-type ArrayStack struct {
-	array []int // 底层切片
-	size  int
-	lock  sync.Mutex
-}
-
-// 入栈
-func (stack *ArrayStack) Push1(v int) {
-	stack.lock.Lock()
-	defer stack.lock.Unlock()
-	stack.array = append(stack.array, v)
-	stack.size++
-}
-
-// 出栈
-func (stack *ArrayStack) Pop1() int {
-	stack.lock.Lock()
-	defer stack.lock.Unlock()
-	if stack.size <= 0 {
-		panic("stack is empty.")
-	}
-	v := stack.array[stack.size-1]
-	stack.size--
-	stack.array = stack.array[:stack.size]
-	return v
-	/*
-		如果切片偏移量向前移动 stack.array[0 : stack.size-1]，
-		表明最后的元素已经不属于该数组了，数组变相的缩容了。
-		此时，切片被缩容的部分并不会被回收，仍然占用着空间，
-		所以空间复杂度较高，但操作的时间复杂度为：O(1)。
-
-		如果我们创建新的数组 newArray，然后把老数组的元素复制到新数组，
-		就不会占用多余的空间，但移动次数过多，时间复杂度为：O(n)。
-	*/
-}
-
-func (stack *ArrayStack) Peek1() int {
-	if stack.size == 0 {
-		panic("stack is empty.")
-	}
-	return stack.array[stack.size-1]
-}
-func (stack *ArrayStack) Size1() int {
-	return stack.size
-}
-func (stack *ArrayStack) IsEmpty() bool {
-	return stack.size == 0
-}
-```
-
-#### 链表实现
-
-``` go
-// 实现链表栈 LinkStack
-type LinkStack struct {
-	root *LinkNode // 链表起点
-	size int
-	lock sync.Mutex
-}
-type LinkNode struct {
-	Next  *LinkNode
-	value int
-}
-
-// 入栈
-// 如果把root当作栈底的话，那么入栈出栈等等都要一直把整个栈找一遍找到栈顶，时间复杂度为O(n)，不合适
-// 故把root当作栈顶
-func (stack *LinkStack) Push2(v int) {
-	stack.lock.Lock()
-	defer stack.lock.Unlock()
-	node := LinkNode{value: v}
-	if stack.root == nil {
-		stack.root = &node
-	} else {
-		node.Next = stack.root
-		stack.root = &node
-	}
-	stack.size++
-}
-
-// 出栈
-func (stack *LinkStack) Pop2() int {
-	if stack.size <= 0 {
-		panic("empty")
-	}
-	stack.lock.Lock()
-	defer stack.lock.Unlock()
-	result := stack.root.value
-	stack.root = stack.root.Next
-	stack.size--
-	return result
-}
-
-// 获得栈顶
-func (stack *LinkStack) Peek2() int {
-	if stack.size <= 0 {
-		panic("empty")
-	}
-	return stack.root.value
-}
-
-// 栈大小
-func (stack *LinkStack) Size2() int {
-	return stack.size
-}
-
-// 栈是否为空
-func (stack *LinkStack) IsEmpty2() bool {
-	return stack.size == 0
-}
-```
-
-## 5. 队列
-
-#### 实现数组队列 ArrayQueue
-
-``` go
-// 实现数组队列 ArrayQueue
-type ArrayQueue struct {
-	array []int
-	size  int
-	lock  sync.Mutex
-}
-
-func (queue *ArrayQueue) Add(v int) {
-	queue.lock.Lock()
-	defer queue.lock.Unlock()
-	queue.array = append(queue.array, v)
-	queue.size++
-}
-
-func (queue *ArrayQueue) Remove() int {
-	if queue.size <= 0 {
-		panic("empty")
-	}
-	queue.lock.Lock()
-	defer queue.lock.Unlock()
-	v := queue.array[0]
-	queue.array = queue.array[1:]
-	queue.size--
-	return v
-}
-
-```
-
-#### 实现链表队列 LinkQueue
-
-``` go
-// 实现链表队列 LinkQueue
-type LinkQueue struct {
-	root *LinkNode
-	size int
-	lock sync.Mutex
-}
-type LinkNode struct {
-	Next  *LinkNode
-	Value int
-}
-
-// 入队
-func (queue *LinkQueue) Add2(v int) {
-	queue.lock.Lock()
-	defer queue.lock.Unlock()
-	node := LinkNode{Value: v}
-	// 当然加在链头链尾都可以，只是时间复杂度不一样
-	// 但入队出队的的时间复杂度总是一个O(n),一个O(1)
-	if queue.root == nil {
-		queue.root = &node
-	} else {
-		tmp := queue.root
-		for ; tmp.Next != nil; tmp = tmp.Next {
-		}
-		tmp.Next = &node
-	}
-	queue.size = queue.size + 1
-}
-
-// 出队
-func (queue *LinkQueue) Remove2() int {
-	queue.lock.Lock()
-	defer queue.lock.Unlock()
-	if queue.size <= 0 {
-		panic("empty")
-	}
-	tmp := queue.root
-	v := tmp.Value
-	queue.root = tmp.Next
-	queue.size--
-	return v
-}
-```
-
-## 6. 集合
-
-`Set` 可以没有顺序关系，也可以按值排序，算一种特殊的不可重复列表。一般实现无序不重复的集合。
-
-因为我们知道字典的键是不重复的，所以只要我们不考虑字典的值，就可以实现集合，我们来实现存整数的集合 `Set`：
-
-``` go
-type set struct {
-	m    map[int]struct{} // 值使用空结构体不会占空间
-	size int
-	lock sync.RWMutex // 读写锁
-}
-
-func NewSet(cap int) *set {
-	tmp := make(map[int]struct{}, cap)
-	return &set{m: tmp}
-}
-
-func (s *set) Add(item int) {
-	s.lock.Lock()
-	defer s.lock.Unlock()
-	s.m[item] = struct{}{}
-	s.size = len(s.m)
-}
-
-func (s *set) Remove(item int) {
-	s.lock.Lock()
-	defer s.lock.Unlock()
-	_, has := s.m[item]
-	if has {
-		delete(s.m, item)
-		s.size = len(s.m)
-	}
-}
-func (s *set) Has(item int) bool {
-	s.lock.RLock()
-	defer s.lock.RUnlock()
-	_, has := s.m[item]
-	return has
-}
-
-// 查看集合大小
-func (s *set) Len() int {
-	return s.size
-}
-
-// 集合是够为空
-func (s *set) IsEmpty() bool {
-	if s.Len() == 0 {
-		return true
-	}
-	return false
-}
-
-// 清除集合所有元素
-func (s *set) Clear() {
-	s.lock.Lock()
-	defer s.lock.Unlock()
-	s.m = make(map[int]struct{})
-	s.size = 0
-}
-
-// 将集合转化为列表
-func (s *set) List() []int {
-	s.lock.Lock()
-	defer s.lock.Unlock()
-	ans := make([]int,0)
-	fmt.Println(s.size)
-	for k := range s.m {
-		ans = append(ans, k)
-	}
-	return ans
-}
-func main() {
-	s := NewSet(0)
-	s.Add(1)
-	s.Add(2)
-	s.Add(3)
-	s.Remove(3)
-	fmt.Print(s.Has(4))
-	s.Remove(4)
-	fmt.Println(s.m)
-	fmt.Println(s.List())
-
-}
-```
-
-## 7. 树
-
-树是一种比较高级的基础数据结构，由 `n` 个有限节点组成的具有层次关系的集合。（算树的高度或深度时不算根节点这一层）
-
-树的定义：
-
-1. 有节点间的层次关系，分为父节点和子节点。
-2. 有唯一一个根节点，该根节点没有父节点。
-3. 除了根节点，每个节点有且只有一个父节点。
-4. 每一个节点本身以及它的后代也是一棵树，是一个递归的结构。
-5. 没有后代的节点称为叶子节点，没有节点的树称为空树
-
-### 二叉树
-
-- **二叉树**：每个节点最多只有两个儿子节点的树。
-
-- **满二叉树**：叶子节点与叶子节点之间的高度差为 `0` 的二叉树，即整棵树是满的，树呈满三角形结构。
-
-- **完全二叉树**：完全二叉树是由满二叉树而引出来的，设二叉树的深度为 `k`，除第 `k` 层外，其他各层的节点数都达到最大值，且第 `k` 层所有的节点都连续集中在最左边。数组也可以用来表示二叉树，一般用来表示完全二叉树。
-
-树根据子节点的多寡，有二叉树，三叉树，四叉树等，我们这里主要介绍二叉树。
-
-**二叉树的数学特征**
-
-1. 高度为 `h≥0` 的二叉树至少有 `h+1` 个结点，比如最不平衡的二叉树就是退化的线性链表结构，所有的节点都只有左儿子节点，或者所有的节点都只有右儿子节点。
-2. 高度为 `h≥0` 的二叉树至多有 `2^h+1` 个节点，比如这棵树是满二叉树。
-3. 含有 `n≥1` 个结点的二叉树的高度至多为 `n-1`，由 `1` 退化的线性链表可以反推。
-4. 含有 `n≥1` 个结点的二叉树的高度至少为 `logn`，由 `2` 满二叉树可以反推。
-5. 在二叉树的第 `i` 层，至多有 `2^(i-1)` 个节点，比如该层是满的。
-
-``` go
-type TreeNode struct {
-	Data  int
-	Left  *TreeNode
-	Right *TreeNode
-}
-type ArrayQueue struct {
-	array []*TreeNode
-	size  int
-	lock  sync.Mutex
-}
-
-func (queue *ArrayQueue) Add(v *TreeNode) {
-	queue.lock.Lock()
-	defer queue.lock.Unlock()
-	queue.array = append(queue.array, v)
-	queue.size++
-}
-
-func (queue *ArrayQueue) Remove() *TreeNode {
-	if queue.size <= 0 {
-		panic("empty")
-	}
-	queue.lock.Lock()
-	defer queue.lock.Unlock()
-	v := queue.array[0]
-	queue.array = queue.array[1:]
-	queue.size--
-	return v
+type Connection struct {
+	//  socket TCP套接字 c
+	Conn *net.TCPConn
+	//  链接ID
+	ConnID uint32
+	//  链接的状态（是否关闭）
+	isClosed bool
+	//  等待连接被动退出的channel（管理连接状态，连接断开要通知此channel
+	ExitChan chan bool
+	// 无缓冲通道，用于读、写 goroutine 之间的消息通信
+	msgChan chan []byte
+	// 当前 连接对应的 处理业务的router
+	MsgHandler ziface.IMessageHandle
+	// 与连接管理器通信的通道
+	ConnChan chan ziface.IConnection // 每次客户端连接成功或断开连接会将会连接信息放进这个通道，connManage方法才去添加或删除这个连接
 }
 
 /*
-构建一棵树后，我们希望遍历它，有四种遍历方法：
-	先序遍历：先访问根节点，再访问左子树，最后访问右子树。
-	后序遍历：先访问左子树，再访问右子树，最后访问根节点。
-	中序遍历：先访问左子树，再访问根节点，最后访问右子树。(这三种都是深度优先遍历)
-	层次遍历：每一层从左到右访问每一个节点。（此即为广度优先遍历）
+...................
 */
 
-// 先序遍历
-func PreOrder(tree *TreeNode) {
-	fmt.Print(tree.Data, " ")
-	if tree.Left != nil {
-		PreOrder(tree.Left)
+func NewConnection(c *net.TCPConn, connID uint32, msgHandler ziface.IMessageHandle, connChan chan ziface.IConnection) *Connection {
+	conn := &Connection{ // 声明的msgChan 是不带缓冲区的，ExitChan 也是。
+		Conn:       c,
+		ConnID:     connID,
+		isClosed:   false,
+		ExitChan:   make(chan bool),
+		msgChan:    make(chan []byte),
+		MsgHandler: msgHandler,
+		ConnChan:   connChan,
 	}
-	if tree.Right != nil {
-		PreOrder(tree.Right)
-	}
+	// 将当前连接加入到 与连接管理器通信的通道 中
+	conn.ConnChan <- conn
+	return conn
 }
 
-// 中序遍历
-func MidOrder(tree *TreeNode) {
-	if tree == nil {
-		return
-	}
-	PreOrder(tree.Left)
-	fmt.Print(tree.Data, " ")
-	PreOrder(tree.Right)
-}
-
-// 后序遍历
-func PostOrder(tree *TreeNode) {
-	if tree == nil {
-		return
-	}
-	// 先打印左子树
-	PostOrder(tree.Left)
-	// 再打印右字树
-	PostOrder(tree.Right)
-	// 再打印根节点
-	fmt.Print(tree.Data, " ")
-}
-
-// 层次遍历
-func LayerOrder(tree *TreeNode) {
-	if tree == nil {
-		return
-	}
-	queue := new(ArrayQueue)
-	queue.Add(tree)
-	for queue.size > 0 {
-		element := queue.Remove()
-		fmt.Print(element.Data, " ")
-		if element.Left != nil {
-			queue.Add(element.Left)
-		}
-		if element.Right != nil {
-			queue.Add(element.Right)
-		}
+// 关闭连接。结束连接的工作
+func (c *Connection) Stop() {
+	fmt.Println("connection stop. Connection id = ", c.ConnID)
+	// 如果已经关闭就不管了
+	if !c.isClosed {
+		c.isClosed = true
+		// 关闭socket 连接
+		c.Conn.Close()
+		// 在连接管理器中删除自己
+		// 将当前连接加入到 与连接管理器通信的通道 中
+		c.ConnChan <- c
+		// 回收资源
+		close(c.ExitChan)
+		close(c.msgChan)
 	}
 }
 ```
 
-## 8. 排序
-
-### 交换排序
-
-#### 冒泡排序
-
-比如现在有一堆乱序的数，比如：`5 9 1 6 8 14 6 49 25 4 6 3`。
-
-第一轮迭代：从第一个数开始，**依次比较相邻的两个数（一直这样做）**，如果前面一个数比后面一个数大，那么交换位置，直到处理到最后一个数，最后的这个数是最大的。
-
-第二轮迭代：因为最后一个数已经是最大了，现在重复第一轮迭代的操作，但是只处理到倒数第二个数。
-
-第三轮迭代：因为最后一个数已经是最大了，最后第二个数是次大的，现在重复第一轮迭代的操作，但是只处理到倒数第三个数。
+当然 connection 的connChan 通道不可能自己生成，是server 给它传入的。server 的 Start 方法如下
 
 ``` go
-// 交换排序之冒泡排序
-func BubbleSort(nums []int) {
-	for i := 0; i < len(nums)-1; i++ {
-		for j := 0; j < len(nums)-i-1; j++ {
-			if nums[j] > nums[j+1] {
-				nums[j], nums[j+1] = nums[j+1], nums[j]
+// 开始服务器
+func (s *Server) Start() {
+	// 开启一个tcp 服务器
+	// 开启工作池
+	s.MsgHandler.StartWokerPool()
+	go s.GetConnMgr().ConnManage() // 开启连接管理器 管理连接增加和删除的方法
+	fmt.Println("[Server] started WokerPool")
+	go func() { // 防止start 函数等待连接阻塞
+		// 1 获取一个 TCP 的addr
+		fmt.Printf("[start] Server %s Listenner at IP %s, Port %d is starting\n", s.Name, s.IP, s.Port)
+		addr, err := net.ResolveTCPAddr(s.IPVersion, fmt.Sprintf("%s:%d", s.IP, s.Port)) // 得到一个tcp句柄
+		if err != nil {
+			log.Panic(err)
+		}
+		// 2 监听服务器的地址
+		listenner, err := net.ListenTCP(s.IPVersion, addr)
+		if err != nil {
+			log.Panic(err)
+		}
+		log.Printf("start Zinx server %s successfully\n", s.Name)
+		var cid uint32
+		// 3 阻塞，等待客户端连接，处理客户端连接业务，读写
+		for {
+			// 如果有客户端连接，此函数便有返回了，然后将conn传给我们自定的连接对象
+			conn, err := listenner.AcceptTCP()
+			if err != nil {
+				log.Println("accept err:", err)
+				continue
 			}
+			// 判断当前连接个数是否超过最大值，
+			if s.ConnMgr.Len() > utils.GlobalObject.MaxConn {
+				// TODO 给客户端响应一个错误数据，告诉它连不上了
+				fmt.Println("连接数到达上限了")
+				conn.Close()
+				continue
+			}
+			// 客户端连接server 成功
+			dealConn := NewConnection(conn, cid, s.MsgHandler, s.ConnMgr.GetConnChan())
+			cid++               // 这里cnt的自增应该需要加锁的，暂时没有
+			go dealConn.Start() // 每个客户端应该异步开启连接，所以这里需要使用 goroutine
 		}
+	}()
+}
+```
+
+### 钩子函数
+
+给zinx 框架提供 创建连接之或销毁连接之前 所要处理的一些业务，提供给开发者能够注册 hook函数的api。其实就是生命周期方法。比如建链和断链的时候去读写数据库。
+
+当前框架中提供的让开发者自己定义的函数是`Handle()` ，针对每一个消息请求的处理方法。
+
+zinx框架面向开发者的接口之后server 中的一些方法，我们此时也要在server中完成。
+
+所以要给zinx框架的Server.go 添加的**属性**为：
+
+- 该server 创建连接之后自动调用 hook 函数：`OnConnStart`
+- 该server 断开连接之前自动调用 hook 函数：`OnConnStop`
+
+``` go
+// IServer的接口实现
+type Server struct {
+	Name       string
+	IPVersion  string
+	IP         string
+	Port       int
+	MsgHandler ziface.IMessageHandle // 当前server注册的连接对应的处理处理业务的router
+	ConnMgr    ziface.IConnManager   // 该server的连接管理器
+	// 添加该server 创建连接之后自动调用 hook 函数
+	OnConnStart func(ziface.IConnection)
+	// 添加该server 创建连接之后自动调用 hook 函数
+	OnConnStop func(ziface.IConnection)
+}
+```
+
+给zinx框架的Server.go 添加的**方法**就是（当然也要给接口写）
+
+- 注册`OnConnStart`的方法
+- 注册`OnConnStop`的方法
+- 调用`OnConnStart`的方法
+- 调用`OnConnStop`的方法
+
+``` go
+// 设置该server 创建连接之后自动调用的 hook 函数
+func (s *Server) SetOnConnStart(hookFunc func(ziface.IConnection)) {
+	s.OnConnStart = hookFunc
+}
+
+// 调用该server 创建连接之后自动调用的 hook 函数
+func (s *Server) CallOnConnStart(conn ziface.IConnection) {
+	if s.OnConnStart != nil {
+		s.OnConnStart(conn)
+	}else{
+		fmt.Println("server 尚未注册 OnConnStart 方法 ")
+	}
+}
+
+// 设置该server 断开连接之前自动调用的 hook 函数
+func (s *Server) SetOnConnStop(hookFunc func(ziface.IConnection)) {
+	s.OnConnStop = hookFunc
+}
+
+// 调用该server 断开连接之前自动调用的 hook 函数
+func (s *Server) CallOnConnStop(conn ziface.IConnection) {
+	if s.OnConnStop != nil {
+		s.OnConnStop(conn)
+	}else{
+		fmt.Println("server 尚未注册 OnConnStop方法 ")
 	}
 }
 ```
 
-冒泡排序的平均时间复杂度为：`O(n^2)`。
+上面我们写的关于连接的钩子函数都应该由连接管理模块connManager进行管理。但连接管理模块connManager中没有server对象，我们必须加进去。即`ConnManager struct` 需要有一个`server ziface.IServer // 绑定了此连接管理模块的服务器对象` 属性。
 
-冒泡排序交换和比较的次数相加是一个和 `N` 有关的平方数，所以冒泡排序的最好和最差时间复杂度都是：`O(n^2)`。
-
-冒泡排序算法是**稳定**的，因为如果两个相邻元素相等，是不会交换的，保证了稳定性的要求。
-
-#### 快速排序
-
-快速排序通过一趟排序将要排序的数据分割成独立的两部分，其中一部分的所有数据都比另外一部分的所有数据都要小，然后再按此方法对这两部分数据分别进行快速排序，整个排序过程可以递归进行，以此达到整个数据变成有序序列。
-
-步骤如下：
-
-1. 先从数列中取出一个数作为基准数。一般取第一个数。
-2. 分区过程，将比这个数大的数全放到它的右边，小于或等于它的数全放到它的左边。
-3. 再对左右区间重复第二步，直到各区间只有一个数。
+同时server 的new函数也改动如下：
 
 ``` go
-// 交换排序之快速排序
-func QuickSort(nums []int, left, right int) {
-	if right > left {
-		mid := partition(nums, left, right)
-		QuickSort(nums, left, mid-1)
-		QuickSort(nums, mid+1, right)
+// 初始化 Server 模块
+func NewServer(name string) ziface.IServer {
+	s := &Server{
+		Name:        utils.GlobalObject.Name,
+		IPVersion:   "tcp4",
+		IP:          utils.GlobalObject.Host,
+		Port:        utils.GlobalObject.Port,
+		MsgHandler:  NewMessageHandle(),
+		ConnMgr:     NewConnManager(),
+		OnConnStart: func(i ziface.IConnection) {},
+		OnConnStop:  func(i ziface.IConnection) {}, // 给所有的连接注册两个空的钩子函数，如果开发者不自己提供的话
 	}
-}
-
-// 快排的分割函数(nums[right]是有值的)
-func partition(nums []int, left, right int) int {
-	for i := left + 1; i <= right; i++ {
-		if nums[i] <= nums[left] {
-			nums[i], nums[left] = nums[left], nums[i]
-			left = i
-		} else { // 把较大的数往后放
-			nums[i], nums[right] = nums[right], nums[i]
-			right--
-			i--
-		}
-	}
-	return left
+	s.ConnMgr.SetServer(s) // 设置连接管理模块对应的server
+	return s
 }
 ```
 
-快速排序的平均时间复杂度为：`O(nlogn)`。
-
-最差的情况下，每次都不能平均地切分，每次切分都因为基准数是最大的或者最小的，不能分成两个数列，这样时间复杂度变为了 `T(n) = T(n-1) + O(n)`，按照主定理计算可以知道时间复杂度为：`O(n^2)`
-
-快速排序是不稳定的，因为切分过程中进行了交换，相同值的元素可能发生位置变化。
-
-**改进**
-
-- **切分**的结果极大地影响快速排序的性能，为了避免切分不均匀情况的发生，有几种方法改进：
-
-1. 每次进行快速排序切分时，先将数列随机打乱，再进行切分，这样随机加了个震荡，减少不均匀的情况。当然，也可以随机选择一个基准数，而不是选第一个数。
-2. 每次取数列头部，中部，尾部三个数，取三个数的中位数为基准数进行切分。
-
->  方法 1 相对好，而方法 2 引入了额外的比较操作，一般情况下我们可以随机选择一个基准数。
-
-快速排序可以继续进行算法改进。
-
-1. 在**小规模数组的情况下，直接插入排序**的效率最好，当快速排序递归部分进入小数组范围，可以切换成直接插入排序。
-2. 排序数列可能存在大量重复值，使用三向切分快速排序，将数组分成三部分，大于基准数，等于基准数，小于基准数，这个时候需要维护三个下标。
-3. 使用伪尾递归减少程序栈空间占用，使得栈空间复杂度从 `O(logn)~log(n)` 变为：`O(logn)`。
-
-#### 归并排序
-
-我们先介绍两个有序的数组合并成一个有序数组的操作。
-
-1. 先申请一个辅助数组，长度等于两个有序数组长度的和。
-2. 从两个有序数组的第一位开始，比较两个元素，哪个数组的元素更小，那么该元素添加进辅助数组，然后该数组的元素变更为下一位，继续重复这个操作，直至数组没有元素。
-3. 返回辅助数组。
-
-归并排序就是不端地进行归并操作，
-
-![image-20220521204838520](\img\image-20220521204838520.png)
+连接管理函数：
 
 ``` go
-// 自顶而下归并排序，排序范围是[begin, end)
-func MergeSort(nums []int, begin, end int) {
-	if end-begin > 1 { // 至少要两个数才需要归并
-		mid := begin + (end-begin)/2
-		MergeSort(nums, begin, mid)
-		MergeSort(nums, mid, end)
-		merge(nums, begin, mid, end)
-	}
-}
-
-// 完成一次归并，例如把[1,4,2,3]mid=2, 归并为[1,2,3,4]
-func merge(nums []int, begin, mid, end int) {
-	// 申请额外的空间来合并两个有序数组，这两个数组是 nums[begin,mid),array[mid,end)
-	leftSize := mid - begin
-	rightSize := end - mid
-	newNums := make([]int, 0, leftSize+rightSize)
-	l, r := begin, mid
-	for l < mid && r < end {
-		if nums[l] < nums[r] {
-			newNums = append(newNums, nums[l])
-			l++
+// 连接管理的方法，每次客户端连接成功或断开连接会将会连接信息放进通道，connManage方法从通道中读取后才去添加或删除这个连接
+func (cm *ConnManager) ConnManage() {
+	for {
+		conn := <-cm.ConnChan
+		// 如果该conn 在管理器中有就删除，没有就加入
+		if _, has := cm.conns[conn.GetConnID()]; has {
+			cm.Remove(conn)
+			cm.server.CallOnConnStop(conn) // 此连接conn 中就不应该再调用通道，tcp连接等等成员变量了，因为它们已经被关闭了。可以调用其他的数值变量
+			// 这里也是一点点缺陷吧，按理来说此钩子函数应该在连接回收资源以前进行调用。现在这个做法是回收资源和钩子函数在两个goroutine了。解决办法当然就是把server对象耦合到每个connection中
 		} else {
-			newNums = append(newNums, nums[r])
-			r++
+			cm.Add(conn)
+			cm.server.CallOnConnStart(conn)
 		}
-	}
-	newNums = append(newNums, nums[l:mid]...)
-	newNums = append(newNums, nums[r:end]...)
-	for i := 0; i < len(newNums); i++ {
-		nums[begin+i] = newNums[i]
+		fmt.Printf("[ConnManager] 当前连接人数=  %d, \n", cm.Len())
 	}
 }
 ```
 
-时间复杂度是 `O(nlogn)`。
-
-### 选择排序
-
-#### 简单选择排序
-
-选择排序，一般我们指的是简单选择排序，也可以叫直接选择排序，它不像冒泡排序一样相邻地交换元素，而是**通过选择最小的元素，放到最前面去，每轮迭代只需交换一次**。虽然交换次数比冒泡少很多，但效率和冒泡排序一样的糟糕。
-
-现在有一堆乱序的数，比如：`5 9 1 6 8 14 6 49 25 4 6 3`。
-
-第一轮迭代，从第一个数开始，左边到右边进行扫描，找到最小的数 1，与数列里的第一个数交换位置。
-
-第二轮迭代，从第二个数开始，左边到右边进行扫描，找到第二小的数 3，与数列里的第二个数交换位置。
-
-第三轮迭代，从第三个数开始，左边到右边进行扫描，找到第三小的数 4，与数列里的第三个数交换位置。
-
-第N轮迭代：….
-
-``` go 
-// 选择排序之简单选择排序
-func SelectSort(nums []int) {
-	for i := 0; i < len(nums)-1; i++ {
-		min := nums[i]
-		idx := -1
-		for j := i; j < len(nums); j++ {
-			if nums[j] < min {
-				min = nums[j]
-				idx = j
-			}
-		}
-		nums[i], nums[idx] = nums[idx], nums[i]
-	}
-}
-```
-
-最佳和最坏时间复杂度仍然是：`O(n^2)`。
-
-**改进**
-
-上面的算法需要从某个数开始，一直扫描到尾部，我们可以优化算法，使得复杂度减少一半。
-
-我们每一轮，除了找最小数之外，还找最大数，然后分别和前面和后面的元素交换，这样循环次数减少一半
-
-#### 堆排序
-
-
-
-
-
-### 插入排序
-
-#### 直接插入排序
-
-每次把一个数插到已经排好序的数列里面形成新的排好序的数列，以此反复。
+之后开发者就可以在自己的server 端写钩子函数，然后通过SetOnConnStart方法来设置自定义的钩子函数了。
 
 ``` go
-// 插入排序之直接插入排序
-func InsertSort(nums []int) {
-	tmp := 0
-	for i := 1; i < len(nums); i++ {
-		tmp = nums[i]
-		for k := i - 1; k >= 0; k-- {
-			if nums[k] > tmp {
-				nums[k+1], nums[k] = nums[k], nums[k+1]
-			} else {
-				break
-			}
-		}
-	}
+func myHookStart(conn ziface.IConnection) {
+	fmt.Println("自定义的 myHookStart，conn id = ", conn.GetConnID())
+	conn.SendMsg(1, []byte("连接服务器成功！"))
+}
+func myHookStop(conn ziface.IConnection) {
+	fmt.Println("自定义的 myHookStop，conn id = ", conn.GetConnID())
+}
+
+/*
+基于 zinx开发的服务器端应用程序
+*/
+func main() {
+	mr := &myRouter{}
+	// 1 创建一个server 句柄，使用 zinx 的api
+	s := znet.NewServer("[zinx V0.9]")
+	// 2 注册连接建立和断开的hook函数
+	s.SetOnConnStart(myHookStart)
+	s.SetOnConnStop(myHookStop)
+	// 3 添加一个router
+	s.AddRouter(1, mr)
+	// 4 启动server
+	s.Serve()
 }
 ```
 
-直接插入排序的平均复杂度是`O(n^2)`
+## 连接属性配置
 
-数组规模 `n` 较小的大多数情况下，我们可以使用插入排序，它比冒泡排序，选择排序都快，甚至比任何的排序算法都快。
+当我们在使用链接处理的时候，希望和链接绑定一些用户的数据，或者参数。所以我们需要给connection 模块添加可以配置属性。
 
-数列中的**有序性越高，插入排序的性能越高**，因为待排序数组有序性越高，插入排序比较的次数越少。
+新增的属性：
 
-#### 希尔排序
+- 连接属性的集合：map
+- 保护连接属性的锁
+
+``` go
+/* type Connection struct */
+	// 连接属性的集合，里面都是用户自定义的属性
+	property map[string]any	// 需要在new函数里初始化
+	// 保护连接属性的锁
+	propertyLock sync.RWMutex
+```
+
+新增的方法：
+
+- 设置连接属性
+- 获取连接属性
+- 移除连接属性
+
+``` go
+// 设置连接属性
+func (c *Connection) SetProperty(key string, value any) {
+	// 加写锁
+	c.propertyLock.Lock()
+	defer c.propertyLock.Unlock()
+	c.property[key] = value
+}
+
+// 获取连接属性
+func (c *Connection) GetProperty(key string) (any, error) {
+	// 加读锁
+	c.propertyLock.RLock()
+	defer c.propertyLock.RUnlock()
+	if value, has := c.property[key]; has {
+		return value, nil
+	} else {
+		return nil, fmt.Errorf("property %s NOT FOUND ! please set before ", key)
+	}
+
+}
+
+// 删除连接属性
+func (c *Connection) RemoveProperty(key string) {
+	// 加写锁
+	c.propertyLock.Lock()
+	defer c.propertyLock.Unlock()
+	delete(c.property, key)
+}
+```
+
+下面是集成到zinx框架中。其实拓展的这些功能完全是让开发者调用的，框架不需要再改什么了。
+
+开发者在开启服务器时可以在自定义的钩子函数中给连接添加一些属性。
+
+``` go
+// 钩子函数的调用具体是在连接管理模块中执行的
+func myHookStart(conn ziface.IConnection) {
+	fmt.Println("[自定义的 myHookStart] conn id = ", conn.GetConnID())
+	conn.SendMsg(1, []byte("连接服务器成功！"))
+	// 给当前的连接设置一些属性
+	conn.SetProperty("name", "连接的用户的名字 tom")
+}
+func myHookStop(conn ziface.IConnection) {
+	name, _ := conn.GetProperty("name")
+	fmt.Printf("[自定义的 myHookStop] goodbye! conn id = %d, name = %s \n", conn.GetConnID(), name)
+}
+```
+
+至此，Zinx框架所有基础功能学习完毕！
+
+# 日志logrus
+
+go标准库中的日志库`log`功能太少了，只提供了三组函数：
+
+- `Print/Printf/Println`：正常输出日志；
+- `Panic/Panicf/Panicln`：输出日志后，以拼装好的字符串为参数调用`panic`；
+- `Fatal/Fatalf/Fatalln`：输出日志后，**调用`os.Exit(1)`退出程序**。
+
+命名比较容易辨别，带`f`后缀的有格式化功能，带`ln`后缀的会在日志后增加一个换行符。
+
+这里我们学习使用`logrus`，`logrus`完全兼容标准的`log`库，还支持文本、JSON 两种日志输出格式。很多知名的开源项目都使用了这个库，如大名鼎鼎的 docker。
+
+[Go 每日一库之 logrus - 知乎 (zhihu.com)](https://zhuanlan.zhihu.com/p/105759117)
+
+## 安装使用
+
+``` go
+go get github.com/sirupsen/logrus
+```
+
+logrus 可以区别多个细粒度的日志级别。
+
+``` go
+package main
+
+import (
+  "github.com/sirupsen/logrus"
+)
+
+func main() {
+  logrus.SetLevel(logrus.TraceLevel)
+
+  logrus.Trace("trace msg")
+  logrus.Debug("debug msg")
+  logrus.Info("info msg")
+  logrus.Warn("warn msg")
+  logrus.Error("error msg")
+  logrus.Fatal("fatal msg")
+  logrus.Panic("panic msg")
+}
+
+/*
+time="2024-03-18T21:12:11+08:00" level=info msg=Info
+time="2024-03-18T21:12:11+08:00" level=warning msg=Warn
+time="2024-03-18T21:12:11+08:00" level=error msg=Error
+time="2024-03-18T21:12:11+08:00" level=fatal msg=Fatal
+exit status 1
+*/
+```
+
+`logrus`的使用非常简单，与标准库`log`类似。`logrus`支持更多的日志级别（下面这些函数都支持在末尾加`f`的格式化输出以及加`ln`的输出换行）：
+
+- `Panic`：记录日志，然后`panic`。
+
+- `Fatal`：致命错误，出现错误时程序无法正常运转。输出日志后，程序退出；
+
+- `Error`：错误日志，需要查看原因；
+
+- `Warn`：警告信息，提醒程序员注意；
+
+- `Info`：关键操作，核心流程的日志；
+
+- `Debug`：一般程序中输出的调试信息；
+
+- `Trace`：很细粒度的信息，一般用不到；
+
+日志级别从上向下依次增加，`Trace`最大，`Panic`最小。`logrus`有一个日志级别，高于这个级别的日志不会输出。**默认的级别为`InfoLevel`**。所以为了能看到`Trace`和`Debug`日志，我们在`main`函数第一行设置日志级别为`TraceLevel`。
+
+## 输出定制
+
+### 输出中加入文件名和调用方法
+
+``` go
+package main
+
+import (
+  "github.com/sirupsen/logrus"
+)
+
+func main() {
+  logrus.SetReportCaller(true)
+
+  logrus.Info("info msg")
+}
+/*
+$ go run main.go
+time="2020-02-07T21:46:03+08:00" level=info msg="info msg" func=main.main file="D:/code/golang/src/github.com/darjun/go-daily-lib/logrus/caller/main.go:10"
+*/
+```
+
+### 添加字段
+
+有时候需要在输出中添加一些字段，可以通过调用`logrus.WithField`和`logrus.WithFields`实现。`logrus.WithFields`接受一个`logrus.Fields`类型的参数，其底层实际上为`map[string]interface{}`。
+
+比如在web应用中要在log中加入`user_id`和`ip`字段：
+
+``` go
+package main
+
+import "github.com/sirupsen/logrus"
+
+func main() {
+	logrus.WithField("内容", "只会使用一次的内容").Info("打印一条info  ")
+	myloger := logrus.WithField("user", map[string]any{"name": "张三", "age": 18}) // 添加一个字段
+	myloger.Info("打印一条info  1 ")
+	myloger = myloger.WithFields(logrus.Fields{"user_id": 10001, "ip": "10.0.0.1"}) // 添加多个字段
+	myloger.Info("打印一条info  2 ")
+}
+
+/*
+time="2024-03-18T21:48:42+08:00" level=info msg="打印一条info  " 内容="只会使用一次的内容"
+time="2024-03-18T21:48:42+08:00" level=info msg="打印一条info  1 " user="map[age:18 name:张三]"
+time="2024-03-18T21:48:42+08:00" level=info msg="打印一条info  2 " ip=10.0.0.1 user="map[age:18 name:张三]" user_id=10001
+*/
+```
+
+实际上，`WithFields`和`WithField`都返回一个`logrus.Entry`类型的值，它将`logrus.Logger`和设置的`logrus.Fields`保存下来。调用`Entry`相关方法输出日志时，保存下来的`logrus.Fields`也会随之输出。
+
+### 重定向输出
+
+默认情况下，日志输出到`io.Stderr`。可以调用`logrus.SetOutput`传入一个`io.Writer`参数。后续调用相关方法日志将写到`io.Writer`中。
+
+下面的示例中，我们将日志同时打印到控制台，文件和bytes.Buffer中
+
+``` go
+package main
+
+import (
+	"bytes"
+	"io"
+	"os"
+
+	"github.com/sirupsen/logrus"
+)
+
+func main() {
+	writer1 := &bytes.Buffer{}
+	writer2 := os.Stdout
+	writer3, err := os.OpenFile("log/s1.log", os.O_WRONLY|os.O_CREATE, 02)
+	if err != nil {
+		logrus.Fatalf("create file log.txt failed: %v", err)
+	}
+	logrus.SetOutput(io.MultiWriter(writer1, writer2, writer3))
+	logrus.Info("打印 info")
+}
+```
+
+### 日志格式
+
+`logrus`支持两种日志格式，文本和 JSON，默认为文本格式。可以通过`logrus.SetFormatter`设置日志格式：
+
+```go
+package main
+
+import (
+  "github.com/sirupsen/logrus"
+)
+
+func main() {
+  logrus.SetLevel(logrus.TraceLevel)
+  logrus.SetFormatter(&logrus.JSONFormatter{})
+
+  logrus.Trace("trace msg")
+  logrus.Debug("debug msg")
+  logrus.Info("info msg")
+  logrus.Warn("warn msg")
+  logrus.Error("error msg")
+  logrus.Fatal("fatal msg")
+  logrus.Panic("panic msg")
+}
+```
+
+程序输出 JSON 格式的日志：
+
+```text
+$ go run main.go 
+{"level":"trace","msg":"trace msg","time":"2020-02-07T21:40:04+08:00"}
+{"level":"debug","msg":"debug msg","time":"2020-02-07T21:40:04+08:00"}
+{"level":"info","msg":"info msg","time":"2020-02-07T21:40:04+08:00"}
+{"level":"info","msg":"warn msg","time":"2020-02-07T21:40:04+08:00"}
+{"level":"error","msg":"error msg","time":"2020-02-07T21:40:04+08:00"}
+{"level":"fatal","msg":"fatal msg","time":"2020-02-07T21:40:04+08:00"}
+exit status 1
+```
+
+除了内置的`TextFormatter`和`JSONFormatter`，还有不少第三方格式支持。我们这里介绍一个[nested-logrus-formatter](https://link.zhihu.com/?target=https%3A//github.com/antonfisher/nested-logrus-formatter)。就不介绍了。
+
+### 实现钩子函数
+
+可以为logrus设置钩子，每条日志输出前都会执行钩子的特定方法。我们可以在其中设置输出字段、根据日志等级将日志输出到不同的目的地。`logrus`也内置了一个`syslog`的钩子，将日志输出到`syslog`中。这里我们实现一个钩子，在输出的日志中增加一个`app=awesome-web`字段。
+
+钩子首先需要实现`logrus.Hook` 接口：
+
+``` go
+// github.com/sirupsen/logrus/hooks.go
+type Hook interface {
+  Levels() []Level
+  Fire(*Entry) error
+}
+```
+
+**`Levels()`**方法返回感兴趣的日志级别，**输出其他日志时不会触发钩子**。**`Fire`**是日志输出前调用的钩子方法。
+
+``` go
+package main
+
+import (
+	"github.com/sirupsen/logrus"
+)
+
+type myHook struct {
+	appName string
+}
+
+func (m *myHook) Levels() []logrus.Level {
+	return []logrus.Level{logrus.TraceLevel, logrus.InfoLevel}
+	// return logrus.AllLevels
+}
+
+func (m *myHook) Fire(entry *logrus.Entry) error {
+	entry.Data["app"] = m.appName
+	return nil
+}
+
+func main() {
+	h := myHook{"应用的名字"}
+	logrus.AddHook(&h)
+	logrus.Info("打印 info")
+	logrus.Warn("打印 Warn") // 可见这里没有调用钩子函数中设置的data变量
+}
+/*
+time="2024-03-18T21:49:47+08:00" level=info msg="打印 info" app="应用的名字"
+time="2024-03-18T21:49:47+08:00" level=warning msg="打印 Warn"
+*/
+```
+
+虽然上面的hook函数只是实现了添加字段的功能，但实际上钩子函数可以实现更多拓展的功能。比如针对某些特定重要的信息写入redis数据库中等。
+
+`logrus`的第三方 Hook 很多，我们可以使用一些 Hook 将日志发送到 redis/mongodb 等存储中：
+
+- [mgorus](https://link.zhihu.com/?target=https%3A//github.com/weekface/mgorus)：将日志发送到 mongodb；
+
+- [logrus-redis-hook](https://link.zhihu.com/?target=https%3A//github.com/rogierlommers/logrus-redis-hook)：将日志发送到 redis；
+
+- [logrus-amqp](https://link.zhihu.com/?target=https%3A//github.com/vladoatanasov/logrus_amqp)：将日志发送到 ActiveMQ。
+
+## 自定log对象
+
+**实际上，考虑到易用性，库一般会使用默认值创建一个对象，包最外层的方法一般都是操作这个默认对象。这个技巧应用在很多库的开发中，`logrus`也是如此：**
+
+我们通常直接使用的logrus实际上是库自己帮我们新建的一个对象
+
+``` go
+// github.com/sirupsen/logrus/exported.go
+var (
+  std = New()
+)
+```
+
+我们当然也可以创建自己的`Logger`对象，使用方式与直接调用`logrus`的方法类似：
+
+``` go
+package main
+
+import "github.com/sirupsen/logrus"
+
+func main() {
+  log := logrus.New()
+
+  log.SetLevel(logrus.InfoLevel)
+  log.SetFormatter(&logrus.JSONFormatter{})
+
+  log.Info("info msg")
+}
+```
+
+此方法好处在于我们可以自定多个log对象来实现不同内容的日志记录。
+
+
 
 
 
@@ -3660,7 +5206,7 @@ func InsertSort(nums []int) {
 
 Golang自身实现官方工具go命令行是基于**flag**包解析参数和自定义command类型来实现的。整个Command的设计结构是比较清晰的，通过sub commands和flags来区分不同的功能，进入不同的Run方法。如下所示。
 
-![go-cli](img/go-command-line.png)
+<img src="img/go-command-line.png" alt="go-cli" style="zoom: 50%;" />
 
 基于第三方框架实现命令行的原理与上述相同，也是基于flag包解析参数，同时自定义Command结构体。不过第三方框架通常已经定义好成熟稳定且功能丰富的Command，开发者只需要简单复用其框架即可快速开发出高效的命令行工具。
 
@@ -4301,6 +5847,7 @@ func buildINT(handle *pcap.Handle) []byte {
 	// return outgoingPacket
 	return nil
 }
+
 func main() {
 	deviceName := "eth0"
 	// 这里才是把自定义层注册到MAC层之后！！！
