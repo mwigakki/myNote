@@ -2663,6 +2663,8 @@ GNU Wget(常常简称为wget）是一个**网络上进行下载**的简单而强
 
 Linux scp 是 secure copy 的缩写，用于 Linux 之间复制文件和目录。scp 是 linux 系统下基于 ssh 登陆进行安全的远程文件拷贝命令。
 
+`格式：scp 文件源 文件目的地`
+
 ``` shell
 scp local_file remote_username@remote_ip:remote_folder # 可以在最后加上传输后的文件名
 
@@ -2670,6 +2672,17 @@ scp local_file remote_username@remote_ip:remote_folder # 可以在最后加上�
 scp -r local_folder remote_username@remote_ip:remote_folder 
 
 # 如果远程服务器防火墙有为scp命令设置了指定的端口，我们需要使用 -P 参数来设置命令的端口号
+```
+
+**从远程复制到本地**
+
+从远程复制到本地，只要将从本地复制到远程的命令的后2个参数调换顺序即可，如下实例
+
+应用实例：
+
+```
+scp root@www.runoob.com:/home/root/others/music /home/space/music/1.mp3 
+scp -r www.runoob.com:/home/root/others/ /home/space/music/
 ```
 
 ### linux查看流量的工具

@@ -183,7 +183,9 @@ redis 127.0.0.1:6379> CONFIG GET loglevel
 
 redis 的几十个配置说明见：[Redis 配置 | 菜鸟教程 (runoob.com)](https://www.runoob.com/redis/redis-conf.html)
 
-**配置 redis 外网可访问**
+## 配置 redis 外网可访问
+
+// TODO 这里只是这样写了，但实际没有试过，以后再说
 
 由于 redis 采用的安全策略，默认会只准许本地访问。需要通过简单配置，完成允许外网访问。
 

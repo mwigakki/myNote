@@ -40,7 +40,7 @@ git --version
 >
 > `git config --global user.email "email@example.com"`
 
-相当于自报家门
+相当于自报家门。上面命令加了 `global`表示设置的是全局的user，如果只想设置本仓库的user就别加 `global`。
 
 然后还要给github加上一个ssh key以便方便地使用github，见后面。
 
@@ -171,7 +171,11 @@ nothing to commit, working tree clean
 2. 使用命令：`git rm <file>`删除了文件，此时删除的操作已经被提交到暂存区staged了。此时需要先使用命令`git restore --staged <file>` 将暂存区的删除恢复到工作区，再使用命令：`git restore <file>` 恢复文件
 
 # 远程仓库
-查看远程仓库地址：`git remote -v`;
+查看远程仓库地址：
+
+``` bash
+git remote -v
+```
 
 自行注册GitHub账号。由于你的本地Git仓库和GitHub仓库之间的传输是通过SSH加密的，所以，需要一点设置：
 
@@ -195,7 +199,7 @@ nothing to commit, working tree clean
   - 删除命令【其实就是删除.ssh这个隐藏目录目录】 `rm -rf .ssh`
   - 新生成SSH-key【替换成你自己的邮箱】`ssh-keygen -t rsa -C "xxx@xx.com"`
   - 键入命令后，会让你输入密码用来保护你的密钥等，总共三次需要输入的，你都直接三次回车就好！！
-  - 生成后，会在 /root 目录下，也就是当前用户的目录下，生成一个.ssh隐藏目录，目录中会有【id_rsa】和【id_rsa.pub】两个文件，一个是私钥，一个是公钥。你现在就可以复制公钥使用了
+  - 生成后，会在 当前用户的目录下，生成一个.ssh隐藏目录，目录中会有【id_rsa】和【id_rsa.pub】两个文件，一个是私钥，一个是公钥。你现在就可以复制公钥使用了
   
 - 第2步：登陆[GitHub](https://github.com/)，点击头像`setting`，“`SSH and GPG Keys`”页面：然后，点“`New SSH Key`”，填上任意Title，在Key文本框里粘贴`id_rsa.pub`文件的内容，最后add即可
 
@@ -243,7 +247,7 @@ git config user.name "{name}"
 git config user.email "account2@123.com"
 ```
 
-在本地仓库修改commit后，使用`git push`推送，提示让我们去网页输入账号密码。输入完成后即可推送成功。
+在本地仓库修改commit后，使用`git push`或`git push origin [远端主分支]`推送，提示让我们去网页输入账号密码。输入完成后即可推送成功。
 
 ### 添加远程仓库
 登陆GitHub，然后，在右上角找到`Create a new repo`按钮，然后...，创建一个新的仓库。
@@ -264,7 +268,7 @@ git config user.email "account2@123.com"
 
 推送成功后，可以立刻在GitHub页面中看到远程库的内容已经和本地一模一样：
 
-#### 推送到远程
+### 推送到远程
 从现在起，只要本地作了提交，就可以通过命令：
 
 ``` git
@@ -802,7 +806,7 @@ v1.0
 还可以创建带有说明的标签，用-a指定标签名，-m指定说明文字：
 例： ` git tag -a v0.1 -m "version 0.1 released" 1094adb`
 
- - 注意：标签总是和某个commit挂钩。如果这个commit既出现在master分支，又出现在dev分支，那么在这两个分支上都可以看到这个标签。
+ - 注意：**标签总是和某个commit挂钩**。如果这个commit既出现在master分支，又出现在dev分支，那么在这两个分支上都可以看到这个标签。
 
 删除标签：
 `git tag -d v0.1`
