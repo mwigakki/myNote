@@ -291,8 +291,6 @@ git push --set-upstream origin [分支名]
 git push origin [分支名]:[分支名] # 这个命令如果远程仓库中不存在该分支，Git 将会自动创建该分支。
 ```
 
-
-
 #### SSH警告
 当你第一次使用Git的clone或者push命令连接GitHub时，会得到一个警告：
 
@@ -1143,3 +1141,7 @@ Host github.com
 ```
 
 Then, run the command `ssh -T git@github.com` to confirm if the issue is fixed.
+
+3. 推送到远端后提示：remote: Permission to mwigakki/myZinx.git denied to 【不是你的github账号】.
+
+可能是由于 Git 还记住了你之前的账号的授权。可以试着清理 Git 的授权缓存，

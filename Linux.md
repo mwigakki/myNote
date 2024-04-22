@@ -2008,6 +2008,7 @@ screen -r [pid/name]
 screen -dmS screen_name bash -c 'command1';   # 注意command1命令返回后  此screen也就立刻结束了。
 screen -S screen_name -p 0 -X stuff "shell命令或sh脚本\n"; # 最后的\n用于执行命令“回车”的操作。否则脚本不执行。(可用\n连接多个命令，且可直接用换行来代替)
 screen -S screen_name -p 0 -X stuff $'\n'; # 是用于执行命令“回车”的操作。否则脚本不执行。
+screen -S screen_name -X stuff "^C" # 用来给screen中传入 ctrl+c 来结束其中的进程
 
 # 注：此处的command1必须是会持续运行的命令如ping www.baidu.com 才能使此screen一直在后台（detached）运行，否则screen会随着命令的结束而销毁
 # 好像一次给的命令太多会导致命令不执行了
@@ -2862,7 +2863,7 @@ TCP正在使用的拥塞控制算法保存在`tcp_congestion_control`里。
 
 ### 修改内核参数的方法
 
-- **临时修改**：使用`systcl`命令进行修改，例如修改SYN重传次数`sysctl net.ipv4.tcp_syn_retries=n`
+- **临时修改**：使用`systcl`命令进行修改，例如修改SYN重传次数`sysctl -w net.ipv4.tcp_syn_retries=n`
 - **临时修改**：使用 `echo value` 方式直接追加到文件中。 如 `echo "1" > /proc/sys/net/ipv4/tcp_syn_retries` ，但是这种方式设备重启后，会恢复成默认值。
 - **永久修改**：把参数添加到 `sudo vim /etc/sysctl.conf` 中，然后执行 `sudo sysctl -p` 使参数生效。这种方式是永久有效的。如修改默认CC算法为reno，在文件中添加：`net.ipv4.tcp_congestion_control=reno`
 
