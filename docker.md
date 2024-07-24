@@ -169,6 +169,8 @@ sudo apt update
 sudo apt install -y docker.io
 ```
 
+（一般到这一步就安装完成了。然后需要 1、修改当前用户权限使其可以方便的使用docker。2、修改docker的默认镜像源（见第4章的内容））
+
 - 2、启动docker 后台服务
 
 ```bash
@@ -189,7 +191,7 @@ docker --version
 docker system info
 ```
 
-如果在 Linux 中遇到无权限访问的问题（切换root用户可解决），需要确认当前用户是否属于本地 Docker UNIX 组。如果不是，可以通过`usermod -aG docker <user>`来添加，然后退出并重新登录 Shell，改动即可生效。
+如果在 Linux 中遇到无权限访问的问题 `Got permission denied while trying to connect to the Docker daemon socket at unix:///var/run/docker.sock: Get "http://%2Fvar%2Frun%2Fdocker.sock/v1.24/images/json": dial unix /var/run/docker.sock: connect: permission denie`。（切换root用户可解决），需要确认当前用户是否属于本地 Docker UNIX 组。如果不是，可以通过`usermod -aG docker <user>`来添加，然后**退出并重新登录 Shel**l，改动即可生效。
 
 #### 权限问题
 
@@ -297,7 +299,7 @@ docker info | grep "Registry"  # 得到镜像源信息
 
 然后修改镜像源
 
-创建或修改` /etc/docker/daemon.json `文件，修改为如下形式：
+创建或修改` sudo vim /etc/docker/daemon.json `文件，修改为如下形式：
 
 ``` json
 {
@@ -650,6 +652,7 @@ docker container run -it ubuntu /bin/bash
 | `docker ps -s` 或 `docker container ls -s `    | 列出正在运行的容器 *（带 CPU/内存）*                      |
 | `docker images` 或 `docker image ls`           | 列出所有镜像                                              |
 | `docker exec -it <container> bash`             | 连接到容器                                                |
+| `docker exec  <container>  [cmd]`              | 在容器`<container>`中执行命令                             |
 | `docker logs <container>`                      | 显示容器的控制台日志                                      |
 | `docker stop <container>`                      | 停止一个容器                                              |
 | `docker start <container>`                     | 启动一个容器                                              |
@@ -659,6 +662,10 @@ docker container run -it ubuntu /bin/bash
 | `docker top <container>`                       | 列出进程                                                  |
 | `docker kill <container>`                      | 杀死一个running中的容器                                   |
 | `docker container prune`                       | 清除所有处于终止状态的容器                                |
+
+
+
+
 
 各个状态转移的命令图
 
@@ -1778,6 +1785,8 @@ docker run -it --name c1 --ip 192.168.199.200 --network mac1 ubuntu
 ```
 
 如果不是用--ip指定IP地址，就会在局域网IP地址池里按序分配一个。
+
+
 
 ### 宿主机访问容器应用
 

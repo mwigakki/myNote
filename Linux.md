@@ -2018,6 +2018,7 @@ screen -r [pid/name]
 screen -dmS screen_name bash -c 'command1';   # 注意command1命令返回后  此screen也就立刻结束了。
 screen -S screen_name -p 0 -X stuff "shell命令或sh脚本\n"; # 最后的\n用于执行命令“回车”的操作。否则脚本不执行。(可用\n连接多个命令，且可直接用换行来代替)
 screen -S screen_name -p 0 -X stuff $'\n'; # 是用于执行命令“回车”的操作。否则脚本不执行。
+screen -S screen_name -X stuff "^C" # 用来给screen中传入 ctrl+c 来结束其中的进程
 
 # 注：此处的command1必须是会持续运行的命令如ping www.baidu.com 才能使此screen一直在后台（detached）运行，否则screen会随着命令的结束而销毁
 # 好像一次给的命令太多会导致命令不执行了
@@ -2675,6 +2676,8 @@ GNU Wget(常常简称为wget）是一个**网络上进行下载**的简单而强
 
 Linux scp 是 secure copy 的缩写，用于 Linux 之间复制文件和目录。scp 是 linux 系统下基于 ssh 登陆进行安全的远程文件拷贝命令。
 
+`格式：scp 文件源 文件目的地`
+
 ``` shell
 scp local_file remote_username@remote_ip:remote_folder # 可以在最后加上传输后的文件名
 
@@ -2682,6 +2685,17 @@ scp local_file remote_username@remote_ip:remote_folder # 可以在最后加上�
 scp -r local_folder remote_username@remote_ip:remote_folder 
 
 # 如果远程服务器防火墙有为scp命令设置了指定的端口，我们需要使用 -P 参数来设置命令的端口号
+```
+
+**从远程复制到本地**
+
+从远程复制到本地，只要将从本地复制到远程的命令的后2个参数调换顺序即可，如下实例
+
+应用实例：
+
+```
+scp root@www.runoob.com:/home/root/others/music /home/space/music/1.mp3 
+scp -r www.runoob.com:/home/root/others/ /home/space/music/
 ```
 
 ### linux查看流量的工具
@@ -2861,7 +2875,7 @@ TCP正在使用的拥塞控制算法保存在`tcp_congestion_control`里。
 
 ### 修改内核参数的方法
 
-- **临时修改**：使用`systcl`命令进行修改，例如修改SYN重传次数`sysctl net.ipv4.tcp_syn_retries=n`
+- **临时修改**：使用`systcl`命令进行修改，例如修改SYN重传次数`sysctl -w net.ipv4.tcp_syn_retries=n`
 - **临时修改**：使用 `echo value` 方式直接追加到文件中。 如 `echo "1" > /proc/sys/net/ipv4/tcp_syn_retries` ，但是这种方式设备重启后，会恢复成默认值。
 - **永久修改**：把参数添加到 `sudo vim /etc/sysctl.conf` 中，然后执行 `sudo sysctl -p` 使参数生效。这种方式是永久有效的。如修改默认CC算法为reno，在文件中添加：`net.ipv4.tcp_congestion_control=reno`
 
