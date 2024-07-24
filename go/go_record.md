@@ -5308,6 +5308,57 @@ D:\go\gopath\src\github.com\studyGo3\qwer\test5>go run main.go
 */
 ```
 
+### 总结
+
+面向接口编程时，我们定义了一个接口提供一些方法，并提供接口的一个简单的默认实现，同时希望其他用户可以使用该接口来实现自己的额外的功能，这时有多种方法：
+
+1. 其他用户直接对接口全部实现。（此方法相对繁琐，因为用户可能希望重写其中一两个方法。此时可用接口适配器来解决）
+2. 结构体实现其他接口，通过拓展其他接口来实现自定义方法
+3. 把需要拓展的方法定义为函数类型的成员变量，在接口中提供该成员变量的Set方法。
+
+``` go
+package main
+
+import "fmt"
+
+type IDog interface {
+	SetSpeak(func())
+	CallSpeak()
+}
+
+type Dog struct {
+	Speak func()
+}
+
+func speak() { // 给dog 结构体提供的默认speak 方法
+	fmt.Println("dog: ", "wang wang wang !")
+}
+
+func (d *Dog) SetSpeak(f func()) {
+	d.Speak = f
+}
+func (d *Dog) CallSpeak() {
+	d.Speak()
+}
+
+// 其他用户拓展的dog 的speak方法
+func huskySpeak() {
+	fmt.Println("husky: ", "wwwwwwwwwwwwwwwwwwwww")
+}
+func main() {
+	var a IDog = &Dog{Speak: speak}
+	a.CallSpeak()
+	a.SetSpeak(huskySpeak)
+	a.CallSpeak()
+}
+/*
+dog:  wang wang wang !
+husky:  wwwwwwwwwwwwwwwwwwwww
+*/
+```
+
+
+
 ## 18. package
 
 在工程化的Go语言开发项目中，Go语言的源码复用是建立在包（package）基础之上的。
@@ -5957,15 +6008,41 @@ func (t Time) After(u Time) bool
 
 ### 定时器
 
-使用`time.Tick(时间间隔)`来设置定时器，定时器的本质上是一个通道（channel）。
+使用`time.NewTicker(时间间隔)`来设置定时器，定时器的本质上是一个通道（channel）。
+
+能用定时器完成的就别用 sleep，因此定时器是可控的。
 
 ```go
-func tickDemo() {
-	ticker := time.Tick(time.Second) //定义一个1秒间隔的定时器
-	for i := range ticker {
-		fmt.Println(i)//每秒都会执行的任务
+package main
+
+import (
+	"fmt"
+	"math/rand"
+	"time"
+)
+
+func main() {
+	var ExitChan chan bool = make(chan bool, 1)
+	var i int = 0
+	ticker := time.NewTicker(time.Second)
+	for {
+		select {
+		case <-ticker.C:
+			dur := time.Duration((rand.Intn(5))+1) * time.Second
+			ticker.Reset(dur) // 重设定时器的计时周期
+			fmt.Printf("定时器触发了，当前时间：%s\n", time.Now().Format("15:04:05"))
+			i++
+			if i > 1 {
+				ExitChan <- true
+			}
+		case <-ExitChan:
+			fmt.Println("退出该goroutine")
+			ticker.Stop() // 回收计时器里的资源
+			return
+		}
 	}
 }
+
 ```
 
 ### 时间格式化
@@ -8435,7 +8512,7 @@ D:\go\gopath\src\github.com\studyGo3\qwer\test4>go run main.go -bind="1,10.0.0.1
 
 ### 介绍
 
-在学习go基础上我直接在go环境`go env`中将 `set GO111MODULE=auto`，模块管理设置为自动。表示如果当前目录如果由`go.mod`文件就是go mod 模块，否则就是使用传统的GOPATH模式。
+在学习go基础上我直接在go环境`go env`中将 `set GO111MODULE=auto`，模块管理设置为自动。表示如果当前目录如果有`go.mod`文件就是go mod 模块，否则就是使用传统的GOPATH模式。
 
 而 `set GO111MODULE=on`设置表示强制使用go mod 模块模式。由于在学习的过程中有些第三方库如gin必须使用go mod模块，因此我们需要学习并使用它。
 
@@ -8763,7 +8840,7 @@ import (
 )
 func main() {
 	for i := 0; i < 20; i++ {
-        // 直接生成随机数，不需要先设置随机数种子
+        // 直接生成随机数，不需要先设置随机数种子。但如果多输出几次就会发现生成的随机数是一样的
 		fmt.Println(rand.Intn(10)) // 输入结果 [0, 10）
 	}
 }
@@ -8779,6 +8856,8 @@ func f2() {
 	randNumGenerator := rand.New(source)
 	for i := 0; i < 20; i++ {
 		fmt.Println(randNumGenerator.Intn(10))
+        // 生成的这 20 个随机数都是不一样的
+        // 但执行第二遍得到的数字序列和第一遍得到的序列是一样的
 	}
 }
 ```

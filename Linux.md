@@ -2,6 +2,14 @@ Linux 命令大全 | 菜鸟教程 (runoob.com)](https://www.runoob.com/linux/lin
 
 [【linux】最常用 150 个Linux命令汇总 - 腾讯云开发者社区-腾讯云 (tencent.com)](https://cloud.tencent.com/developer/article/1540697)
 
+vmware 安装 centos7 操作系统：
+
+[VMware中安装CentOS7操作系统（详细图文教程）_vmware安装centos7教程-CSDN博客](https://blog.csdn.net/m0_64631163/article/details/136588437)
+
+[VMware虚拟机 安装 Centos7(linux)（新手超详细教程）_在vmware虚拟机上安装新centos 7系统,虚拟机系统存放到-CSDN博客](https://blog.csdn.net/m0_55905467/article/details/132962952)
+
+可能的报错并解决：[linux下yum安装时出现Loaded plugins: fastestmirror解决办法_51CTO博客_Loaded plugins: fastestmirror](https://blog.51cto.com/u_12922638/2412603)
+
 # 1. Linux 系统启动过程
 
 - **内核的引导**
@@ -1033,7 +1041,7 @@ Linux 磁盘管理常用三个命令为 **df**、**du** 和 **fdisk**。
   -按"a"在光标所在字符后开始插入
   -按"o"在光标所在行的下面另起一新行插入
   -按"："进入底行模式
-  公众号：网络技术联盟站
+
   插入模式
   -此时可以对文件内容进行编辑，左下角会显示 "-- 插入 --""
   -按"ESC"进入底行模式
@@ -1305,6 +1313,8 @@ Ubuntu 9.3.0-10ubuntu2        # Ubuntu版本号
 - `lsb_release -a`
 
 ![image-20231108100150416](img/image-20231108100150416.png)
+
+- `arch` 查看当前系统的处理器架构
 
 ####  查看位数（32位或64位）的命令
 
@@ -2018,6 +2028,8 @@ screen -S screen_name -p 0 -X stuff $'\n'; # 是用于执行命令“回车”�
 ## 基础网络操作命令
 
 查询自己的公网地址：`curl ifconfig.me`，Linux和windows下都可以用。
+
+重启机器的网络：`sudo service network-manager restart`
 
 ### ifconfig
 
@@ -3660,6 +3672,8 @@ unset https_proxy
 
 然后pip就可以用了。
 
+如果发现使用上述 unset 操作删除的代理只影响了当前终端，那么首先在`/etc/environment` ，`/etc/profile` 文，`~/.bashrc` ，`~/.profile` 几个设置环境变量的地方找找。如果这些文件中有设置代理的脚本就删除或注释掉。**如果没有，就在`~/.bashrc`文件追加上面 `unset`的那些代码**，大意就是每次启动终端时都强行关闭所有代理，暂时只有这个方法了。
+
 - **Ubuntu18 git报错**
 
   克隆GitHub仓库
@@ -4220,57 +4234,33 @@ conda命令：
 
 
 
-# # ECN
+# # Centos7
 
-simple_switch_CLI --thrift-port 9091
+在VMware中安装Centos-7后，以及使用，可能出现一些问题，记录于此
 
-register_read max_cwnd_reg
+#### 1，安装centos7后发现无法使用yum，使用报错如下
 
+``` txt
+已加载插件：fastestmirror
+Determining fastest mirrors
 
+ One of the configured repositories failed (未知),
+ and yum doesn't have enough cached data to continue. At this point the only
+ safe thing yum can do is fail. There are a few ways to work "fix" this:
 
-ecn_timer
+....................
 
-register_read threshold
+            yum-config-manager --save --setopt=<repoid>.skip_if_unavailable=true
 
-sudo sysctl net.ipv4.tcp_congestion_control=
+Cannot find a valid baseurl for repo: base/7/x86_64
+```
 
- tcp_rmem=10240	87380	16777216
+**解决:**
 
-sudo tcpdump -i s1-eth1 -w s1-eth1.pcap
-
-
-
-sudo tcpdump -i s1-eth1 -w renoi_modified_s1-eth1.pcap
-
-sudo tcpdump -i s1-eth2 -w renoi_modified_s1-eth2.pcap
-
-sudo tcpdump -i s1-eth3 -w renoi_modified_s1-eth3.pcap
-
-
-
-INT收端：python ./receive.py
-
-INT发端：python ./send.py
-
-
-
-iperf -c 10.0.4.4 -i 1 -t 100 > renoi_modified_h1.txt
-
-iperf -c 10.0.5.5 -i 1 -t 60 > renoi_modified_h2.txt
-
-iperf -c 10.0.6.6 -i 1 -t 20 > renoi_modified_h3.txt
-
-iperf -s -i 1
-
-
-
-| CC算法         | 默认发包比例 | 带宽比 | queue_rate | 带宽(波动，100s均值) |
-| -------------- | ------------ | ------ | ---------- | -------------------- |
-| reno(改内核了) | 1 ：1：1     | 0      | 0          | 62.6                 |
-| cubic          | 1:1:1        | 0      | 0          | 50~100, 74.9         |
-| bbr            | 1:1:1        | 0      | 0          | 66~86                |
-|                |              |        |            |                      |
-|                |              |        |            |                      |
-
-把参数添加到 `sudo vim /etc/sysctl.conf` 中，然后执行 `sudo sysctl -p` 使参数生效
+``` shell
+cd /etc/yum.repos.d # 且到yum仓库的地方
+mv CentOS-Base.repo CentOS-Base.repo.backup  # 将原本的仓库备份，不使用它
+# 到 https://mirrors.aliyun.com/repo/ 去直接下载 Centos-7.repo ,并把此文件放在该目录下
+# 如果可以使用wget 或 curl命令也可以直接下载到这个地方
+```
 

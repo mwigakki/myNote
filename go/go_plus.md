@@ -848,6 +848,13 @@ func process(conn net.Conn) {
 			break
 		}
 		conn.Write([]byte(text))
+        /*
+        conn.Write(data)方法是用来将数据写入到TCP连接conn中。它是一个阻塞的操作，会一直等待数据写入完成才会返回.\
+		如果要发送大量数据，需要多次调用conn.Write(data)方法，每次发送数据都要等待数据写入完成，可能会导致性能较低。
+
+		io.Copy()函数是用来将一个io.Reader的数据拷贝到一个io.Writer中。在传输数据时，可以将TCP连接的输入流和输出流传递给io.Copy()函数，
+		让它自动进行数据传输。io.Copy()函数是非阻塞的，会自动处理数据的读取和写入操作，直到其中一个流关闭或者发生错误才会停止。
+        */
 	}
 }
 
@@ -4920,6 +4927,266 @@ func myHookStop(conn ziface.IConnection) {
 
 至此，Zinx框架所有基础功能学习完毕！
 
+## 心跳包
+
+建立成功的连接如果不发送任何数据，也要让连接每隔一段时间发送一个数据通知双方连接还存在，一般由server向client 发送，client收到后会回复，server收到回复就证明此连接还存在。
+
+我们将发送心跳包的程序放在一个结构体心跳检测器 `HeartbeatChecker` 中（当然要实现自接口）。每个连接都会有一个心跳检测器。
+
+### HeartbeatChecker定义
+
+`HeartbeatChecker` 拥有的属性：
+
+- 此心跳检测器所属的连接` conn`
+
+- 该连接的心跳包发送间隔 `SendInterval`（每个连接的发送间隔不一样，因为如果有太多连接 100W个，所有连接同时发会引起较大的流量，随机间隔可以给网络减负）
+
+- 连接的上一次活跃时间 `LastActiveTime`（不仅心跳包，连接发送其他任何消息进行通信都会更新此数据）
+- **构造心跳包的方法** `HeartbeatMsgMakeFunc`。（框架提供一个默认的，就写入一些文字。提供此属性的set方法给开发者）
+- **收到心跳包的回包时的处理路由** `HeartbeatRouter`，要集成自baseRouter的。（框架提供一个默认的，就打印到日志。但提供此属性的set方法给开发者）
+- 连接已经断开的信号通道（无阻塞）`ExitChan`。（因为定时发心跳包的程序肯定是另开的goroutine执行的，所以当连接断开，需要通信此gorontine结束，不要空等）
+- **远程连接不存话时的处理方法** `OnRemoteNotAlive`。（框架提供一个默认的，就打印一些日志。但提供此属性的set方法给开发者）
+
+`HeartbeatChecker` 拥有的方法：
+
+- 给连接初始化一个 心跳检测器 的new方法。
+- 给该心跳检测器绑定对应连接的方法
+- 构造心跳包的方法的 set 方法 和远程连接不存话时的处理方法的 set 方法。 收到心跳包的回包时的处理路由的 setRouter 方法。
+- 以及它们三个所说的默认的执行方法
+- 该心跳检测器的Start 方法
+- 该心跳检测器的Stop 方法
+- 更新心跳检测器活跃时间的方法 `UpdateActiveTime`
+- 发送心跳包的方法 `SendHeartbeat`。（这个方法就没有必要交给用户去自定义了）
+
+``` go
+package znet
+
+import (
+	"fmt"
+	"time"
+
+	"github.com/zinx/utils"
+	"github.com/zinx/ziface"
+)
+
+type HeartbeatChecher struct {
+	//  此心跳检测器所属的连接` conn`
+	conn ziface.IConnection
+	// 该连接的心跳包发送间隔 `SendInterval`（每个连接的发送间隔不一样，因为如果有太多连接 100W个，所有连接同时发会引起较大的流量，随机间隔可以给网络减负）
+	SendInterval time.Duration
+	// 连接的上一次活跃时间 `LastActiveTime`（不仅心跳包，连接发送其他任何消息进行通信都会更新此数据）
+	LastActiveTime time.Time
+	// 构造心跳包的方法  `HeartbeatMsgMakeFunc`。（框架提供一个默认的，就写入一些文字。提供此属性的set方法给开发者）
+	HeartbeatMsgMakeFunc func(ziface.IConnection) []byte
+	// 收到心跳包的回包时的处理路由  `HeartbeatRouter`，要集成自baseRouter的。（框架提供一个默认的，就打印到日志。但提供此属性的set方法给开发者）
+	HeartbeatRouter ziface.IRouter
+	// 连接已经断开的信号通道（无阻塞）`ExitChan`。（因为定时发心跳包的程序肯定是另开的goroutine执行的，所以当连接断开，需要通信此gorontine结束，不要空等）
+	ExitChan chan bool
+	// 远程连接不存话时的处理方法  `OnRemoteNotAlive`。（框架提供一个默认的，就打印一些日志。但提供此属性的set方法给开发者）
+	OnRemoteNotAlive func(ziface.IConnection)
+}
+
+func NewHeartbeatChecher(conn ziface.IConnection, sendInterval time.Duration) *HeartbeatChecher {
+	return &HeartbeatChecher{
+		conn:                 conn,
+		SendInterval:         sendInterval,
+		LastActiveTime:       time.Now(),
+		HeartbeatMsgMakeFunc: heartbeatMsgMakeFunc,
+		HeartbeatRouter:      &HeartbeatDefaultRouter{},
+		ExitChan:             make(chan bool),
+		OnRemoteNotAlive:     onRemoteNotAlive,
+	}
+}
+
+// 默认的 收到心跳包 回包时的路由处理
+type HeartbeatDefaultRouter struct {
+	BaseRouter
+}
+
+// 重写 BaseRouter 的Handle 方法
+func (br *HeartbeatDefaultRouter) Handle(reqeust ziface.IRequest) {
+	fmt.Printf("收到连接（id=%d）对端的回包, msg= %s \n", reqeust.GetConnection().GetConnID(), string(reqeust.GetData()))
+}
+
+// 收到心跳包的回包时的处理路由的 setRouter 方法。
+func (hbc *HeartbeatChecher) SetHeartbeatRouter(r ziface.IRouter) {
+	hbc.HeartbeatRouter = r
+}
+
+// 给该心跳检测器绑定对应连接的方法
+func (hbc *HeartbeatChecher) BindConn(conn ziface.IConnection) {
+	hbc.conn = conn
+}
+
+// 构造心跳包的方法的 set 方法
+func (hbc *HeartbeatChecher) SetHeartbeatMsgMakeFunc(f func(ziface.IConnection) []byte) {
+	hbc.HeartbeatMsgMakeFunc = f
+}
+
+// 构造心跳包的默认方法
+func heartbeatMsgMakeFunc(conn ziface.IConnection) []byte {
+	msg := fmt.Sprintf("连接id %d 发送心跳包给对端 %s\n", conn.GetConnID(), conn.RemoteAddr())
+	return []byte(msg)
+}
+
+// 远程连接不存话时的处理方法的 set 方法。
+func (hbc *HeartbeatChecher) SetOnRemoteNotAlive(f func(ziface.IConnection)) {
+	hbc.OnRemoteNotAlive = f
+}
+
+// 远程连接不存话时的 默认处理方法，默认方法就只执行 Stop().
+func onRemoteNotAlive(conn ziface.IConnection) {
+	conn.Stop()
+}
+
+// 更新心跳检测器活跃时间的方法
+func (hbc *HeartbeatChecher) UpdateActiveTime() {
+	hbc.LastActiveTime = time.Now()
+}
+
+// 该心跳检测器的Start 方法
+func (hbc *HeartbeatChecher) Start() {
+	go func() { // 开启此心跳检测器
+		ticker := time.NewTicker(hbc.SendInterval)
+		for {
+			select {
+			case <-ticker.C:
+				if hbc.conn == nil {
+					fmt.Println("警告，该计时器没有绑定连接")
+				} else {
+					if !hbc.conn.IsAlive() {
+						// 连接已经不存在了，关闭本心跳检测器即可
+						hbc.OnRemoteNotAlive(hbc.conn)
+					} else {
+						hbc.SendHeartbeat()
+					}
+				}
+			case <-hbc.ExitChan:
+				ticker.Stop()
+				return
+			}
+		}
+	}()
+}
+
+// 该心跳检测器的Stop 方法，由connection在连接关闭的时候调用
+func (hbc *HeartbeatChecher) Stop() {
+	fmt.Printf("关闭 连接 id = %d 此心跳检测器 \n", hbc.conn.GetConnID())
+	hbc.ExitChan <- true
+}
+
+// 发送心跳包的方法 （这个方法就没有必要交给用户去自定义了）
+func (hbc *HeartbeatChecher) SendHeartbeat() error {
+	msg := hbc.HeartbeatMsgMakeFunc(hbc.conn)
+	err := hbc.conn.SendMsg(utils.MSGID_HEARTBEAT, msg)
+	if err != nil {
+		fmt.Println("心跳发送出错：err = ", err)
+		return err
+	}
+	return nil
+}
+```
+
+### 集成到zinx中
+
+**新增的属性**：
+
+- ` connection.go` : 此连接的心跳检测器 `hbc ziface.IHeartBeatChecker`，（默认不开心跳检测器，把开关的权限交给server）
+- `globalObj.go` ：定义全局的心跳包发送间隔（设定最大值和最小值，具体连接的发送间隔去其中的随机数。因为设定唯一值会使所有连接同时发心跳包，当连接过多时会导致突发流量）
+- `Server.go` ：定义是否使用心跳检测器的 bool 变量 `UseHeartBeat`。
+
+**新增的方法**：
+
+- ` connection.go` :此连接是否还存活 `IsAlive() bool`
+- ` connection.go` :绑定心跳检测器 ` BindHeartBeatChecker(hbc ziface.IHeartBeatChecker)`
+
+**改动的地方**：
+
+- 在server中加入是否启动心跳检测器的属性`UseHeartBeat`。（new Server的时候默认启动它）
+
+- `heatbeartChecker` 定义了收到心跳包的回包时的处理路由`HeartbeatRouter`，同时我们提供了默认的心跳包回包的处理逻辑，就在`heatbeartChecker.go`中。但是，还没有加到msgHandler中。我们需要加进去。我们给不同的 msgID 加router时，都是使用 Server 提供的 AddRouter 方法。所以我们在 server 开始的时候需要给server 加上心跳包的路由。
+
+``` go
+// server.go
+// 初始化 Server 模块
+func NewServer(name string) ziface.IServer {
+	s := &Server{.. 省略...	}
+	s.ConnMgr.SetServer(s) // 设置连接管理模块对应的server
+	if s.UseHeartBeat {
+		s.AddRouter(utils.MSGID_HEARTBEAT, &HeartbeatDefaultRouter{})
+	}
+	return s
+}
+```
+
+- 在connection关闭的时候调用`c.hbc.Stop() `关闭连接的心跳检测器。
+- server 中 新建连接之后判断`s.UseHeartBeat`，然后给连接绑定心跳检测器。
+
+``` go
+// 给连接绑定心跳检测器
+func (s *Server) bindHeartBeatChecker(conn ziface.IConnection) {
+	// 设定最大值和最小值，具体连接的发送间隔去其中的随机数。因为设定唯一值会使所有连接同时发心跳包，当连接过多时会导致突发流量
+	source := rand.NewSource(int64(conn.GetConnID()))	// 根据流ID 生成随机数种子。
+	randNumGenetor := rand.New(source)
+	randomSendInterval := randNumGenetor.Intn(utils.GlobalObject.MaxSendInterval-utils.GlobalObject.MinSendInterval) + utils.GlobalObject.MinSendInterval
+	conn.BindHeartBeatChecker(NewHeartbeatChecher(conn, time.Duration(randomSendInterval)*time.Second))
+}
+```
+
+- connection 的 Start 方法中，使心跳检测器开始工作。
+
+- 考虑把所有的router 放在router.go中。因此把心跳包的默认路由结构体放进`router.go`中。之后也有其他默认的路由，都放在 router.go 中。
+
+
+
+## 进一步改良
+
+### 连接ID的自增
+
+首先当前代码中连接ID的自增是非线程安全的，我们使用原子包来解决
+
+``` go
+// 在server 的Start方法如此修改，cId是server的一个属性
+newcId := atomic.AddUint32(&s.cId, 1)
+dealConn := NewConnection(conn, newcId, s.MsgHandler, s.ConnMgr.GetConnChan())
+```
+
+### 发送大文件的方法
+
+在当前代码的 每个连接的 Writer 去发送数据都是直接用的`c.GetTCPConnection().Write(data)`，这个方法发送文字当然没问题，但是发送大文件时性能就不高了。对于大文件发送需要使用 `io.Copy()`。下面是这两个方法的区别（只针对TCP连接的数据发送）：
+
+- `func (c *net.conn) Write(b []byte) (int, error)`方法是用来将数据写入到TCP连接conn中。它是一个阻塞的操作，会一直等待数据写入完成才会返回。如果要发送大量数据，需要多次调用conn.Write(data)方法，每次发送数据都要等待数据写入完成，可能会导致性能较低。
+- `Copy(dst io.Writer, src io.Reader) (written int64, err error)`函数是用来将一个io.Reader的数据拷贝到一个io.Writer中。在传输数据时，可以将TCP连接的输入流和输出流传递给io.Copy()函数，让它自动进行数据传输。io.Copy()函数是非阻塞的，会自动处理数据的读取和写入操作，直到其中一个流关闭或者发生错误才会停止。
+
+总的来说，`conn.Write(data)` 更适合一次性发送数据，而 `io.Copy()` 更适合在两个流之间复制数据。在选择使用哪个函数时，需要考虑你的具体需求。如果你只是想发送一些数据，那么 `conn.Write(data)` 可能就足够了。但是**，如果你想要从一个地方（如文件或另一个网络连接）复制数据到你的连接，那么 `io.Copy()` 可能会更方便**，因为它会处理所有的读取和写入操作，直到所有的数据都被复制过去，或者发生了错误。
+
+根据上述chatgpt 对两个方法的解释，我们发现我们发送文件必须使用io.Copy()方法，不然就需要把待传输的文件全部放入内存，再使用通道传给 writer 线程，这显然对内存的压力太大了。
+
+修改的地方：
+
+- 把reader和 writer的通道类型从 []byte换成一个自定类型r2wDataChan，里面的内容就是 []byte和 文件句柄file。如果发文字就给r2wDataChan 的[]byte写入，如果发文件就给 file 写入。
+
+### 收到未注册msgID的处理
+
+原先收到未注册msgID的消息的处理是直接报panic终止了server，这太严格了。改成报个警告进行，然后函数返回，不使用handler 处理。
+
+``` go
+// 调度，执行对应的router消息处理方法
+func (m *MessageHandle) DoMsgHandler(req ziface.IRequest) {
+	msgId := req.GetMsgId()
+	handler, has := m.Apis[msgId]
+	if !has {
+		fmt.Println("[WARNING] api msg id [", msgId, "] is NOT FOUND! need register!")
+		return
+	}
+	handler.PreHandle(req)
+	handler.Handle(req)
+	handler.PostHandle(req)
+}
+```
+
+
+
 # 日志logrus
 
 go标准库中的日志库`log`功能太少了，只提供了三组函数：
@@ -4950,15 +5217,15 @@ import (
 )
 
 func main() {
-  logrus.SetLevel(logrus.TraceLevel)
+  logrus.SetLevel(logrus.TraceLevel) // 设置输出级别，从Trace开始输出，默认从info开始
 
   logrus.Trace("trace msg")
   logrus.Debug("debug msg")
   logrus.Info("info msg")
   logrus.Warn("warn msg")
   logrus.Error("error msg")
-  logrus.Fatal("fatal msg")
-  logrus.Panic("panic msg")
+  logrus.Fatal("fatal msg")		// 会直接退出exit status 1
+  logrus.Panic("panic msg")		// 会报 panic
 }
 
 /*

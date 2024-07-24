@@ -205,7 +205,7 @@ docker system info
     sudo usermod -aG docker $USER
     ```
 
-    注意，添加用户到用户组后，需要重新登录用户才能生效。
+    注意，添加用户到用户组后，需要重新登录用户才能生效（最好重启下机器）。
 
 ## 4. Docker 镜像 
 
@@ -230,11 +230,7 @@ docker images
 
 同一仓库源可以有多个 TAG，代表这个仓库源的不同个版本，如ubuntu仓库源里，有15.10、14.04等多个不同的版本，我们使用 **REPOSITORY:TAG** 来定义不同的镜像。
 
-将镜像取到 Docker 主机本地的操作是拉取。
-
-Docker 主机安装之后，本地并没有镜像。
-
-镜像的唯一标识是其 ID 和摘要（DIGEST），而一个镜像可以有多个标签。
+将镜像取到 Docker 主机本地的操作是拉取。Docker 主机安装之后，本地并没有镜像。镜像的唯一标识是其 ID 和摘要（DIGEST），而一个镜像可以有多个标签。
 
 ### 搜索镜像
 
@@ -329,6 +325,14 @@ sudo systemctl restart docker.service
 ```bash
 docker image rm <镜像ID>或<repository>:<tag>
 ```
+
+**清理未使用的镜像**：
+
+```
+bash复制docker image prune
+```
+
+这会删除系统中所有未使用的镜像。
 
 ### 推送镜像
 
@@ -560,13 +564,13 @@ $ docker image rm $(docker image ls -q -f before=mongo:3.2)
 
 **<u>容器的实质是进程</u>**，但与直接在宿主执行的进程不同，容器进程运行于属于自己的独立的 [命名空间](https://en.wikipedia.org/wiki/Linux_namespaces)。
 
-前面讲过镜像使用的是分层存储，容器也是如此。每一个容器运行时，是以镜像为基础层，**在其上创建一个当前容器的存储层**，我们可以称这个为容器运行时读写而准备的存储层为 **容器存储层**。
+前面讲过镜像使用的是分层存储，容器也是如此。每一个容器运行时，是以镜像为基础层（该镜像层是只读的），**在其上创建一个当前容器的存储层**，我们可以称这个为容器运行时读写而准备的存储层为 **容器存储层**（可读写）。
 
 容器存储层的生存周期和容器一样，容器消亡时，容器存储层也随之消亡。因此，任何保存于容器存储层的信息都会随容器删除而丢失。
 
 按照 Docker 最佳实践的要求，**容器不应该向其存储层内写入任何数据，容器存储层要保持无状态化**。所有的文件写入操作，都应该使用 [数据卷（Volume）](https://vuepress.mirror.docker-practice.com/data_management/volume.html)、或者 [绑定宿主目录](https://vuepress.mirror.docker-practice.com/data_management/bind-mounts.html)，在这些位置的读写会跳过容器存储层，直接对宿主（或网络存储）发生读写，其性能和稳定性更高。
 
-数据卷的生存周期独立于容器，容器消亡，数据卷不会消亡。因此，使用数据卷后，容器删除或者重新运行之后，数据却不会丢失。
+数据卷的生存周期独立于容器，容器消亡，数据卷不会消亡。因此，使用数据卷后，容器删除或者重新运行之后，数据也不会丢失。
 
 **当利用 `docker run` 来创建容器时，Docker 在后台运行的标准操作包括**：
 
@@ -721,7 +725,7 @@ root@VM-8-17-ubuntu:/home/ubuntu# ls
 myubuntu.tar  node_modules  package-lock.json  samples-server-master
 ```
 
-这样将导出容器快照到本地文件。
+这样将**导出容器快照**到本地文件。
 
 可以使用 `docker import` 从**容器**快照文件中再**导入为镜像**，例如:
 
@@ -791,6 +795,17 @@ dead（死亡）
 
 图中可以看出各个状态转移使用的命令。
 
+### 给容器下载软件
+
+但是进入默认的 ubuntu 镜像开启的容器后，发现太多命令没有，就需要一个一个安装
+
+``` bash
+apt get update
+apt install iputils-ping # 安装网络工具包 iputils-ping （包含 ping 命令）：
+apt install net-tools # 安装路由工具包 net-tools （包含 route ifconfig ）：
+
+```
+
 ## 6. Dockerfile
 
 ### 使用dockerfile定制镜像
@@ -851,6 +866,7 @@ RUN echo '<h1>Hello, Docker!</h1>' > /usr/share/nginx/html/index.html
 既然 `RUN` 就像 Shell 脚本一样可以执行命令，那么我们是否就可以像 Shell 脚本一样把每个命令对应一个 RUN 呢？比如这样：
 
 ``` shell
+# 下面是 错误 写法 示例
 FROM debian:stretch
 
 RUN apt-get update
@@ -893,7 +909,96 @@ RUN set -x; buildDeps='gcc libc6-dev make wget' \
 
 此外，还可以看到这一组命令的最后添加了清理工作的命令，删除了为了编译构建所需要的软件，清理了所有下载、展开的文件，并且还清理了 `apt` 缓存文件。这是很重要的一步，我们之前说过，**镜像是多层存储，每一层的东西并不会在下一层被删除**，会一直跟随着镜像。因此镜像构建时，一定要确保每一层只添加真正需要添加的东西，**任何无关的东西都应该清理掉**。
 
+#### `ADD` 添加本地文件
 
+在 Dockerfile 中使用 ADD 指令可以将本地文件或目录添加到容器中。ADD 指令有以下用法和语法：
+
+1. **基本语法**：
+
+```dockerfile
+ADD <src> <dest>
+```
+
+- `<src>`：本地文件或目录的路径。
+- `<dest>`：容器中文件或目录的路径。
+
+2. **作用**：
+
+- 将本地文件或目录复制到容器中。
+- 如果 `<src>` 是一个目录，它的内容将会被复制到 `<dest>` 下目录本身不会被复制（除非目录以`/`结尾）。如果 `<src>` 是一个文件，它将会被复制到 `<dest>`。
+
+3. **注意事项**：
+
+- 使用 ADD 指令时，Docker 会自动解压缩被添加的压缩文件（如.tar、.tar.gz、.tar.bz2）。
+- 如果 `<dest>` 不存在，Docker 会自动创建它。
+- 如果 `<src>` 是一个 URL 地址，Docker 会自动下载并添加文件。
+
+
+
+#### `ENTRYPOINT` 程序入口
+
+ENTRYPOINT指令是Dockerfile中的一条指令，**用于设置容器启动时要执行的命令或程序**。以帮助定义容器的主要执行命令，使得容器在运行时以特定的方式启动。一般放在dockerfile 最后一行
+
+**基本语法**：
+
+``` dockerfile
+ENTRYPOINT ["可执行程序", "param1", "param2"]
+```
+
+ENTRYPOINT 有两种形式
+
+- shell形式——如`ENTRYPOINT node app.js`。
+- exec形式——如`ENTRYPOINT[＂node＂,＂app.js＂]`
+
+两者有明显区别。
+
+采用shell形式（ENTRYPOINT node app.js），容器进程如下所示：
+
+![image-20240723161154815](img/image-20240723161154815.png)
+
+可以看出，主进程（PID 1）是shell进程而非node进程，node进程（PID 7）于shell中启动。**shell进程往往是多余的**，因此通常可以直接采用exec形式的ENTRYPOINT指令。
+
+使用exec形式的ENTRYPOINT指令（ENTRYPOINT[＂node＂,＂app.js＂]），运行进程列表如下：
+
+![image-20240723161251265](img/image-20240723161251265.png)
+
+因为推荐使用 exec 形式，不过缺点是**像 $HOME 这样的环境变量是取不到的**。
+
+#### `CMD` 执行
+
+ CMD 指令使用上与 ENTRYPOINT 几乎是一样的，也有 shell 和 exec 两种形式。Dockerfile 中至少要有其中一个，如果镜像中既没有指定 CMD 也没有指定 ENTRYPOINT 那么在启动容器时会报错。
+
+**两者区别**：CMD指令设置的命令可以被覆盖，而ENTRYPOINT指令设置的命令不能被覆盖。下面示例展示：
+
+- CMD 构建镜像
+
+``` dockerfile
+FROM alpine
+CMD ["echo", "Hello"]
+```
+
+构建镜像（名为my-image）后运行 `docker run my-image World`，输出为 `World`。显然，传入的参数 **覆盖** 了CMD 的参数。
+
+- ENTRYPOINT 构建镜像
+
+``` dockerfile
+FROM alpine
+ENTRYPOINT  ["echo", "Hello"]
+```
+
+构建镜像（名为my-image）后运行 `docker run my-image World`，输出为 `Hello World`。显然，传入的参数 **追加** 在CMD 的参数之后。
+
+CMD和 ENTRYPOINT 同时使用时
+
+- 构建镜像
+
+``` dockerfile
+FROM alpine
+ENTRYPOINT  ["echo", "Hello"]
+CMD ["World"]
+```
+
+构建镜像（名为my-image）后运行 `docker run my-image Earth` 输出为 `Hello Earth`。
 
 ### 构建镜像
 
@@ -1655,7 +1760,7 @@ Host模式下，容器的网络接口不与宿主机网络隔离。**在容器�
 使用下面命令创建一个macvlan网络：
 
 ``` shell
-docker network create -d macvlan --subnet=192.168.199.0/24 --gateway=192.168.199.1 -o parent=eno1 mac1
+docker network create -d macvlan --subnet=192.168.199.0/24 --gateway=192.168.199.1 -o parent=eth0 mac1
 ```
 
 命令说明：
@@ -1669,12 +1774,10 @@ docker network create -d macvlan --subnet=192.168.199.0/24 --gateway=192.168.199
 接着我们就可以使用此网络来开容器了。使用如下命令开一个试试
 
 ``` shell
-docker run -it --name c1 --ip =192.168.199.200 --network mac1 alpine
+docker run -it --name c1 --ip 192.168.199.200 --network mac1 ubuntu
 ```
 
 如果不是用--ip指定IP地址，就会在局域网IP地址池里按序分配一个。
-
-
 
 ### 宿主机访问容器应用
 
