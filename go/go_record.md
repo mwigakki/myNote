@@ -34,18 +34,18 @@ https://www.kandaoni.com/news/19058.html#
 1. 首先到[官网](https://golang.google.cn/doc/install)下载最新Go for Linux 安装包。
 
     ``` shell
-    wget https://golang.google.cn/dl/go1.21.7.linux-amd64.tar.gz
+    wget https://golang.google.cn/dl/go1.21.9.linux-amd64.tar.gz
     ```
 
 2. 将安装包放在` ~/Downloads`处
 
-3. 解压go环境到指定位置` usr/local `下：:~/Documents$ **`sudo tar -C /usr/local -xzf go1.21.7.linux-amd64.tar.gz`**
+3. 解压go环境到指定位置` usr/local `下：:~/Documents$ **`sudo tar -C /usr/local -xzf go1.21.9.linux-amd64.tar.gz`**
 
 4. 然后是添加变量：
    - 执行 `sudo vim /etc/profile`，在该文件最后插入：
    
    - ``` shell
-     export GOPATH=$HOME/go
+     export GOPATH=/mnt/d/wsl/go
      export GOROOT=/usr/local/go
      export PATH=$PATH:$GOROOT/bin:$GOPATH/bin
      
@@ -59,7 +59,7 @@ https://www.kandaoni.com/news/19058.html#
 7. 添加模板和代理:
    - 模板：**`go env -w GO111MODULE=on`**
    - 代理：**`go env -w GOPROXY=http://goproxy.io,direct`**
-   - 或者使用这个代理：**`go env -w GOPROXY=http://goproxy.cn,direct`**
+   - **或者使用这个代理**：**`go env -w GOPROXY=http://goproxy.cn,direct`**
 
 > vscode 编辑go代码时需要给当前的环境安装 gopls，使用命令`go install -v golang.org/x/tools/gopls@latest`安装 
 
@@ -74,7 +74,7 @@ https://www.kandaoni.com/news/19058.html#
 #### 配置环境变量
 
 - `GOROOT`和`GOPATH`都是环境变量（以下都在用户变量中设置即可）
-- `GOROOT` 配置的是 go 开发包的目录，
+- `GOROOT` 配置的是 go 开发包的目录，安装程序让你选择的位置
 - 并在 `path` 中新建一个环境变量 `%GOROOT%\bin`
 - `GOPATH` 环境变量是Go项目的工作目录， 自己配一个喜欢的地方就好，然后gopath目录下一般有以下三个子目录，分别是：`src`、`pkg` 和 `bin`，新建一下
   - `src` 放所有源代码
@@ -105,6 +105,46 @@ go env -w GOPROXY=https://goproxy.cn,direct
 - 将 vs 的默认`terminal` 从`powershell` 改为 `cmd`
 
 <img src="img\image-20220503090152697.png" alt="image-20220503090152697" style="zoom:67%;" />
+
+#### 安装 Goland作为IDE
+
+软件安装略，下面是一些注意事项：
+
+- [Goland 设置与配置_goland 配置-CSDN博客](https://blog.csdn.net/hudeyong926/article/details/120666742)
+- [GoLand远程开发IDE：使用SSH远程连接服务器进行云端编程-阿里云开发者社区 (aliyun.com)](https://developer.aliyun.com/article/1434797)
+
+**goland 快捷键**：
+
+- Ctrl+D 复制行
+- Ctrl+X 删除行
+- Ctrl+J  自动代码提示
+- Ctrl+alt+L  格式化文件
+- **Ctrl+N (双击 shift)查找类型，变量，文件** 
+- ALT+ ↑ / ↓ 在方法间快速移动定位
+- CTRL+W 选中代码，连续按会额外选中
+- **Ctrl+Q 查看代码元素文档**
+- 折叠一层： Ctrl/Command   -
+- 展开一层： Ctrl/Command   +
+- 折叠全部： Ctrl/Command  Shift+ -
+- 展开全部： Ctrl/Command   Shift  +
+- **返回跳转前的位置：Ctrl Alt Left**
+
+
+**goland 设置terminal 为git bash**
+
+Windows下Terminal默认的使用的是系统自带的cmd，功能实在太少，用起来远不如 Git Bash 来得方利和高效。Git Bash 是安装 git 后自动为我们安装的一个类unix 的环境，在其上可以使用很多linux 的命令。
+
+Goland的Terminal中使用Bash设置起来也很简单，设置位置在**Settings > Tools > Terminal > Shell_path**
+
+![image-20240918135200933](img/image-20240918135200933.png)
+
+我们设置为 `D:\Git\bin\bash.exe`。注意不要设置为 D:\Git\git-bash.exe，那样会在额外的弹窗中使用bash。
+
+然后我们打开啊terminal 就默认使用的是git 的bash 了。
+
+![image-20240918135220626](img/image-20240918135220626.png)
+
+
 
 ### golang程序的热加载 
 
@@ -621,6 +661,8 @@ Go语言中以`bool`类型进行声明布尔型数据，布尔型数据只有`tr
 ### string字符串
 
 字符串和字符数组之间的相互转化一般直接强转就行。( []byte(string类型变量) ,   string([]byte类型变量) )
+
+string 类型即使只 声明不初始化其默认值也只会为“”，不会出现 nil。
 
 string底层都是使用int32实现的字符。
 
@@ -2507,6 +2549,14 @@ func main() {
 2. make只用于slice、map以及channel的初始化，**返回的还是这三个引用类型本身**；
 3. 而new用于类型的内存分配，并且内存对应的值为类型零值，**返回的是指向类型的指针**。
 4. 暂时可以理解为new是给值类型（string， int）分配空间的，make是给引用类型（slice，map，chan）分配空间的，只要分配了空间的就算是初始化了。
+
+### nil
+
+有指针就常常会有nil值。
+
+按照Go语言规范，任何类型在未初始化时都对应一个零值：布尔类型是false，整型是0，字符串是""等等。
+
+而**指针，函数，interface，slice，channel和map**的零值都是nil。
 
 ## 13. 函数
 
@@ -4549,6 +4599,38 @@ func main() {
 	fmt.Printf("json str:%s\n", data) //json str:{"id":1,"Gender":"男"}
 }
 ```
+
+- **`json:“,inline”  `** 用于 Go 语言中结构体字段的一个标记，用于表示将**该字段的所有子字段展开到当前结构体**中。
+
+**使用场景**：有时候希望将嵌套结构体的字段，直接展开到当前结构体中，而不是创建一个嵌套的对象。这时就可以使用 json:“,inline” 标记。这样，在 JSON 序列化和反序列化时，被标记的字段及其子字段就会被展开到当前结构体中，并与其它字段平级地处理。
+
+举例：Person 结构体嵌套了 Address 结构体，并使用了 json:",inline" 标记
+
+``` go
+type Address struct {
+    City  string `json:"city"`
+    State string `json:"state"`
+}
+
+type Person struct {
+    Name    string  `json:"name"`
+    Age     int     `json:"age"`
+    Address `json:",inline"`
+}
+```
+
+那么，在将一个 Person 对象序列化为 JSON 字符串时，结果如下所示。
+
+``` go
+{
+  "name": "John Doe",
+  "age": 30,
+  "city": "New York",
+  "state": "NY"
+}
+```
+
+- 同理还有 **``json:",omitempty"``** ，用于指示在将结构体字段序列化为 JSON 字符串时，**如果该字段的值为空**（例如零值、空字符串、空数组、空切片、空映射等），**则忽略该字段，不将其包含在生成的 JSON 中**。
 
 ### 使用引用类型需注意
 
@@ -8551,6 +8633,7 @@ go 1.18
 > - `require` 语句指定的依赖项模块
 > - `replace` 语句可以替换依赖项模块
 > - `exclude` 语句可以忽略依赖项模块
+> - `indrect`语句表示间接依赖
 
 然后我们添加依赖，创建`main.go`文件，内容如下：
 

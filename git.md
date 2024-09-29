@@ -69,6 +69,39 @@ git --version
 `git diff --cached`查看暂存区和仓库差异，
 `git diff HEAD `查看工作区和仓库的差异，
 
+### commit 模板
+
+在 Git 中，使用 commit 模板可以标准化提交信息，使团队成员遵循统一的提交格式。
+
+**创建模板文件**：下面是一个模板文件示例
+
+``` txt
+feat/fix: 编写此次commit是加功能还是修bug
+
+# 类型: (可选的范围): 提交描述
+
+# 示例:
+# fix: 修复了按钮点击无效的问题
+
+# 详情:
+# 本次提交修复了按钮点击后无响应的问题，通过添加必要的事件监听实现了功能。
+
+# 关联 Issue:
+# #1234
+```
+
+**配置 Git 使用模板**：接下来，你需要告诉 Git 使用这个模板文件。可以通过全局配置或单个仓库的配置来实现。
+
+- **全局配置**：适用于所有本地 Git 仓库。
+
+  ```bash
+  git config --global commit.template D:\Git\.gitmessage[模板地址如 ~/.gitmessage]
+  ```
+
+**使用commit 模板**
+
+执行 `git commit` 时，Git 会自动打开编辑器，并加载你配置的模板文件。你可以根据模板填写 commit 信息。
+
 # 版本回退
 
 ### 查看提交日志
@@ -156,12 +189,16 @@ nothing to commit, working tree clean
 命令`git checkout -- file`也可立马丢弃 **工作区** 的修改：
    - `git checkout -- file`命令中的`--`很重要，没有`--`，就变成了“切换到另一个分支”的命令，我们在后面的分支管理中会再次遇到`git checkout`命令。
 ### 丢弃暂存区的修改
-我们使用`git add .`后想要撤销此操作，可以使用`git reset`将刚存入暂存区的内容重新放入工作区。
+我们使用`git add .`后想要撤销此操作，可以**使用`git reset`将刚存入暂存区的内容重新**放入工作区。
 
 新版命令`git restore --staged <file>` 更容易理解，记住这个就好
 
 命令`git reset HEAD <file>`可以把暂存区的修改撤销掉（unstage），重新放回工作区：
 `git reset`命令既可以回退版本，也可以把暂存区的修改回退到工作区。当我们用HEAD时，表示最新的版本。
+
+### git commit 后想取消本次提交
+
+`git reset --soft HEAD~1` ： 这会将HEAD指针回退到上一次提交，但保留索引（暂存区）和工作目录中的更改。
 
 ### 删除和恢复文件
 使用命令：`git rm <file>`，相当于是删除工作目录中的test.txt文件,并把此次删除操作提交到了暂存区
@@ -267,6 +304,13 @@ git config user.email "account2@123.com"
 由于远程库是空的，我们第一次推送`master`分支时，加上了`-u`参数，Git不但会把本地的`master`分支内容推送的远程新的`master`分支，还会把本地的`master`分支和远程的`master`分支关联起来，在以后的推送或者拉取时就可以简化命令。
 
 推送成功后，可以立刻在GitHub页面中看到远程库的内容已经和本地一模一样：
+
+### 从远程拉取
+
+- `git fetch` 只是从远程仓库下载最新的提交信息到本地仓库，但不会自动合并到当前分支。
+- `git pull` 则是在 `fetch` 的基础上，还会自动将远程分支的最新提交合并到当前分支。
+
+直接从远程仓库拉取并合并最新的代码到当前分支：`git pull origin <branch-name>`
 
 ### 推送到远程
 从现在起，只要本地作了提交，就可以通过命令：
@@ -695,7 +739,7 @@ Deleted branch feature-vulcan (was 287773e).
 
 如果要丢弃一个没有被合并过的分支，可以通过git branch -D <name>强行删除。
 
-### 抓取分支
+### 拉取分支
 多人协作时，大家都会往master和dev分支上推送各自的修改。
 
 当你的小伙伴（注意要把SSH Key添加到GitHub）从远程库clone时，默认情况下，你的小伙伴只能看到本地的master分支。
@@ -760,7 +804,37 @@ Automatic merge failed; fix conflicts and then commit the result.
 3. 如果合并有冲突，则解决冲突，并在本地提交；
 4. 没有冲突或者解决掉冲突后，再用`git push origin <branch-name>`推送就能成功！
 
-如果`git pull`提示`no tracking information`，则说明本地分支和远程分支的链接关系没有创建，用命令`git branch --set-upstream-to <branch-name> origin/<branch-name>`。
+**如果`git pull`提示`no tracking information`，则说明本地分支和远程分支的链接关系没有创建，**用命令`git branch --set-upstream-to <branch-name> origin/<branch-name>`。
+
+### 常用操作
+
+查看所有分支：`git branch`  git switch -c ad
+
+查看当前所在分支：`git branch --show-current`
+
+修改当前分支名：`git branch -m <new-branch-name>`
+
+删除远程仓库中的旧分支（如果需要）：`git push origin --delete <old-branch-name>`
+
+**推送**当前本地分支到对应的远程分支：`git push`
+
+**推送**新的本地分支到远程：`git push origin <new-branch-name>`
+
+列出所有本地分支及其对应的远程跟踪分支：`git branch -vv`
+
+**合并** br1 的内容到br2（此时位于br2分支）：`git merge br1`
+
+切换当前分支对应的远端分支：`git branch --set-upstream-to=origin/remote-branch local-branch`
+
+**拉取**远端分支最新代码到本地（所有分支信息）（不合并）：`git fetch origin `
+
+**拉取**远程分支并**合并到本地当前分支**：`git pull origin <remote-branch>`
+
+**拉取**远程其他分支：
+
+- 创建一个本地分支，该分支跟踪远程分支 `origin/feature-branch`：`git branch feature-branch origin/feature-branch`  
+- 检出刚刚创建的本地分支：`git checkout feature-branch`
+- 或者，可以一次性创建并检出远程分支的本地副本：`git checkout -b feature-branch origin/feature-branch`
 
 ### rebase
 
@@ -1145,3 +1219,20 @@ Then, run the command `ssh -T git@github.com` to confirm if the issue is fixed.
 3. 推送到远端后提示：remote: Permission to mwigakki/myZinx.git denied to 【不是你的github账号】.
 
 可能是由于 Git 还记住了你之前的账号的授权。可以试着清理 Git 的授权缓存，
+
+4. **git 对换行符的处理**
+
+使用 Git 进行版本管理时，可能会遇到换行符不一致的问题。这个问题是由于不同的操作系统使用不同的换行符导致的。例如，Windows 系统使用 CRLF（回车换行）作为换行符，而 Linux 和 MacOS 系统使用 LF（换行）作为换行符。
+
+这种差异可能会给跨平台协作开发和运行带来一些困扰，比如 `git diff` 中显示整个文件都被修改了，或者合并分支时出现冲突等。为了解决这个问题，我们需要了解 Git 是如何处理换行符的，并且如何配置 Git 来适应不同的场景。
+
+Git 有一个全局配置项叫做 `core.autocrlf`，它可以控制 Git 在提交和检出时是否对换行符进行转换。它有三个可选值：
+
+- `true`：表示在提交时将 CRLF 转换为 LF，在检出时将 LF 转换为 CRLF 。这个选项适合 Windows 用户使用。
+
+``` sh
+git config --global core.autocrlf true
+```
+
+- `input`：表示在提交时将 CRLF 转换为 LF，在检出时不进行转换。这个选项适合 Linux 和 MacOS 用户使用。
+- `false`：表示不进行任何转换。这个选项适合想保持原始换行符不变的用户使用。

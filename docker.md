@@ -318,6 +318,12 @@ docker info | grep "Registry"  # 得到镜像源信息
 sudo systemctl restart docker.service
 ```
 
+也可以在拉取镜像的时候指定镜像源
+
+``` shell
+docker pull dockerhub.icu/library/alpine:3.15
+```
+
 
 
 ### 删除镜像
@@ -863,7 +869,106 @@ RUN echo '<h1>Hello, Docker!</h1>' > /usr/share/nginx/html/index.html
 
     不以任何系统为基础，直接将可执行文件复制进镜像的做法并不罕见，对于 Linux 下静态编译的程序来说，并不需要有操作系统提供运行时支持，所需的一切库都已经在可执行文件里了，因此直接 `FROM scratch` 会让镜像体积更加小巧。使用 [Go 语言](https://golang.google.cn/) 开发的应用很多会使用这种方式来制作镜像，这也是为什么有人认为 Go 是特别适合容器微服务架构的语言的原因之一。
 
+#### `WORKDIR`工作目录
+
+用 WORKDIR 指定的工作目录，**会在构建镜像的每一层中都存在。以后各层的当前目录就被改为指定的目录**，如该目录不存在，WORKDIR 会帮你建立目录。
+
+docker build 构建镜像过程中的，每一个 RUN 命令都是新建的一层。只有通过 WORKDIR 创建的目录才会一直存在。
+
+WORKDIR下面的所有命令都会执行于 WORKDIR 目录中。
+
+格式：
+
+```dockerfile
+WORKDIR <工作目录路径>
+```
+
+#### `COPY` 复制
+
+从上下文目录中复制文件或者目录到容器里指定路径。
+
+格式：
+
+```dockerfile
+COPY [--chown=<user>:<group>] <源路径1>...  <目标路径>
+```
+
+**<源路径>**：源文件或者源目录，这里可以是通配符表达式，其通配符规则要满足 Go 的 filepath.Match 规则。例如：
+
+```dockerfile
+COPY hom* /mydir/
+COPY hom?.txt /mydir/
+```
+
+**<目标路径>**：容器内的指定路径，该路径不用事先建好，路径不存在的话，会自动创建。
+
+#### `ADD` 添加本地文件
+
+ADD 指令和 COPY 的使用格类似（同样需求下，官方推荐使用 COPY）。功能也类似。
+
+在 Dockerfile 中使用 ADD 指令可以将本地文件或目录添加到容器中。ADD 指令有以下用法和语法：
+
+1. **基本语法**：
+
+```dockerfile
+ADD <src> <dest>
+```
+
+- `<src>`：本地文件或目录的路径。
+- `<dest>`：容器中文件或目录的路径。
+
+2. **作用**：
+
+- 将本地文件或目录复制到容器中。
+- 如果 `<src>` 是一个目录，它的内容将会被复制到 `<dest>` 下目录本身不会被复制（除非目录以`/`结尾）。如果 `<src>` 是一个文件，它将会被复制到 `<dest>`。
+
+3. **注意事项**：
+
+- 使用 ADD 指令时，Docker 会自动解压缩被添加的压缩文件（如.tar、.tar.gz、.tar.bz2）。
+- 如果 `<dest>` 不存在，Docker 会自动创建它。
+- 如果 `<src>` 是一个 URL 地址，Docker 会自动下载并添加文件。
+
+#### `ENV` 环境变量
+
+设置环境变量，定义了环境变量，那么在**后续的指令以及使用此镜像创建的容器**中，就可以使用这个环境变量。
+
+格式：
+
+```dockerfile
+ENV <key> <value>
+ENV <key1>=<value1> <key2>=<value2>...
+```
+
+以下示例设置 NODE_VERSION = 7.2.0 ， 在后续的指令中可以通过 $NODE_VERSION 引用：
+
+```dockerfile
+ENV NODE_VERSION 7.2.0
+
+RUN curl -SLO "https://nodejs.org/dist/v$NODE_VERSION/node-v$NODE_VERSION-linux-x64.tar.xz" \
+  && curl -SLO "https://nodejs.org/dist/v$NODE_VERSION/SHASUMS256.txt.asc"
+```
+
+#### `ARG` 变量
+
+构建参数，指令用于定义一个变量，可以使用`--build-arg <varname>=<value>`标志在构建时通过`docker build`命令传递给构建器。
+
+ARG 设置的环境变量仅对 Dockerfile 内有效，也就是说只有 docker build 的过程中有效**，构建好的镜像内不存在此变量**。
+
+**ARG 语法：**
+
+```dockerfile
+ARG <name>[=<default value>]
+# 例如
+FROM busybox
+ARG user1=someuser  # 包含默认值
+ARG buildno
+```
+
+`ARG`定义的变量从`dockerfile`定义行开始生效，并不是从使用变量行或其他位置开始。
+
 #### `RUN`执行命令
+
+> **主要用于安装软件包、下载文件、配置系统等**
 
 `RUN` 指令是用来执行命令行命令的。由于命令行的强大能力，`RUN` 指令在定制镜像时是最常用的指令之一。其格式有两种：
 
@@ -916,32 +1021,6 @@ RUN set -x; buildDeps='gcc libc6-dev make wget' \
 
 此外，还可以看到这一组命令的最后添加了清理工作的命令，删除了为了编译构建所需要的软件，清理了所有下载、展开的文件，并且还清理了 `apt` 缓存文件。这是很重要的一步，我们之前说过，**镜像是多层存储，每一层的东西并不会在下一层被删除**，会一直跟随着镜像。因此镜像构建时，一定要确保每一层只添加真正需要添加的东西，**任何无关的东西都应该清理掉**。
 
-#### `ADD` 添加本地文件
-
-在 Dockerfile 中使用 ADD 指令可以将本地文件或目录添加到容器中。ADD 指令有以下用法和语法：
-
-1. **基本语法**：
-
-```dockerfile
-ADD <src> <dest>
-```
-
-- `<src>`：本地文件或目录的路径。
-- `<dest>`：容器中文件或目录的路径。
-
-2. **作用**：
-
-- 将本地文件或目录复制到容器中。
-- 如果 `<src>` 是一个目录，它的内容将会被复制到 `<dest>` 下目录本身不会被复制（除非目录以`/`结尾）。如果 `<src>` 是一个文件，它将会被复制到 `<dest>`。
-
-3. **注意事项**：
-
-- 使用 ADD 指令时，Docker 会自动解压缩被添加的压缩文件（如.tar、.tar.gz、.tar.bz2）。
-- 如果 `<dest>` 不存在，Docker 会自动创建它。
-- 如果 `<src>` 是一个 URL 地址，Docker 会自动下载并添加文件。
-
-
-
 #### `ENTRYPOINT` 程序入口
 
 ENTRYPOINT指令是Dockerfile中的一条指令，**用于设置容器启动时要执行的命令或程序**。以帮助定义容器的主要执行命令，使得容器在运行时以特定的方式启动。一般放在dockerfile 最后一行
@@ -969,7 +1048,7 @@ ENTRYPOINT 有两种形式
 
 ![image-20240723161251265](img/image-20240723161251265.png)
 
-因为推荐使用 exec 形式，不过缺点是**像 $HOME 这样的环境变量是取不到的**。
+因此推荐使用 exec 形式，不过缺点是**像 $HOME 这样的环境变量是取不到的**。
 
 #### `CMD` 执行
 
@@ -1006,6 +1085,41 @@ CMD ["World"]
 ```
 
 构建镜像（名为my-image）后运行 `docker run my-image Earth` 输出为 `Hello Earth`。
+
+#### `VOLUME` 执行
+
+定义匿名数据卷。在启动容器时忘记挂载数据卷，会自动挂载到匿名卷。
+
+作用：
+
+- 避免重要的数据，因容器重启而丢失，这是非常致命的。
+- 避免容器不断变大。
+
+格式：
+
+```dockerfile
+VOLUME ["<路径1>", "<路径2>"...]
+VOLUME <路径>
+```
+
+在启动容器 docker run 的时候，我们可以通过 -v 参数修改挂载点。
+
+#### `EXPOSE` 暴露端口
+
+``` js
+EXPOSE 端口号
+EXPOSE 端口号/协议
+EXPOSE 80/tcp
+EXPOSE 80/udp
+```
+
+EXPOSE 并**不会**直接将端口自动和宿主机某个端口建立映射关系， 暴露的端口更像是指明了该容器提供的服务需要用到的端口
+
+- 如果 docker run，指定了自动映射 -P，那么会将所有暴露的端口随机映射到宿主机的高阶端口
+- 如果 docker run，指定了 --net=host 宿主机网络模式，容器中 EXPOSE 指令暴露的端口会直接使用宿主机对应的端口，不存在映射关系
+- 如果 EXPOSE 暴露的端口确定要和某个宿主机端口建立映射关系，还是要用到 docker run -p 参数
+
+EXPOSE 显式地标明镜像开放端口，一定程度上提供了操作的便利，也提高了 Dockerfile 的可读性和可维护性
 
 ### 构建镜像
 
@@ -1123,7 +1237,40 @@ $ docker build - < context.tar.gz
 
 如果发现标准输入的文件格式是 `gzip`、`bzip2` 以及 `xz` 的话，将会使其为上下文压缩包，直接将其展开，将里面视为上下文，并开始构建。
 
+### 多阶段构建
 
+构建镜像时最具挑战性的事情之一就是缩小镜像大小。Dockerfile 中的每一条指令都会在镜像中添加一个层，在进入下一层之前，您需要记住清除所有不需要的工件。
+
+例如我们构建一个运行 golang 程序的镜像，如果将golang 编译环境都放在镜像里那镜像大小就较相对较大，我们可以使用多阶段构建，先把golang 程序编译出来后，再把它放在一个很小的基础镜像里去运行即可。
+
+**多阶段构建**是 Docker 17.05 的新增功能，它可以在一个 Dockerfile 中使用多个 FROM 语句，以创建多个 Stages（阶段）。每个阶段间独立（来源请求），可以通过 `COPY --from` 来获取其它阶段的文件。
+
+**多阶段构建的特点如下**
+
+- **只有最后一个stage才会被纳入image中**：多阶段构建的核心命令是 FROM。在多阶段构建中，每次 FROM 都会开启一个新的 Stage（阶段），可以看作一个新的 Image，与其它阶段隔离（甚至包括环境变量）。
+- **复制文件——阶段间的桥梁**：如果阶段间完全隔离，那么多阶段就没有意义。我们可以通过 COPY 命令来获取其它阶段的文件。在多阶段中使用 COPY 和普通应用完全一致，仅需要添加 –form ` 即可。
+-  **阶段命名——快速识别**：`COPY --from=0 ` 表示从第一阶段中复制，但当阶段过多时这就不是一个好的方案了。这时候，可以通过阶段命名的方式给它们赋予名字，以方便识别。为阶段添加名字很简单，只需要在 FROM 后加上 as 即可。
+
+下面是一个两阶段的例子
+
+``` dockerfile
+# 第一阶段，编译可执行文件
+FROM golang:1.22 as builder
+
+# 设置工作目录
+WORKDIR /app
+# 将执行该dockerfile 文件的目录添加到镜像的 WORKDIR 目录
+COPY . . 
+RUN CGO_ENABLE=0 go build -o pod-manage-lt main.go
+
+# 第二阶段，运行
+FROM  alpine:3.15
+
+WORKDIR /app
+# 将第一个阶段的文件拷贝到第二个阶段这里的当前目录 . ，通过--from 来获取其它阶段的文件
+COPY --from=builder /app/pod-manage-lt .
+CMD ["./pod-manage-lt"]
+```
 
 ## 7. Docker 仓库
 

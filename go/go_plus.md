@@ -1929,9 +1929,11 @@ router.Static("/static", "./static") // 配置静态web 目录，第一个参数
 // 观察语句发现它不需要像配置html要把每一层的目录都明确地写上
 ```
 
-## 路由传值
+## 请求参数处理
 
 ### GET请求传值
+
+#### **URL中的Query参数**
 
 前端从URL传入的值，如访问`http://localhost:8888/?user=sd`
 
@@ -1948,7 +1950,20 @@ router.Static("/static", "./static") // 配置静态web 目录，第一个参数
 
 前端页面就可以返回我们返回的json页面。
 
+#### **路由参数**
+
+``` go
+r.GET("/user/:id", func(c *gin.Context) {
+    id := c.Param("id")
+    c.String(http.StatusOK, "id=%s", id)
+})
+```
+
+如访问 `http://localhost:8888/user/10001`，后端就会从id中读取到 10001
+
 ### POST请求传值
+
+#### 表单传值
 
 我们写一个有form元素的前端页面，用来提交post请求。user.html
 
@@ -2009,6 +2024,8 @@ router.Static("/static", "./static") // 配置静态web 目录，第一个参数
 
 #### **GET 请求**
 
+> 从方式使用较少
+
 ``` go
 // 用来 绑定的 结构体
 type UserInfo struct {
@@ -2062,6 +2079,8 @@ type UserInfo struct {
 在有这个表单的前端页面中输入username和password并提交，可以看到正确结果。
 
 #### POST提交的XML数据
+
+> 提交json数据同理
 
 ``` go
 // 用来 绑定 xml数据的 结构体

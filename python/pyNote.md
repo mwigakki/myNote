@@ -176,7 +176,7 @@ python根据需要动态分配内存和回收内存
 
 #### 3.增删改
 
-1. append(obj) 在最后添加一个元素
+1. append(obj) 在最后添加obj元素
 2. extend(obj)在list末尾添加obj中所有元素，而不是把obj作为一个元素添加
 3. insert(index,obj) 在指定位置插入obj
 4. remove(obj) 删除这个元素，只删一次， 没有这个元素就抛出异常
