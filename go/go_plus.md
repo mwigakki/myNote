@@ -3682,7 +3682,7 @@ func main() {
 
 # Zinx框架
 
-Zinx 是一个基于Golang的轻量级T并发服务器框架，是基于TCP长连接的，而像beego或gin都是基于http的。
+Zinx 是一个基于Golang的轻量级并发服务器框架，是基于TCP长连接的，而像beego或gin都是基于http的。
 
 [Introduction (介绍) (yuque.com)](https://www.yuque.com/aceld/tsgooa/gx01meg5ow4pftac)
 

@@ -1,4 +1,4 @@
-# Docker
+
 
 https://www.w3cschool.cn/docker/docker-tutorial.html
 
@@ -210,6 +210,8 @@ docker system info
     注意，添加用户到用户组后，需要重新登录用户才能生效（最好重启下机器）。
 
 ## 4. Docker 镜像 
+
+docker 官方库里的镜像拉不下来就加url：`dockerpull.org`
 
 [Docker镜像（image）详解 (biancheng.net)](http://c.biancheng.net/view/3143.html)
 
@@ -470,6 +472,146 @@ root@VM-8-17-ubuntu:/home/ubuntu# docker run learn/ping ping www.baidu.com
 PING www.a.shifen.com (110.242.68.3) 56(84) bytes of data.
 64 bytes from 110.242.68.3 (110.242.68.3): icmp_seq=1 ttl=250 time=10.6 ms
 64 bytes from 110.242.68.3 (110.242.68.3): icmp_seq=2 ttl=250 time=10.6 ms
+```
+
+### 跨平台构建
+
+`buildx` 是 Docker 官方提供的一个构建工具，它可以帮助用户快速、高效地构建 Docker 镜像，并支持多种平台的构建。
+
+`docker buildx version` 查看buildx 版本
+
+#### 创建 `builder`
+
+要使用 `buildx` 构建跨平台镜像，我们需要先创建一个 `builder`，可以翻译为「构建器」。
+
+使用 `docker buildx ls` 命令可以查看 `builder` 列表：
+
+```bash
+$ docker buildx ls
+NAME/NODE       DRIVER/ENDPOINT STATUS  BUILDKIT PLATFORMS
+default * docker                           
+  default default         running 20.10.24 linux/amd64, linux/386
+```
+
+这个是默认 `builder`，`default *` 中的 `*` 表示当前正在使用的 `builder`，当我们运行 `docker build` 命令时就是在使用此 `builder` 构建镜像。这个默认的 `builder` 第二列 `DRIVER/ENDPOINT` 项的值都是 `docker`，表示它们都使用 `docker` 驱动程序。
+
+因为使用 `docker` 驱动程序的默认 `builder` 不支持使用单条命令（默认 `builder` 的 `--platform` 参数只接受单个值）构建跨平台镜像，所以我们需要使用 `docker-container` 驱动**创建一个新的 `builder`**。
+
+命令语法如下：
+
+```bash
+$ docker buildx create --name=<builder-name> --driver=<driver> --driver-opt=<driver-options>
+```
+
+参数含义如下：
+
+- `--name`：构建器名称，必填。
+- `--driver`：构建器驱动程序，默认为 `docker-container`。
+- `--driver-opt`：驱动程序选项，如选项 `--driver-opt=image=moby/buildkit:v0.11.3` 可以安装指定版本的 `BuildKit`，默认值是 [moby/buildkit](https://link.zhihu.com/?target=https%3A//hub.docker.com/r/moby/buildkit)。
+
+我们可以使用如下命令创建一个新的 `builder`：
+
+```bash
+$ docker buildx create --name mybuilder
+mybuilder
+```
+
+再次查看 `builder` 列表：
+
+``` shell
+$ docker buildx ls
+NAME/NODE    DRIVER/ENDPOINT             STATUS   BUILDKIT PLATFORMS
+mybuilder    docker-container                              
+  mybuilder0 unix:///var/run/docker.sock inactive          
+default *    docker                                        
+  default    default                     running  20.10.24 linux/amd64, linux/386
+```
+
+然后需要手动使用 `docker buildx use mybuilder` 命令切换构建器。
+
+#### 启动 `builder`
+
+我们新创建的 `mybuilder` 当前状态为 `inactive`，需要启动才能使用。`inspect` 子命令用来检查构建器状态，使用 `--bootstrap` 参数则可以启动 `mybuilder` 构建器。
+
+``` shell
+$ docker buildx inspect --bootstrap mybuilder
+```
+
+如果镜像拉不下来就手动拉镜像。
+
+如果创建的buidler 不支持 arm64 平台，那就如下手动创建 ：`docker buildx create --use --name arm64builder --driver docker-container --bootstrap --platform linux/arm64`
+
+此时：
+
+``` shell
+$ docker buildx ls
+NAME/NODE       DRIVER/ENDPOINT             STATUS  BUILDKIT PLATFORMS
+arm64builder *  docker-container                             
+  arm64builder0 unix:///var/run/docker.sock running v0.17.2  linux/arm64*, linux/amd64, linux/amd64/v2, linux/amd64/v3, linux/amd64/v4, linux/386
+default         docker                                       
+  default       default                     running 20.10.24 linux/amd64, linux/386
+```
+
+
+
+
+
+### 构建多种系统架构的镜像manifest
+
+我们知道使用镜像创建一个容器，该镜像必须与 Docker 宿主机系统架构一致，例如 `Linux x86_64` 架构的系统中只能使用 `Linux x86_64` 的镜像创建容器。
+
+要解决这个问题，**通常采用的做法是通过镜像名区分不同系统架构的镜像**，例如在 `Linux x86_64` 和 `Linux arm64v8` 分别构建 `username/x`86 和 `username/arm64v8` 镜像。运行时使用对应架构的镜像即可。
+
+这样做显得很繁琐，所以我们使用 **manifest 列表**来解决，实际上docker 拉取镜像步骤如下：
+
+- 当用户获取一个镜像时，**Docker 引擎会首先查找该镜像是否有 `manifest` 列表**，如果有的话 Docker 引擎会按照 Docker 运行环境（系统及架构）查找出对应镜像（例如 `golang:alpine`）。如果没有的话会直接获取镜像。
+
+#### 根据平台构建镜像
+
+首先准备不同平台的两个相同的镜像，例如可以使用 `--platform linux/arm64` 下载指定平台的镜像
+
+``` shell
+docker pull myimage:v1 --platform linux/arm64
+docker tag myimage:v1 myimage:v1_arm64
+docker push myimage:v1_arm64
+docker pull myimage:v1 --platform linux/amd64
+docker tag  myimage:v1 myimage:v1_amd64
+docker push myimage:v1_amd64
+```
+
+如上准备了相同镜像的不同平台版本，`myimage:v1_arm64`和`myimage:v1_amd64`
+
+#### 创建 `manifest` 列表
+
+``` shell
+docker manifest create myimage:v1 myimage:v1_amd64 myimage:v1_arm64
+```
+
+当要修改一个 `manifest` 列表时，可以加入 `-a` 或 `--amend` 参数。
+
+此时还可以设置 `manifest` 列表。也不可不做
+
+```bash
+# $ docker manifest annotate [OPTIONS] MANIFEST_LIST MANIFEST
+$ docker manifest annotate username/test \
+      username/x8664-test \
+      --os linux --arch x86_64
+
+$ docker manifest annotate username/test \
+      username/arm64v8-test \
+      --os linux --arch arm64 --variant v8
+```
+
+#### 查看 `manifest` 列表
+
+```bash
+docker manifest inspect myimage:v1
+```
+
+#### 推送 `manifest` 列表
+
+```bash
+docker manifest push myimage:v1
 ```
 
 
@@ -935,7 +1077,7 @@ ADD <src> <dest>
 格式：
 
 ```dockerfile
-ENV <key> <value>
+ENV <key>=<value>
 ENV <key1>=<value1> <key2>=<value2>...
 ```
 
@@ -1034,7 +1176,7 @@ ENTRYPOINT ["可执行程序", "param1", "param2"]
 ENTRYPOINT 有两种形式
 
 - shell形式——如`ENTRYPOINT node app.js`。
-- exec形式——如`ENTRYPOINT[＂node＂,＂app.js＂]`
+- **exec形式——如`ENTRYPOINT[＂node＂,＂app.js＂]`**（推荐使用）
 
 两者有明显区别。
 
@@ -1054,7 +1196,7 @@ ENTRYPOINT 有两种形式
 
  CMD 指令使用上与 ENTRYPOINT 几乎是一样的，也有 shell 和 exec 两种形式。Dockerfile 中至少要有其中一个，如果镜像中既没有指定 CMD 也没有指定 ENTRYPOINT 那么在启动容器时会报错。
 
-**两者区别**：CMD指令设置的命令可以被覆盖，而ENTRYPOINT指令设置的命令不能被覆盖。下面示例展示：
+**两者区别**：**CMD指令设置的命令可以被覆盖，而ENTRYPOINT指令设置的命令不能被覆盖**。下面示例展示：
 
 - CMD 构建镜像
 
@@ -1074,7 +1216,7 @@ ENTRYPOINT  ["echo", "Hello"]
 
 构建镜像（名为my-image）后运行 `docker run my-image World`，输出为 `Hello World`。显然，传入的参数 **追加** 在CMD 的参数之后。
 
-CMD和 ENTRYPOINT 同时使用时
+**CMD和 ENTRYPOINT 同时使用时**，`CMD` 提供的参数会被附加到 `ENTRYPOINT` 定义的命令后面。
 
 - 构建镜像
 
@@ -1086,7 +1228,7 @@ CMD ["World"]
 
 构建镜像（名为my-image）后运行 `docker run my-image Earth` 输出为 `Hello Earth`。
 
-#### `VOLUME` 执行
+#### `VOLUME`  
 
 定义匿名数据卷。在启动容器时忘记挂载数据卷，会自动挂载到匿名卷。
 
@@ -1128,7 +1270,7 @@ EXPOSE 显式地标明镜像开放端口，一定程度上提供了操作的便�
 在 `Dockerfile` 文件所在目录执行：
 
 ``` sh
-$ docker build -t nginx:v3 .		# 最后有一个点.  指定了构建路径
+$ docker build -t nginx:v3 [-f dockerfile名] . 		# 最后有一个点.  指定了构建路径
 Sending build context to Docker daemon 2.048 kB
 Step 1 : FROM nginx
  ---> e43d811ce2f4
@@ -1145,7 +1287,11 @@ Successfully tagged nginx:v3
 这里我们使用了 `docker build` 命令进行镜像构建。其格式为：
 
 ``` sh
-$ docker build [选项] <上下文路径/URL/->
+$ docker build [选项] <上下文路径/URL/-> 
+
+# 选项
+-t, --tag: 为构建的镜像指定名称和标签。
+-f, --file: 指定 Dockerfile 的路径（默认是 PATH 下的 Dockerfile）。
 ```
 
 在这里我们指定了最终镜像的名称 `-t nginx:v3`，构建成功后，我们可以像之前运行 `nginx:v2` 那样来运行这个镜像，其结果会和 `nginx:v2` 一样。
@@ -1281,6 +1427,24 @@ CMD ["./pod-manage-lt"]
 大部分时候，并不需要严格区分这两者的概念。
 
 [访问仓库 - Docker — 从入门到实践 (gitbook.io)](https://yeasy.gitbook.io/docker_practice/repository)
+
+### 国外仓库替换站
+
+推荐使用添加前缀的方式.
+
+前缀替换的 Registry 的规则, 这是人工配置的, 有需求提 Issue.
+
+| 源站              | 替换为                | 备注                                  |
+| ----------------- | --------------------- | ------------------------------------- |
+| docker.elastic.co | elastic.m.daocloud.io |                                       |
+| docker.io         | docker.m.daocloud.io  |                                       |
+| gcr.io            | gcr.m.daocloud.io     |                                       |
+| ghcr.io           | ghcr.m.daocloud.io    |                                       |
+| k8s.gcr.io        | k8s-gcr.m.daocloud.io | k8s.gcr.io 已被迁移到 registry.k8s.io |
+| registry.k8s.io   | k8s.m.daocloud.io     |                                       |
+| mcr.microsoft.com | mcr.m.daocloud.io     |                                       |
+| nvcr.io           | nvcr.m.daocloud.io    |                                       |
+| quay.io           | quay.m.daocloud.io    |                                       |
 
 ## 8. 数据管理
 
@@ -2142,6 +2306,6 @@ $ ip addr show bridge0
 
 docker的底层技术主要由三部分组成
 
-- 命名空间 namespace : 命令空间可以将全局资源（如进程PID、网络、文件等）划分为独立的命名空间，让每个容器只能看到自己的东西，彼此之间不会产生冲突。它是容器隔离的基础，保证了容器A看不到容器B。
-- 控制组 cgroups：控制器功能是来限制和隔离容器的资源使用。为了使容器的隔离更加可控，防止一个容器占用太多资源而影响了其他容器，控制组可以对CPU、磁盘IO，内存等资源进行限制和分配，确保在资源有限的情况下能够正常运行。
+- **命名空间 namespace** : 命令空间可以**将全局资源（如进程PID、网络、文件等）划分为独立的命名空间**，让每个容器只能看到自己的东西，彼此之间不会产生冲突。它是容器隔离的基础，保证了容器A看不到容器B。
+- **控制组 cgroups**：控制组功能是**来限制和隔离容器的资源使用**。为了使容器的隔离更加可控，防止一个容器占用太多资源而影响了其他容器，控制组可以对CPU、磁盘IO，内存等资源进行限制和分配，确保在资源有限的情况下能够正常运行。
 - 联合文件系统 UnionFS ： 它是docker镜像分层实现的基础。

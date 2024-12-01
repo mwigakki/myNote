@@ -1035,6 +1035,40 @@ sdb    xfs              a0731d0b-1194-4a28-b48a-2e2d3061c71c /var/lib/paascontai
 
 详见：[Linux 磁盘管理 | 菜鸟教程 (runoob.com)](https://www.runoob.com/linux/linux-filesystem.html)
 
+## 卷挂载
+
+Linux中将一块新的磁盘（物理设备，比如设备名为/dev/sdb）进行挂载操作时，有以下几种方式：
+
+- 将**整块设备/dev/sdb,挂载到一个目录**（挂载点）下，此时该物理设备的类型为`disk`，
+- 将**整块设备/dev/sdb，先进行分区，然后将各个分区挂载到不同目录**（多个挂载点）下，此时该物理设备的类型，我们逻辑上称为`part`
+
+上述2个场景有一个致命缺点：**挂载点无法伸缩大小**
+
+所以现在的需求是：**挂载点能自由伸缩大小，同时不影响其他挂载点**，这才有了**逻辑卷管理器（`lvm`）**的出现
+
+![img](img/72f42ad58419814719d719a3fe285274.png)
+
+上图中：
+
+1. 只要卷组的空间足够，逻辑卷lv-data1或者lv-data2都可以随时扩大空间，缩小更是可以的；
+
+2. lv-data1伸缩大小时，完全不会影响到lv-data2，反之亦然；
+
+下面事使用 `lsblk` 查看一个机器的卷挂载情况，
+
+``` bash
+NAME            MAJ:MIN RM   SIZE RO TYPE MOUNTPOINT
+sda               8:0    0 446.6G  0 disk 
+├─sda1            8:1    0     1G  0 part /boot/efi
+├─sda2            8:2    0 445.6G  0 part /
+└─sda3            8:3    0    65M  0 part 
+nvme0n1         259:0    0   3.5T  0 disk /var/lib/paascontainer
+nvme1n1         259:1    0   3.5T  0 disk 
+└─vg1-lv_data01 253:0    0   3.5T  0 lvm  /data01
+```
+
+在TYPE 中可以看到卷挂载情况。上述三种挂载方式在此处都有体现。
+
 # 7. Linux vi/vim
 
 所有的 Unix Like 系统都会内建 vi 文本编辑器，其他的文本编辑器则不一定会存在。
@@ -1051,14 +1085,17 @@ sdb    xfs              a0731d0b-1194-4a28-b48a-2e2d3061c71c /var/lib/paascontai
 
 - `/string`：正向查找，查找后按`n` 跳到下一个，`N`跳到上一个
 - `?string`：反向查找
+- `gg`：跳到第一行
+- `:100` ：跳到第100 行
 - `u`：**撤销**上一步操作
 - `cw`：**删除**从光标处到单词结尾的文本并进入到插入模式
 - `cb`：删除从光标处到单词开头的文本并进入到插入模式
 - `cc`:  删除一整行并进入到插入模式
-- `yw`：**复制**光标所在处的一个单词
+- `yw`：复制光标所在处的一个单词
 - `y2w`：复制光标所在处的两个单词
-- `yy`：复制光标所在整行
+- `yy`：**复制光标所在整行**
 - `p`：**粘贴**
+- `dG`：删除全文
 
 **插入模式**：命令模式下输入 i/a/o 进入插入模式，然后使用 ESC 进入命令模式
 
@@ -1206,6 +1243,13 @@ if [ $? -ne 0 ]; then
 fi
 ```
 
+### sh脚本嵌套运行
+
+- **直接运行脚本**：在本脚本文件中直接`./script.sh`，`./script.sh` 会在一个新的子 Shell 中执行脚本，**因此脚本中定义的环境变量和函数不会影响当前 Shell**。
+- **使用 `source` 命令**：`source script.sh` 会在当前 Shell 中执行脚本，**因此脚本中定义的环境变量和函数会影响当前 Shell**。**主要用途**：加载环境变量、函数定义和配置文件。
+
+
+
 ### Shell 重定向
 
 Linux Shell 重定向分为两种，一种输入重定向，一种是输出重定向；从字面上理解，**输入输出重定向就是「改变输入与输出的方向」的意思**。
@@ -1261,6 +1305,11 @@ stdin、stdout、stderr 默认都是打开的，在重定向的过程中，0、1
 
 当文件描述符为大于 1 的值时，比如 2，就必须写上。
 
+- **`>`**：将标准输出重定向到文件（覆盖文件）。
+- **`>>`**：将标准输出追加到文件。
+- **`2>`**：将标准错误重定向到文件。
+- **`&>`**：将标准输出和标准错误同时重定向到文件。**多用这个**
+
 需要重点说明的是，`fd`和`>`之间不能有空格，否则 Shell 会解析失败；`>`和`file`之间的空格可有可无。为了保持一致，我习惯在`>`两边都不加空格。
 
 如果想要执行某命令而不希望有任何输出显示，可以使用 `command > /dev/null`
@@ -1297,7 +1346,7 @@ myweb
 
 **多命令顺序执行**时使用分号`;`分割即可，前后两个命令没有任何逻辑关系。
 
-如果希望前一个命令必须正确返回后才能继续执行第二个，就是用连接符`&&`；常见于 dockerfile 中，比如：`apt-get update && apt-get install -y unzip && rm -rf /var/lib.apt/lists/*`
+如果**希望前一个命令必须正确返回后才能继续执行第二个**，就是用连接符`&&`；常见于 dockerfile 中，比如：`apt-get update && apt-get install -y unzip && rm -rf /var/lib.apt/lists/*`
 
 **长命令换行书写**时使用反斜杠`\` 分割即可；常用于命令有较多启动参数时，每行一个参数展示地比较清晰
 
@@ -1330,7 +1379,7 @@ rm -f /etc/localtime \
 | " "  | 双引号。在双引号中特殊符号都没有特殊含义，但是“$”，“`”（esc键下面）和“\”是例外，拥有“调用变量的值”、“引用命令”和“转义符”的特殊含义。 |
 | $    | **用于调用变量的值**，如需要调用变量name的值时，需要用$name的方式得到变量的值。 |
 | ${}  | **用于调用变量的值**，比$更灵活，当拼接字符串或者需要使用更复杂的表达式时，就需要使用 `${}` 语法来明确地引用变量。 |
-| $()  | **用来执行系统命令**。                                       |
+| $()  | **用来执行系统命令**，                                       |
 | ``   | 反引号。同上 ，但不推荐使用。                                |
 | ()   | 用于一串命令执行时，()中的命令会在子Shell中运行              |
 | {}   | 用于一串命令执行时，{ }中的命令会在当前Shell中执行。也可以用于变量变形与替换。 |
@@ -1432,6 +1481,83 @@ echo "$2"           # 输出 "bar"
 echo "$3"           # 输出 "baz"
 ```
 
+## shell数组
+
+数组中可以存放多个值。Bash Shell 只支持一维数组（不支持多维数组），初始化时不需要定义数组大小。与大部分编程语言类似，数组元素的**下标由 0 开始**。数组的值也可以写入变量。
+
+**Shell 数组用括号来表示**，元素用"空格"符号分割开，语法格式如下：
+
+```
+array_name=(value1 value2 ... valuen)
+```
+
+读取数组元素值的一般格式是：`${array_name[index]}`，使用 **@** 或 ***** 可以获取数组中的所有元素：`${array_name[*]}`
+
+``` shell
+A=1
+my_array=($A "B" C)
+i=2
+
+echo "第一个元素为: ${my_array[0]}"
+echo "第二个元素为: ${my_array[1]}"
+echo "第三个元素为: ${my_array[2]}"
+echo "全部元素为: ${my_array[*]}"
+echo "第i个元素为:${my_array[i]}"	# 根据数组元素索引获取该数组元素值时，数组下标可为变量。
+
+
+第一个元素为: 1
+第二个元素为: B
+第三个元素为: C
+全部元素为: 1 B C
+第i个元素为:C
+```
+
+数组通常使用 for 或者 while 完成遍历
+
+``` shell
+for i in ${my_array[@]};
+do
+	echo ${i}
+done
+
+1
+B
+C
+```
+
+  可以在脚本运行过程中**动态地向数组中添加元素**。
+
+``` shell
+#!/bin/bash
+
+# 初始化一个空数组
+my_array=()
+
+# 动态添加元素
+my_array+=("apple")
+my_array+=("banana")
+my_array+=("cherry")
+my_array+=("date")
+
+# 打印数组中的所有元素
+echo "${my_array[@]}"
+```
+
+可以**使用 `IFS`（Internal Field Separator）来分割字符串并将其存储到数组中**。
+
+``` shell
+#!/bin/bash
+
+# 定义一个字符串
+fruits="apple banana cherry date"
+
+# 设置 IFS 为空格
+IFS=' ' read -r -a my_array <<< "$fruits"
+
+# 打印数组中的所有元素
+echo "${my_array[@]}"
+```
+
 ## shell 运算符
 
 [Shell 基本运算符 | 菜鸟教程 (runoob.com)](https://www.runoob.com/linux/linux-shell-basic-operators.html)
@@ -1439,6 +1565,14 @@ echo "$3"           # 输出 "baz"
 ## shell 流程控制
 
 [Shell 流程控制 | 菜鸟教程 (runoob.com)](https://www.runoob.com/linux/linux-shell-process-control.html)
+
+## shell常用工具
+
+#### 获取当前执行目录
+
+- 使用 `pwd` 命令：`current_dir=$(pwd)`
+- 使用 `$0` 和 `dirname` 命令: `script_dir=$(dirname "$0")` ，`$0` 变量包含脚本的路径，`dirname` 命令可以提取路径的目录部分。
+- 使用 `$(cd "$(dirname "$0")"; pwd)` 获取**绝对路径**
 
 # 10. Linux 命令
 
@@ -1613,6 +1747,10 @@ ubt@ubt-vm:~/tutorials$ tree | grep "basic"
 
 ## 文本处理三剑客
 
+- `grep` 更适合单纯的**查找或匹配**文本
+-  `sed` 更适合**编辑**匹配到的文本
+-  `awk` 更适合**格式化**文本，对文本进行较复杂格式处理
+
 ### `grep`
 
 >  grep : global regular expressions print
@@ -1629,20 +1767,17 @@ grep 命令的基本格式如下：
 
 - 常用选项如下：
 
-- | 选项 | 含义                                                     |
-  | ---- | -------------------------------------------------------- |
-  | -c   | 仅列出文件中包含模式的行数。                             |
-  | -i   | 忽略模式中的字母大小写。                                 |
-  | -l   | 列出带有匹配行的文件名。                                 |
-  | -n   | 在每一行的最前面列出行号。                               |
-  | -v   | 列出没有匹配模式的行。                                   |
-  | -w   | 把表达式当做一个完整的单字符来搜寻，忽略那些部分匹配的行 |
-
+- | 选项   | 含义                                                     |
+  | ------ | -------------------------------------------------------- |
+  | **-c** | **仅列出文件中包含模式的行数。**                         |
+  | **-i** | **忽略模式中的字母大小写。**                             |
+  | **-l** | **列出带有匹配行的文件名。**                             |
+  | **-n** | **在每一行的最前面列出行号。**                           |
+  | **-v** | **只列出没有匹配模式的行。（反向查找）**                 |
+  | **-w** | 把表达式当做一个完整的单字符来搜寻，忽略那些部分匹配的行 |
+  | **-E** | 多关键字匹配，如 `grep -E "word1|word2|word3 file`       |
+  
 - 注意，如果是搜索多个文件，grep 命令的搜索结果只显示文件中发现匹配模式的文件名；而如果搜索单个文件，grep 命令的结果将显示每一个包含匹配模式的行。
-
-
-
-
 
 ### `sed`
 
@@ -1650,9 +1785,125 @@ grep 命令的基本格式如下：
 
 ### `awk`
 
+``` shell
+awk options 'pattern {action}' file
+```
 
+- `options`：是一些选项，用于控制 `awk` 的行为。
+  - `-F <分隔符>` ： 指定**输入字段**的分隔符，默认是空格。
+  - `-v OFS=':'`：修改输出时的分隔符为 `:`
+- `pattern`：是用于匹配输入数据的模式。如果省略，则 `awk` 将对所有行进行操作。
+- `{action}`：是在匹配到模式的行上执行的动作。如果省略，则默认动作是打印整行。
 
+下面是常用的awk 命令，
 
+``` shell
+$ cat test # 以test 文件为例展示
+1 2 3
+a bb ccc ddddd
+=
+
+$ awk '{print}' test   # 打印文件
+$ awk '{print $1 $2}' test # 打印第一二列
+12
+abb
+=
+
+$ awk '{print $1, $2}' test # 打印第一二列，默认空格分割
+1 2
+a bb
+=
+
+$ awk '{print NR, $0, $1}' test # NR 表示行号，$0表示文件全部内容
+1 1 2 3 1
+2 a bb ccc ddddd a
+3 =  =
+
+$ awk 'END {print NR}' test # 查找文件的行数，等于 wc -l test
+3
+```
+
+常用：**打印所有docker 镜像，只打印 image:tag**
+
+``` shell
+docker images | awk -v OFS=':' 'NR>1 { print $1,$2}'
+```
+
+### `xargs`
+
+[Linux xargs 命令 | 菜鸟教程](https://www.runoob.com/linux/linux-comm-xargs.html)
+
+xargs（英文全拼： eXtended ARGuments）是给命令传递参数的一个过滤器，也是组合多个命令的一个工具。
+
+xargs 可以**将管道或标准输入（stdin）数据转换成命令行参数**，也能够从文件的输出中读取数据。
+
+xargs 也可以将单行或多行文本输入转换为其他格式，例如多行变单行，单行变多行。
+
+xargs 默认的命令是 echo，这意味着通过管道传递给 xargs 的输入将会包含换行和空白，不过**通过 xargs 的处理，换行和空白将被空格取代**。
+
+xargs 是一个强有力的命令，它能够**捕获一个命令的输出，然后传递给另外一个命令**，一般和管道 | 一起使用 。
+
+```shell
+somecommand |xargs -item  command
+```
+
+`xargs`命令的常用选项包括：
+
+1. `-I {}`：用于指定替换字符串，将输入数据中的特定字符串替换为命令行参数。
+2. `-n`：用于指定每次执行命令的参数个数。
+3. `-t`：用于打印执行的命令。
+4. `-p`：用于提示用户确认是否执行命令。
+5. `-r`：当标准输入为空时，不执行命令。
+
+以文件test 为例演示
+
+``` shell
+$ cat test
+1 2 3
+a bb ccc ddddd
+=
+```
+
+多行输入单行输出：`cat test | xargs`，这里从管道中得到了文件中的文本，但是换行和空白将被空格取代了，所以进入xargs 的数据只有1行，以空格分割。直接执行默认命令 echo，即得到如下结果
+
+``` shell
+cat test | xargs
+1 2 3 a bb ccc ddddd =
+```
+
+-n 选项多行输出: ` cat test | xargs -n2`
+
+``` shell
+$ cat test | xargs -n2
+1 2
+3 a
+bb ccc
+ddddd =
+```
+
+例如如果这个文件中是需要新建的文件夹的名字，如果可以使用如下命令全部创建
+
+``` shell
+$ cat test | xargs -n1 mkdir
+```
+
+接着还可以使用命令来全部删除
+
+```  shell
+$ cat test | xargs -n1 rmdir
+# or
+$ cat test | xargs -n1 | xargs -I {} rmdir {}
+```
+
+xargs 的一个选项 -I，使用 -I 指定一个替换字符串 {}，**`{}`会被输入数据中的每一行替换**。
+
+``` shell
+$ cat test | xargs -n2 | xargs -I {} echo "print {}"
+ print: 1 2
+ print: 3 a
+ print: bb ccc
+ print: ddddd =
+```
 
 ## 文件压缩及解压缩命令
 
@@ -1671,7 +1922,7 @@ grep 命令的基本格式如下：
 
     - **x : 解压打包文件**
 
-    - z：调用gzip压缩命令进行压缩
+    - **z：调用gzip压缩命令进行压缩**
 
     - v : 显示运行过程
 
@@ -1803,7 +2054,28 @@ ubuntu@VM-8-17-ubuntu:~$ du -h mynginx/
     total           44630080 7802212  35055180  19% -
     ```
 
+文件系统：
 
+- **overlay 文件系统**：使用的是根文件系统 `/` 的磁盘空间。
+- **tmpfs  文件系统**：是使用磁盘空间，而是使用内存（RAM）和交换空间（swap）。`tmpfs` 是一种临时文件系统，它将数据存储在内存中，而不是在磁盘上。这使得 `tmpfs` 具有非常高的性能，但也意味着当系统重启时，`tmpfs` 中的数据会被清除。
+
+### `lsblk`
+
+`lsblk` 命令可以列出所有**块设备的信息，包括磁盘和分区**。
+
+例如：
+
+```
+NAME   MAJ:MIN RM  SIZE RO TYPE MOUNTPOINT
+sda      8:0    0  500G  0 disk 
+└─sda1   8:1    0  500G  0 part /
+sdb      8:16   0  500G  0 disk /var/lib/paascontainer
+sr0     11:0    1  522K  0 rom
+```
+
+- **sda** 是一个 500G 的磁盘，其唯一分区 **sda1** 被挂载到根目录 `/`。
+- **sdb** 是另一个 500G 的磁盘，直接挂载到 `/var/lib/paascontainer` 目录。
+- **sr0** 是一个可移除的光盘驱动器，大小为 522K，当前未挂载。
 
 ## 系统管理
 
@@ -1925,6 +2197,10 @@ ubuntu@VM-8-17-ubuntu:~$ ps -aux | grep redis
 ubuntu     77504  0.0  0.0   6300   656 pts/0    S+   21:30   0:00 grep --color=auto redis
 systemd+ 2687668  0.1  0.4  53996  8696 ?        Ssl  Jun30  15:08 redis-server *:6379
 ```
+
+当你使用 `ps -ef` 命令时，有时输出的信息可能会被截断，特别是在终端窗口较窄的情况下。
+
+解决方法是 **使用 `-ww` 选项**：`ps -efww` 
 
 ### `top` 
 
@@ -2316,13 +2592,38 @@ tcp6       0      0 :::80                   :::*                    LISTEN      
 
 如上所示就是查看80端口的占用情况。
 
+假设 `netstat -anp` 的输出如下：
+
+``` shell
+Proto Recv-Q Send-Q Local Address           Foreign Address         State       PID/Program name
+tcp        0      0 0.0.0.0:8080            0.0.0.0:*               LISTEN      12345/node  # 本地地址为 0.0.0.0，表示监听所有网络接口的 8080 端口，0.0.0.0:*表示远程地址为任意
+tcp        0      0 192.168.1.100:8080      192.168.1.101:12345     ESTABLISHED 12345/node  # 这条记录表示已经建立连接
+tcp        0      0 192.168.1.100:22        192.168.1.101:56789     ESTABLISHED 123/sshd
+udp        0      0 0.0.0.0:5353            0.0.0.0:*                           12345/systemd-resolved
+unix  0      0 /var/run/docker.sock        0000000000000000         STREAM      1234/dockerd
+```
+
+1. **Proto**：协议类型，如 `tcp`、`udp`、`unix` 等。
+2. **Recv-Q**：接收队列中的数据包数量。
+3. **Send-Q**：发送队列中的数据包数量。
+4. **Local Address**：本地地址和端口号。
+5. **Foreign Address**：远程地址和端口号。
+6. **State**：连接状态，对于 TCP 协议，常见的状态有：
+7. **PID/Program name**：进程 ID 和程序名称，显示哪个进程正在使用该连接或监听该端口
+
+
+
 `netstat -rn` 查看设备的路由表。
 
 ![image-20230407163247424](img/image-20230407163247424.png)
 
+### telnet
 
+`telnet` 是一个网络协议，也是在 Unix、Linux 和 Windows 等操作系统中常用的命令行工具。**通过 telnet 可以快速测试某个远程服务器的某个端口是否开放**。主要用途如下：
 
-
+1. **网络服务测试**：`telnet` 可以用来测试服务器上的网络服务是否正常工作。例如，你可以使用 `telnet` 连接到 Web 服务器的 80 端口，邮件服务器的 25 端口，或数据库服务器的 3306 端口。
+2. **远程登录**：虽然现代系统中很少使用 `telnet` 进行远程登录，因为它不提供加密保护，但早期的系统中广泛使用 `telnet` 进行远程登录。
+3. **网络故障排除**：`telnet` 可以帮助诊断网络连接问题，例如检查端口是否开放，网络延迟等。
 
 ### route
 
@@ -4488,3 +4789,28 @@ mv CentOS-Base.repo CentOS-Base.repo.backup  # 将原本的仓库备份，不使
 
 在goland中打开在wsl 中的项目时，注意go和git 的路径与版本。
 
+如果希望wsl中的ubuntu可以使用宿主机的 vpn
+
+运行以下命令查看 Windows 主机的 IP：
+
+```bash
+cat /etc/resolv.conf
+```
+
+输出中类似如下：
+
+```
+nameserver 172.20.144.1
+```
+
+这里的 `172.20.144.1` 就是 Windows 主机的 IP。
+
+在 `~/.bashrc`中添加以下内容：
+
+```
+bash复制代码export http_proxy=http://<Windows_IP>:7890
+export https_proxy=http://<Windows_IP>:7890
+export all_proxy=socks5://<Windows_IP>:7891
+```
+
+将 `<Windows_IP>` 替换为前面找到的 IP 地址（如 `172.20.144.1`）。

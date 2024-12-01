@@ -1,4 +1,4 @@
-# TQUIC
+# QUIC
 
 [QUIC 协议详解 - 知乎 (zhihu.com)](https://zhuanlan.zhihu.com/p/405387352)
 

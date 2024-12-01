@@ -1749,13 +1749,52 @@ MLP：多层感知机（MLP，Multilayer Perceptron）也叫人工神经网络�
 
 ![../_images/seq2seq-predict.svg](img/seq2seq-predict.svg)
 
+### seq2seq
+
+机器翻译是序列转换模型的一个核心问题， 其输入和输出都是长度可变的序列。 为了处理这种类型的输入和输出， 我们可以设计一个包含两个主要组件的架构： 第一个组件是一个*编码器*（encoder）： 它接受一个长度可变的序列作为输入， 并将其转换为具有固定形状的编码状态。 第二个组件是*解码器*（decoder）： 它将固定形状的编码状态映射到长度可变的序列。 这被称为*编码器-解码器*（encoder-decoder）架构， 如图
+
+![image-20240902105255206](img/image-20240902105255206.png)
+
+遵循编码器－解码器架构的设计原则， **循环神经网络编码器使用长度可变的序列作为输入， 将其转换为固定形状的隐状态**。 换言之，输入序列的信息被*编码* 到循环神经网络编码器的隐状态中。 为了连续生成输出序列的词元， 独立的**循环神经网络解码器是基于输入序列的编码信息 和输出序列已经看见的或者生成的词元**来预测下一个词元。
+
+下图演示了 如何**在机器翻译中使用两个循环神经网络进行序列到序列学习**。这是**训练的过程**
+
+![image-20240902105413359](img/image-20240902105413359.png)
+
+特定的“<bos>”表示序列开始词元，“<eos>”表示序列结束词元。 最后一个时刻所有层的隐变量作为上下文
+
+- 从技术上讲，编码器将长度可变的输入序列转换成通过编码器变成**形状固定的上下文变量**c， 并且将输入序列的信息在该上下文变量中进行编码。
+
+下图是训练完成后，用于预测的过程：
+
+![../_images/seq2seq-predict.svg](img/seq2seq-predict-17255229578201.svg)
+
+从预测过程可以看到，在解码器的输入是编码器最后一个时间步的输出，以及上一个解码器的输出（拼接起来）。并且，解码器的输入并没有固定长度，而是一直预测到输出 <eos> 为止。
+
+通常做预测时，会使用填充和截断将输入源局长限制在固定的长度，
+
+
+
+
+
+``` 
+原始文本 		词表 vocab (token:index)				embedding
+
+this   	 tokenizer	this: 0		 word2vec		[ 0.8147,  0.6233, -0.8745]
+is	  	==========> is: 1		==========> 	[ 1.4187, -1.6234,  0.3779]
+namespace.			name: 2						[ 0.5483,  0.2194, -0.6123]
+					space: 3					[-1.8765,  1.1769, -0.5206]
+					.: 4						[ 0.8559, -1.0804, -0.8394]
+					[eos]: 5					[ 0.4355, -0.2552, -0.0063]
+```
 
 
 
 
 
 
-## 自编码器（Auto-encoders）
+
+### 自编码器（Auto-encoders）
 
 自编码器（Auto-encoders）和Encoder-Decoder模型是深度学习中两种重要的网络架构，它们在许多应用中扮演着关键角色，尤其是在自然语言处理（NLP）、计算机视觉（CV）和语音处理领域。尽管它们在某些方面具有相似性，但也有明显的区别和不同的应用焦点。以下是自编码器和Encoder-Decoder模型的主要区别和联系：
 
@@ -1774,9 +1813,282 @@ MLP：多层感知机（MLP，Multilayer Perceptron）也叫人工神经网络�
 
 ### 注意力机制
 
+> 目前大多数注意力模型附着在Encoder-Decoder框架下，当然，其实注意力模型可以看作一种通用的思想，本身并不依赖于特定框架
+
+核心目标：**从众多信息中选择出当前任务目标更关键的信息**，把注意力放在这上面（简单理解为找到每个信息的权重）。其中选择的过程，体现在权重系数的计算上。
+
+ **关系**
+
+- **查询和键的关系**: 查询和键通过某种相似度计算（如点积或加性注意力）来生成注意力分数。这些分数表示查询对每个键的重要性。
+- **键和值的关系**: 键和值是一一对应的。每个键都有一个相应的值，这些值将在注意力分数的基础上进行加权求和。
+- **查询、键和值的综合**: **查询与键计算出的注意力分数用于对值进行加权求和**，生成上下文向量
+
+例如一个机器翻译的例子：“tom chase jerry”  -> “汤姆追逐杰瑞”，普通的encoder-decoder 模型如下：
+
+![image-20241008150942707](img/image-20241008150942707.png)
+
+显然，其中， y1是 “汤姆“，x1是“tom”，因为预测y1汤姆时，我们希望**在语义编码c 更加关注x1的内容**。 
+
+没有引入注意力的模型在输入句子比较短的时候问题不大，但是如果输入句子比较长，此时所有语义完全通过一个中间语义向量来表示，单词自身的信息已经消失，可想而知会丢失很多细节信息
+
+而引入了注意力机制的模型如下：
+
+![image-20241008151410468](img/image-20241008151410468.png)
+
+由上图可知，在生成每个单词时，原先都是相同的中间语义c 会被替换成根据生成单词而不断变化的 ci。
+
+其中的c1在翻译y1是会告诉 decoder 更加关注哪个 x。如下：
+
+![image-20241008151554650](img/image-20241008151554650.png)
+
+### 注意力分数函数
+
+一个简单的例子，有很多（输入: 输出）对，再给一个数据，求它对应的输出。此处（输入: 输出）对就是(key: value) 对，再给定一个查询 query，求其输出。
+
+[10.3. 注意力评分函数 — 动手学深度学习 2.0.0 documentation (d2l.ai)](https://zh.d2l.ai/chapter_attention-mechanisms/attention-scoring-functions.html)
+
+![image-20241008170112020](img/image-20241008170112020.png)
+
+**关键在于这里的注意力分数函数a 该怎么设计**。
+
+简单做法是，对每个 q 和 k ，直接设计相应大小的矩阵和向量，最后矩阵乘法得到单个标量。其实就是单隐藏层的回归。名叫 **Additive Attention**。该方法不限制k,q,v 的大小长度。它是可以学习参数的。
+
+![image-20241008170701495](img/image-20241008170701495.png)
+
+另一个方法叫**缩放点积注意力**。如果 k,q 的长度都是一样的，都是d，那么就不学东西了。 
+
+![image-20241008170855641](img/image-20241008170855641.png)
+
+![image-20241008170903344](img/image-20241008170903344.png)
+
+除以根号d使得对参数的长度不敏感了。
+
+**最终得到的结果f 的第 i 行数据表示，第 i个查询向量 qi 对应的注意力分数，该向量是通过对所有键向量 kj 的值向量 vj 进行加权求和得到的。**  （注意力分数可以简单直观理解为该查询qi 与哪个value 最相近）
+
+**总结**：
+
+- **注意力分数就是q 和 k 的相似度**，注意力权重是分数的 softmax 结果
+- 以上都是 attention 的思路，实际应用时，k，q，v都会根据实际网络进行设置。
+
+### 使用注意力机制的seq2seq
+
+![image-20241008181739066](img/image-20241008181739066.png)
+
+普通 seq2seq中，由编码器的最后一个时刻的隐藏层状态作为上下文变量context 输入给解码器。现在认为这样不好，而应该**根据当前要预测的词，选择其对应的输入的词的隐藏层作为上下文**。
+
+因此，此处加入注意力机制，
+
+- **将编码器对每个词的输出作为key 和 value**
+- **将解码器对上一个词的输出作为query**
+- **注意力的输出和当前词的embedding 合并作为解码器rnn 的输入**
+
+相当于，以前seq2seq 只使用了编码器最后一个词的隐藏层，现在要把编码器的所有隐藏层都使用起来。简单来讲，**用编码器建立索引，使用解码器来定位关注点**
+
+### Bahdanau 注意力
+
+**加入注意力的seq2seq** 叫做 **Bahdanau 注意力**，它和普通seq2seq不同只在decoder上，在decoder中加入了一个 additive attention，并且解码器的计算要一步一步来，因为每一步都要使用上一步的隐藏层计算注意力权重。
+
+``` python
+class Seq2SeqAttentionDecoder(AttentionDecoder):
+    def __init__(self, vocab_size, embed_size, num_hiddens, num_layers,
+                 dropout=0, **kwargs):
+        super(Seq2SeqAttentionDecoder, self).__init__(**kwargs)
+        self.attention = d2l.AdditiveAttention(
+            num_hiddens, num_hiddens, num_hiddens, dropout)
+        self.embedding = nn.Embedding(vocab_size, embed_size)
+        self.rnn = nn.GRU(
+            embed_size + num_hiddens, num_hiddens, num_layers,
+            dropout=dropout)
+        self.dense = nn.Linear(num_hiddens, vocab_size)
+
+    def init_state(self, enc_outputs, enc_valid_lens, *args):
+        # outputs的形状为(batch_size，num_steps，num_hiddens).
+        # hidden_state的形状为(num_layers，batch_size，num_hiddens)
+        outputs, hidden_state = enc_outputs
+        return (outputs.permute(1, 0, 2), hidden_state, enc_valid_lens)
+
+    def forward(self, X, state):
+        # enc_outputs的形状为(batch_size,num_steps,num_hiddens).
+        # hidden_state的形状为(num_layers,batch_size,
+        # num_hiddens)
+        enc_outputs, hidden_state, enc_valid_lens = state
+        # 输出X的形状为(num_steps,batch_size,embed_size)
+        X = self.embedding(X).permute(1, 0, 2)
+        outputs, self._attention_weights = [], []
+        for x in X:
+            # query的形状为(batch_size,1,num_hiddens), 第一步使用编码器最后一个隐藏状态，之后就是用前一个解码器输出的隐藏状态
+            query = torch.unsqueeze(hidden_state[-1], dim=1)
+            # context的形状为(batch_size,1,num_hiddens)，此处context不只使用编码器的隐藏状态，而是通过注意力算出来的。
+            context = self.attention(
+                query, enc_outputs, enc_outputs, enc_valid_lens)
+            # 在特征维度上连结
+            x = torch.cat((context, torch.unsqueeze(x, dim=1)), dim=-1)
+            # 将x变形为(1,batch_size,embed_size+num_hiddens)
+            out, hidden_state = self.rnn(x.permute(1, 0, 2), hidden_state)
+            outputs.append(out)
+            self._attention_weights.append(self.attention.attention_weights)
+        # 全连接层变换后，outputs的形状为
+        # (num_steps,batch_size,vocab_size)
+        outputs = self.dense(torch.cat(outputs, dim=0))
+        return outputs.permute(1, 0, 2), [enc_outputs, hidden_state,
+                                          enc_valid_lens]
+
+    @property
+    def attention_weights(self):
+        return self._attention_weights
+```
+
+这种算法中，在seq2seq中加入注意力机制，可以更加有效地利用encoder的信息。
+
+### 多头注意力
+
+[深入理解深度学习——注意力机制（Attention Mechanism）：多头注意力（Multi-head Attention）_multi-head attention的作用-CSDN博客](https://machinelearning.blog.csdn.net/article/details/131135381?spm=1001.2014.3001.5502)
+
+在实践中，当给定相同的查询、键和值的集合时，我们希望模型可以**基于相同的注意力机制学习到不同的行为**， 然后将**不同的行为作为知识组合起来**， 捕获序列内各种范围的依赖关系 （例如，短距离依赖和长距离依赖关系）。因此，允许注意力机制组合使用查询、键和值的不同子空间表示（Representation Subspaces）可能是有益的。
+
+即：使用多个注意力矩阵，而非单一的注意力矩阵，可以提高注意力矩阵的准确性。
+
+![../_images/multi-head-attention.svg](img/multi-head-attention.svg)
+
+由图可知，**针对同一组key, query, value，使用多个注意力层来计算不同的注意力权重**，最后，将这个注意力汇聚的输出拼接在一起， 并且通过另一个可以学习的线性投影进行变换， 以产生最终输出。 **这种设计被称为多头注意力（Multihead Attention）。**对于个注意力汇聚输出，每一个注意力汇聚都被称作一个头（Head）。
+
+![image-20241009142733842](img/image-20241009142733842-17284552640803.png)
+
+**其中 *f* 可以是的加性注意力和缩放点积注意力**（tranformer中使用自注意力机制，故会使用缩放点积注意力）。多头注意力的输出需要经过另一个线性转换， 它对应着h 个头连结后的结果
+
+![image-20241009142839598](img/image-20241009142839598.png)
+
+基于这种设计，每个头都可能会关注输入的不同部分， 可以表示比简单加权平均值更复杂的函数。
+
+### 自注意力
+
 [深入理解深度学习——注意力机制（Attention Mechanism）：自注意力（Self-attention）_self-attention mechanism-CSDN博客](https://blog.csdn.net/hy592070616/article/details/131135690)
 
-`query` 和 `key-value pair` 通常是不同的。而对于「自注意力」来说，`query` 和 `key` 和 `value` 都是相同的。也就是说，同一组词元同时充当「查询（`query`）」、「键（`key`）」和「值（`value`）」。（自注意力的关键就是一句话，**查询、键和值都来自同一组输入**）
+> “是否包含自主性提示（查询query）”将注意力机制与全连接层或汇聚层区别开来。
+
+![image-20241009144636572](img/image-20241009144636572.png)
+
+`query` 和 `key-value pair` 通常是不同的。而**对于「自注意力」来说，`query` 和 `key` 和 `value` 都是相同的**。也就是说，同一组词元同时充当「查询（`query`）」、「键（`key`）」和「值（`value`）」。（自注意力的关键就是一句话，**查询、键和值都来自同一组输入**） 
+
+self-attention 可以当作一个像全连接，cnn，rnn那样的网络层来理解。
+
+<img src="img/image-20241009144508106.png" alt="image-20241009144508106"  />
+
+**计算**
+
+在自注意力中，**Q, K , V 都是使用输入X 计算得到的**。如 输入矩阵 X 分别乘以 Wq, Wk, Wv得到Q, K , V 。
+
+然后将 Q, K , V 使用缩放点积注意力方法计算出每个词的特征值, 它就表示了每个词与句子中所有词的相关程度.它的计算公式如下：
+
+<img src="img/image-20241009174715699.png" alt="image-20241009174715699" style="zoom:150%;" />
+
+**位置编码**
+
+与CNN, RNN 不同，自注意力中没有记录序列的位置信息，因此**需要我们手动将位置信息注入到输入中**。
+
+如果没有位置编码，那么打乱每个输入Xi 的位置，输出的位置会相应变化，但是输出的内容没有变化。
+
+例如，长度为 n (这个维度上才要求有位置信息)，每个元素有 d 维的序列 ***X***，那么生成位置编码矩阵 ***P*** （n\*d），使用  ***X*** +  ***P*** 作为自编码输入
+
+![image-20241009152303244](img/image-20241009152303244.png)
+
+这样的做法相当于给每一个样本，加了一个独一无二的 d 维的偏移。让注意力网络自己去分辨这一点点差别。
+
+**好处在于只改变输入，不需要改变模型。坏处是模型不一定能接收这样的改变**
+
+这种位置信息是一种相对位置，不是绝对位置，这很好。
+
+位置编码也可以学习得到，比如 bert 就是学习的
+
+### 注意力机制和全连接的区别
+
+自注意力机制和全连接模型长得很像，而且简单地看两者都是在找到输出对于每个输入的权重。Attention的最终输出可以看成是一个“在关注部分权重更大的全连接层”。
+
+举个例子：输入层有A,B,C三个特征向量，我们需要构造一层网络来确定三者的权重，然后加权求和得到输出O。
+
+全连接的结果 O = W1A+W2B+W3C ; 参数 W 完全由输入输出计算得到
+
+注意力的结果 O = f(A) A+f(B) B+f(C) C ; **这里的函数 f 的计算会考虑各个输入之间的关系**
+
+可以看出，最终整合信息时加权求和的形式没有变，然而事实上**注意力机制的意义是引入了权重函数f，使得权重与输入相关，从而避免了全连接层中权重固定的问题。**
+
+### transformer
+
+Transformer 模型**基于编码器-解码器的架构**，是**完全基于自注意力机制**，没有任何卷积层或循环神经网络，不是seq2seq那一套，它将seq2seq中的rnn 都**换成了self-attention，同时decoder还会通过注意力机制使用encoder 的信息**。
+
+![img](img/6e974c24b7bd3101f55a334c89e87c1813c29411.png@682w_!web-note.webp)
+
+其中可学习的参数就是**全连接层，以及注意力机制中将输入X 转为Q,K,V 的权重**。使用的注意力分数函数为缩放点积函数
+
+**编码器**
+
+- 因为我们希望针对输入可以专注更多的维度（角度）的信息，因此，**这里的 transformer 块是由n 个self-attention连结而成的**（这里很像 CNN 中使用多个卷积核可以输出多个通道一样）。即 **多头注意力机制**。Transformer 块中的多头注意力实际上就是自注意力（自注意力同时具有并行计算和最短的最大路径长度这两个优势）
+
+![image-20241009180600467](img/image-20241009180600467.png)
+
+- 在计算编码器的自注意力时，key 、value 和 query 的值都来自**前一个编码器层的输出**
+
+**Positivewise FFN**：基于位置的前馈网络，是全连接层。使用它的意义如下:
+
+- 输入到此FFN 的数据形状为（bs, n, d），n是序列的长度，d是数据的维度。其中n  是会变的，它与模型无关，模型应该是可以处理任意长度的输入的，不能将n 作为一个特征。
+
+- 同时 linear 函数只能接收 input_embed, 和output_embed这两个参数，所以需要切换到二维的形式去输入。
+
+- 又因为 d 是数据的维度，需要维护它的一致性，所以把bs 和 n 合并到一起。
+
+- 使用2个FC，输出的时候再把(bn,d)变回(b,n,d)
+
+**Add & norm**
+
+- 其中 add 就是一个 resnet，可以让网络加深，如下图
+
+![image-20241010091432191](img/image-20241010091432191.png)
+
+- norm 包括批量归一化和层归一化
+
+![image-20241010091505902](img/image-20241010091505902.png)
+
+- 批量归一化对**每个特征/通道**进行归一化（不适合序列长度会变的 NLP 应用）
+- 层归一化对**每个样本**进行归一化
+
+**信息传递**
+
+- 编码器的输出y1,y2, ... yn ，**将其作为解码器中间的多头注意力的key 和 value，而其 query 来自目标序列**，即掩码多头注意力的输出 
+
+**解码器**
+
+- 解码器是由 n 个块组成的，每个块里包含了三个子层：解码器自注意力、“编码器-解码器”注意力和基于位置的前馈网络。这些子层也都被残差连接和紧随的层规范化围绕。
+
+- 我们看到解码器中使用的是**有掩码的多头注意力**。因为self-attention 是可以一次看到一组数据的所有信息的。而在**解码器输出一个元素时，不应该考虑该元素之后的元素**（在预测阶段根本就没有之后元素）。因此使用掩码来实现。 
+- 同时，**解码器每一步只能有一个输出**，因此在预测时，**解码器上一步的输出还要传递给下一步的解码器作为输入**。(跟seq2seq 的预测过程很像)。
+- 在解码器中，每个block 都是把 X 和 state 放进去更新一遍取出来再作为 X 和 state 放到下一层的block 中。
+- 解码器最终的输出形状为（b，n，target_vocab_size）
+
+**训练**
+
+- 训练中，对于解码器，target 句子序列形状 （b, n ,d），会直接全部传递进解码器，但第 i 步使用时掩码，只会使用前 i 个元素进行训练（在n 这个维度）。
+
+**预测**
+
+- 预测第 t+1 个输出时，自注意力中，使用**前 t 个预测值作为 key和 value**（在训练时也要通过掩码只使用前t 个值训练），**第 t 个预测值作为query**，如下图
+
+![image-20241010092604113](img/image-20241010092604113.png)
+
+- 需要注意的是，虽然**解码器在每一步中只预测一个词，但整个解码过程是并行的**（在批处理级别上），即可以同时处理多个序列的生成。然而，**在每个序列内部，词的生成是逐步和顺序的**。
+- 可以知道每一步解码器的输入和输出，其序列长度都是1，因为都是用前一个词预测后一次词。
+
+**FC**
+
+- 最后的最后会有一层全连接层，将之前的隐藏层状态映射到目标词汇表的每个词的概率。具体来说，如果输入到全连接层的张量形状为（s，d），其中s是序列长度，d是隐藏状态的维度，**那么全连接层的输出形状将是一个（s，V）的二维张量，其中V是目标词汇表的大小。这个输出张量中的每个元素都代表了序列中对应位置生成目标词汇表中每个词汇的概率。**
+
+**超参数**
+
+transformer 中的超参数如下：
+
+- **每个注意力层，key, query, value的大小（即将X 转换为它们的 Wq ， Wk，Wv）。**
+- **FNN 层的隐藏层大小**
+- **多头注意力的头数，即用多少个通道开使用注意力去获取数据之间的特征**
+- **块的数量，加深层数的关键**
 
 
 
@@ -1810,15 +2122,25 @@ MLP：多层感知机（MLP，Multilayer Perceptron）也叫人工神经网络�
 
 其缺点在于**词汇表极其庞大**、**难以处理形态变化灵活的单词**、**词汇表覆盖范围有限，无法处理未登录词**
 
-- 更精细的分词方法——Byte Pair Encoding (BPE)
+- **更精细的分词方法——Byte Pair Encoding (BPE)**
 
-我们注意到，在英文单词中，存在大量复用的字母组合。以 “happy” 为例，以 “happy” 为词根的单词有很多，如 “happily”、“happiness”、“unhappy"等。我们注意到，这些衍生词可以拆分成字母组合并复用，如"happ"这一字母组合在三个单词中都有出现。此外， “ily”、“un” 字母组合在其他英语单词中高频出现，它们和其他单词的组合也可以用于表示新的单词。
+在英文单词中，存在大量复用的字母组合。以 “happy” 为例，以 “happy” 为词根的单词有很多，如 “happily”  、  “happiness” 、 “unhappy"等。我们注意到，这些衍生词可以拆分成字母组合并复用，如"happ"这一字母组合在三个单词中都有出现。此外， “ily”、“un” 字母组合在其他英语单词中高频出现，它们和其他单词的组合也可以用于表示新的单词。
 
-自然而然的，我们想到，是否可以基于这种 “找高频出现的字母组合” 的方法设计出一种分词器，从而通过复用各种字母组合来覆盖所有英文单词呢？
+自然而然的，我们想到，是否可以基于这种 “**找高频出现的字母组合**” 的方法设计出一种分词器，从而通过复用各种字母组合来覆盖所有英文单词呢？
 
 事实上，这种方法就是**字节对编码(Byte Pair Encoding, BPE)**。
 
 [NLP BERT GPT等模型中 tokenizer 类别说明详解-腾讯云开发者社区-腾讯云 (tencent.com)](https://cloud.tencent.com/developer/article/1865689)
+
+BPE过程的概述：
+
+- 预训练开始时，BPE 将文本分解为最小的单元（通常是字符），并统计语料库中所有字符的出现频率。开始时，每个单词由这些字符序列组成。
+- 算法会在整个文本语料库中统计相邻字符或子词对的频率。每一次迭代中，找到在语料库中**出现次数最多**的相邻字符或子词对。例如，如果在整个语料库中出现最多的是 `t` 和 `h` 的组合，则 `t h` 就会成为第一个合并规则。
+- 将**找到的最频繁的子词对合并为一个新的子词，并记录这个合并规则（即合并的两个字符或子词对）**。然后这个新子词会替代文本中的所有相应字符组合。合并规则被添加到一个文件如 `merges.txt` 文件中，且合并是按顺序进行的，最常见的对排在最前。
+- 继续重复步骤 2 和 3，直到**达到预设的合并次数**（通常是预先确定的词汇表大小）。最终，通过这些合并步骤，形成了包含频率最高的子词组合的词汇表。
+- 完成合并之后，**将合并结果与每个子词分配一个唯一的 ID**，**这些子词就组成了最终的 `vocab.json` 文件**。
+
+
 
 总结来讲，BPE的训练是在**寻找训练集中高频出现的token组合**；根据规则，在单一词或字符的基础词汇表的基础上，把高频的多元语法词组合依次加入到词汇表当中（有最低出现频率限制），直到词汇表达到预定大小停止。**最终词汇表的大小 = 基础字符词汇表大小 + 合并串的数量**。比如像GPT，它的词汇表大小 40478 = 478(基础字符) + 40000（merges）。
 
@@ -1826,7 +2148,7 @@ MLP：多层感知机（MLP，Multilayer Perceptron）也叫人工神经网络�
 
 对训练文本使用tokenizer 把文字划分为token 之后，就要对token 进行编码
 
-每个词元都表示为一个数字索引， 将这些索引直接输入神经网络可能会使学习变得困难。 因此在将词汇表中的 ID 输入到模型之前，这些 ID 会通过嵌入层（`Embedding Layer`）编码为密集的向量表示（最简单的表示称为*独热编码*（one-hot encoding）。）
+每个词元都表示为一个数字索引， 将这些索引直接输入神经网络可能会使学习变得困难。 因此在将词汇表中的 ID 输入到模型之前，这些 ID 会通过嵌入层（`Embedding Layer`）**编码为密集的向量表示**（最简单的表示称为*独热编码*（one-hot encoding）。）
 
 这个嵌入层是一种查找表（look-up table），每个词汇 ID 对应一个固定长度的向量。
 
@@ -1836,15 +2158,117 @@ MLP：多层感知机（MLP，Multilayer Perceptron）也叫人工神经网络�
 - 当一个 ID 作为输入时，嵌入层会返回这个 ID 对应的行向量。**这些行向量是模型在训练过程中学习到的**，表示每个单词或子词的语义信息。
 - 例如，如果 ID `262` 映射到一个向量 `[0.1, 0.5, -0.3]`，那么这个向量会作为输入送到模型的后续层，同时，这个编码也会在后续的训练中不断更新修改。
 
-### Language Model PreTraining
+### BERT
 
-在扩充完 tokenizer 后，我们就可以开始正式进行模型的预训练步骤了。
+BERT，全称Bidirectional Encoder Representation of Transformer，首次提出于《BERT: Pre-training of Deep Bidirectional Transformers for Language Understanding》一文中。简单来说，**BERT是只使用了Transformer的encoder(即编码器)部分**，因此也可以认为BERT就是Transformer的encoder部分。**BERT既可以认为是一个生成Word Embedding的方法，也可以认为是像LSTM这样用于特征提取的模型结构**。
 
-Pretraining 的思路很简单，就是输入一堆文本，让模型做 Next Token Prediction 的任务，这个很好理解。
+**BERT 的动机**
 
-我们主要来讨论几种预训练过程中所用到的方法：数据源采样、数据预处理、模型结构。
+- 基于微调的 NLP 模型，**它想做的是一个预训练模型**
+- 预训练的模型抽取了**足够多的信息或特征**
+- **新的任务只需要增加一个简单的输出层**
 
+预训练的模型已经足够好，能够捕获足够多的语义信息。当要做一个新的任务的时候，我们只需要增加一个 简单的输出层即可。
 
+**bert 对输入的修改**
+
+- 每个样本都是一个句子对，把原句子和目标句子拼起来
+- 加入了额外的 segment embedding，用来区分前一个句子和后一个句子
+- 位置编码可学习
+
+**bert 做了两个预训练任务**
+
+1. 带掩码的语言模型（做完形填空）
+
+- transformer编码器是双向的，而标准语言模型要求单向
+- bert 预训练为一个带掩码的语言模型 ，让它去做完形填空，这样可以去看下双向的信息 
+
+2. 下一句的预测
+
+- 预测下一个句子中的两个句子是否相邻
+
+相当于一个主干（用来获得特征），两个头
+
+**微调 BERT**
+
+BERT 输出的输入数据的特征，不同任务可以使用不同的特征。
+
+需要注意的是**微调时使用的词表必须是训练bert 模型的词表**。
+
+不同的任务示例：
+
+- 句子分类
+
+<img src="img/image-20241010155336706.png" alt="image-20241010155336706" style="zoom: 67%;" />
+
+- 命名实体识别，不使用特殊字符
+
+<img src="img/image-20241010155534892.png" alt="image-20241010155534892" style="zoom: 67%;" />
+
+- 问题回答，输入句子对。第一个句子是问题，第二个句子是描述。在描述中预测每一个词，看它是不是问题的答案的开始或结束
+
+<img src="img/image-20241010155639892.png" alt="image-20241010155639892" style="zoom:67%;" />
+
+### GPT
+
+GPT（Generative Pre Training，生成式预训练）模型**建立在Transformer解码器的基础上，预训练了一个用于表示文本序列的语言模型**。当将GPT应用于下游任务时，语言模型的输出将被送到一个附加的线性输出层，以预测任务的标签。
+
+###  分布式训练
+
+在分布式训练环境下，通常会使用多个节点来协同工作，以加速训练过程。这些节点通常分为两类：**Master 节点**和**Worker 节点**。每种节点在分布式训练中扮演着不同的角色和职责。
+
+- **Master 节点负责调度训练任务**，确保任务在各个 Worker 节点之间均衡分布。Master 节点可以**充当参数服务器**（Parameter Server），负责存储和更新全局模型参数。
+- **Worker 节点负责具体的模型训练任务**，包括前向传播、反向传播和梯度计算。将计算得到的梯度信息上传到 Master 节点或参数服务器。定期向 Master 节点报告自身的状态，包括任务进度、资源使用情况等。
+
+###  并行策略和方法
+
+- **数据并行**：数据并行模式会在**每个worker之上复制一份模型**，这样每个worker都有一个完整模型的副本。**输入数据集是分片的**，一个训练的小批量数据将在多个worker之间分割；worker定期汇总它们的梯度，以确保所有worker看到一个一致的权重版本。对于无法放进单个worker的大型模型，人们可以在模型之中较小的分片上使用数据并行。
+
+- **模型并行**：模型并行模式会让**一个模型的内存和计算分布在多个worker之间**，以此来解决一个模型在一张卡上无法容纳的问题，其解决方法是把模型放到多个设备之上。模型并行分为两种：流水线并行和张量并行，就是把模型切分的方式。
+- - **流水线并行**：（pipeline model parallel， **PP**）是把模型不同的层放到不同设备之上，比如前面几层放到一个设备之上，中间几层放到另外一个设备上，最后几层放到第三个设备之上。
+
+- - **张量并行**：（tensor model parallel， **TP**）则是层内分割，把某一个层做切分，放置到不同设备之上，也可以理解为把矩阵运算分配到不同的设备之上，比如把某个矩阵乘法切分成为多个矩阵乘法放到不同设备之上。
+
+![img](img/2f05f111903a14200055af843788031b.png)
+
+### megatron 和 DeepSpeed
+
+Megatron 和 DeepSpeed 通常被结合使用，以充分发挥各自的优势：
+
+- **Megatron** 提供**模型并行**性来处理超大规模模型的训练。
+- **DeepSpeed** 则通过**数据并行、内存优化和高效通信**等技术，提升训练过程的整体性能。
+
+**Megatron**在训练拥有万亿参数的大型模型时，采用了PTD-P（Pipeline, Tensor, and Data Parallelism）方法，从而实现了高度聚合的吞吐量（502 petaFLOP/s）。
+
+**DeepSpeed**是一个由微软开发的分布式训练工具，它通过ZeRO技术优化内存占用，支持更大规模的模型训练。ZeRO通过分片模型参数、优化器状态和梯度来减少显存需求。DeepSpeed的核心就在于，**GPU显存不够，CPU内存来凑**。具体点说，DeepSpeed将当前时刻，训练模型用不到的参数，缓存到CPU中，等到要用到了，再从CPU挪到GPU。这里的“参数”，不仅指的是模型参数，还指optimizer、梯度等。
+
+### ModelLink
+
+ModelLink旨在为华为 [昇腾芯片](https://gitee.com/link?target=https%3A%2F%2Fwww.hiascend.com%2F) 上提供端到端的大语言模型训练框架, 包含模型，算法，以及下游任务。ModelLink 通过模型并行与数据并行来训练大语言模型，
+
+> CANN（Compute Architecture for Neural Networks）是华为针对AI场景推出的异构计算架构
+
+> **MindFormers** 是华为 MindSpore 生态系统中的一个开源库，专注于支持和优化各种大型 AI 模型的预训练和推理，特别是在自然语言处理（NLP）、计算机视觉和多模态任务方面。MindFormers 提供了一套标准化的模型训练和推理工具，使用户能够更便捷地使用大规模 Transformer 类模型（如 GPT、BERT、ViT 等），并在华为 Ascend 硬件加速平台上实现高效的训练和推理。
+
+### 模型转换
+
+#### 为什么需要转
+
+- 当自己用deepspeed或 [mindformer]([MindSpore](https://www.mindspore.cn/mindformers/docs/zh-CN/dev/function/weight_conversion.html))框架训练了模型**，为了在 Hugging Face 生态系统中分享这个模型**
+
+#### deepspeed 和hf
+
+- DeepSpeed 模型通常使用 ".pt"（PyTorch 模型的默认保存后缀）或者 ".pth" 作为模型权重文件的后缀。这是因为 DeepSpeed 是建立在 PyTorch 框架之上的，因此它遵循了 PyTorch 模型保存的命名惯例。
+
+- Hugging Face(hf) 格式的模型通常使用 ".bin" 或者 ".h5" 作为模型权重文件的后缀，这取决于模型是基于 PyTorch 还是 TensorFlow。对于 PyTorch 模型，通常使用 ".bin" 后缀，而对于 TensorFlow 模型，则使用 ".h5" 后缀。
+
+> deepspeed 转hf 是模型保存格式的转变->（.pt）转 (.bin)
+
+#### pt和bin以及 safetensors
+
+- .bin文件是一种二进制文件，**用于保存Pytorch模型的权重信息**，模型的结构信息通常放在与 bin 文件同目录的 `config.json`文件中。**它只包含了模型的参数数值，没有保存模型的结构信息**。因此，当使用.bin文件加载模型时，我们需要已经定义好模型的结构，并与.bin文件中的参数数值相匹配。bin文件的大小较小，加载速度较快，因此在生产环境中使用较多。
+- .pt文件是一种推荐的保存Pytorch模型的文件类型，**它包含了模型的权重和结构信息。与.bin文件不同，.pt文件可以完整保存模型的所有信息**，使得我们可以方便地加载整个模型，而无需额外定义模型结构。
+- `safetensors`  是由 Hugging Face 推出的一种新型安全模型存储格式，特别关注模型安全性、隐私保护和快速加载。**它仅包含模型的权重参数**，**而不包括执行代码**，这样可以减少模型文件大小，提高加载速度。
 
 ### 语言模型
 
@@ -1898,6 +2322,10 @@ n 元语法模型中，词表V需要存储|V|的n 次方个数字， 因此与�
 
 输出层的权重Whq∈Rh×q 和偏置bq∈R1×q。 值得一提的是，即使在不同的时间步，循环神经网络也总是使用这些模型参数。 因此，循环神经网络的参数开销不会随着时间步的增加而增加。
 
+使用 torch 的rnn时，填入的 hidden_size，最终输出的ouput 的单个数据的维度就变成了 hidden_size了。
+
+**rnn的输出为全部输出序列 (bs, num_steps, num_hidden) 和最终层的隐藏状态 (bs, num_layers, num_hidden)** 。
+
 **RNN 的两种变体 GRU 和 LSTM 解决了RNN 长期依赖导致的梯度爆炸问题。**
 
 - LSTM通过引入三个“门”结构（遗忘门、输入门、输出门）来增强RNN的能力
@@ -1950,97 +2378,193 @@ n 元语法模型中，词表V需要存储|V|的n 次方个数字， 因此与�
 - 在最坏的情况下，模型总是预测标签词元的概率为0。 在这种情况下，困惑度是正无穷大。
 - 在基线上，该模型的预测是词表的所有可用词元上的均匀分布。 在这种情况下，困惑度等于词表中唯一词元的数量。 事实上，如果我们在没有任何压缩的情况下存储序列， 这将是我们能做的最好的编码方式。 因此，这种方式提供了一个重要的上限， 而任何实际模型都必须超越这个上限。
 
-#### seq2seq
+### 使用hf-mirror 下载模型
 
-机器翻译是序列转换模型的一个核心问题， 其输入和输出都是长度可变的序列。 为了处理这种类型的输入和输出， 我们可以设计一个包含两个主要组件的架构： 第一个组件是一个*编码器*（encoder）： 它接受一个长度可变的序列作为输入， 并将其转换为具有固定形状的编码状态。 第二个组件是*解码器*（decoder）： 它将固定形状的编码状态映射到长度可变的序列。 这被称为*编码器-解码器*（encoder-decoder）架构， 如图
+- 安装依赖：首先，我们需要安装`huggingface-cli`命令行工具，可以使用以下命令进行安装：`pip install -U huggingface_hub`。
+- 设置镜像endpoint：在下载模型之前，我们需要设置镜像endpoint，可以使用以下命令进行设置：`export HF_ENDPOINT=https://hf-mirror.com`。
+- 下载模型：使用huggingface-cli的download命令可以下载模型，例如：`huggingface-cli download --resume-download --local-dir-use-symlinks False bigscience/bloom-560m --local-dir bloom-560m`。
 
-![image-20240902105255206](img/image-20240902105255206.png)
+# 微调
 
-遵循编码器－解码器架构的设计原则， **循环神经网络编码器使用长度可变的序列作为输入， 将其转换为固定形状的隐状态**。 换言之，输入序列的信息被*编码* 到循环神经网络编码器的隐状态中。 为了连续生成输出序列的词元， 独立的**循环神经网络解码器是基于输入序列的编码信息 和输出序列已经看见的或者生成的词元**来预测下一个词元。
+SFT微调整体包含以下几个部分：
 
-下图演示了 如何**在机器翻译中使用两个循环神经网络进行序列到序列学习**。这是**训练的过程**
+- **预训练：** 首先需要在一个较大规模的数据集上训练一个神经网络模型，比如针对大语言模型，通常是在大量未标记的文本数据上进行，预训练阶段的目标是使模型获取通用的知识和理解能力。
+- **微调：** 结合目标任务，**用新的训练数据集对已经得到的预训练模型进行微调**。在微调过程中，通过反向传播可以对原始模型的全部参数或者部分参数进行优化，使模型在目标任务上取得更好的效果。
+- **评估：** 经过微调之后会得到一个新的模型，可以用目标任务的评测数据集对微调模型进行评估，从而得到微调模型在目标任务上的性能指标。
 
-![image-20240902105413359](img/image-20240902105413359.png)
+https://www.mindspore.cn/mindformers/docs/zh-CN/dev/usage/sft_tuning.html
 
-特定的“<bos>”表示序列开始词元，“<eos>”表示序列结束词元。
+# 推理
 
-- 从技术上讲，编码器将长度可变的输入序列转换成通过编码器编程形状固定的上下文变量c， 并且将输入序列的信息在该上下文变量中进行编码。
+`vLLM`是伯克利大学LMSYS组织开源的**大语言模型 高速推理框架**，旨在极大地提升实时场景下的语言模型服务的吞吐与内存使用效率。`vLLM`是一个快速且易于使用的库，用于 LLM 推理和服务，可以和HuggingFace 无缝集成。vLLM利用了全新的注意力算法「PagedAttention」，有效地管理注意力键和值。
 
-下图是训练完成后，用于预测的过程：
+背景：
 
-![../_images/seq2seq-predict.svg](img/seq2seq-predict-17255229578201.svg)
+- LLM 的推理，最大的瓶颈在于显存。
+- 自回归模型的 keys 和 values 通常被称为 KV cache，这些 tensors 会存在 GPU 的显存中，用于生成下一个 token。
+- 这些 KV cache 都很大，并且大小是动态变化的，难以预测。已有的系统中，由于显存碎片和过度预留，浪费了60%-80%的显存。
 
-从预测过程可以看到，在解码器的输入是编码器最后一个时间步的输出，以及上一个解码器的输出。并且，解码器的输入并没有固定长度，而是一直预测到输出 <eos> 为止。
+实现：
 
-- 
+- 受到操作系统中，[虚拟内存](https://zhida.zhihu.com/search?content_id=230975732&content_type=Article&match_order=1&q=虚拟内存&zhida_source=entity)和分页经典思想的启发
+- PagedAttention 允许在不连续的内存空间中存储连续的 keys 和 values。 具体来说，PagedAttention 会将每个序列的 KV cache 划分为块，每个块包含固定数量 tokens 的 keys 和 values。 在注意力计算过程中，PagedAttention 内核有效地识别并获取这些块。
+- 分块之后，这些 KV cache 不再需要连续的内存，从而可以像在操作系统的虚拟内存中一样，更灵活地对这些 KV cache 进行管理。
+- PagedAttention 对于显存的利用接近理论上的最优值（浪费比例低于4%）。通过对显存进行更好的管理，可以使得单次可以使用更大的 batch size，从而进一步利用 GPU 的并行计算能力。
 
+**vllm 使用**
 
+vLLM 推理主要需要设计两个类：模型 LLM，采样参数 SamplingParams。
 
-``` 
-原始文本 		词表 vocab (token:index)				embedding
+``` python
+# 载入 LLM 和 SamplingParams
+from vllm import LLM, SamplingParams
+# 推理数据以List[str]格式组织
+prompts = [
+    "Hello, my name is",
+    "The president of the United States is",
+    "The capital of France is",
+    "The future of AI is",
+]
+# 设置采样参数
+sampling_params = SamplingParams(temperature=0.8, top_p=0.95)
+# 加载模型
+llm = LLM(model="facebook/opt-125m")
+# 执行推理
+outputs = llm.generate(prompts, sampling_params)
 
-this   	 tokenizer	this: 0		 word2vec		[ 0.8147,  0.6233, -0.8745]
-is	  	==========> is: 1		==========> 	[ 1.4187, -1.6234,  0.3779]
-namespace.			name: 2						[ 0.5483,  0.2194, -0.6123]
-					space: 3					[-1.8765,  1.1769, -0.5206]
-					.: 4						[ 0.8559, -1.0804, -0.8394]
-					[eos]: 5					[ 0.4355, -0.2552, -0.0063]
+# 输出推理结果
+for output in outputs:
+    prompt = output.prompt
+    generated_text = output.outputs[0].text
+    print(f"Prompt: {prompt!r}, Generated text: {generated_text!r}")
 ```
 
+**在线推理**
 
+在线推理有两种接口，**OpenAI兼容接口**和**vLLM接口**，官方推荐使用OpenAI兼容接口作为生产力接口。
 
+### 在colab上应用vllm 进行推理
 
+首先打开colab创建一个 notebook
 
+在代码执行工具-更改运行时类型中选择一个GPU
 
-
-``` 
-apiVersion: v1
-kind: Pod
-metadata:
-  name: pod1
-  annotations:
-    scheduling.volcano.sh/queue-name: q-1979180528893952
-  labels:
-    aiops.io/instance-name: "1289270816490090496"
-    aiops.io/resource: "true"
-    aiops.io/user-id: CIDC-U-617e69bb06924f0692ff719c1913601c
-spec:
-  schedulerName: volcano
-  terminationGracePeriodSeconds: 0
-  containers:
-  - command:
-    - sleep
-    - 10m
-    image: busybox:1.36.0
-    name: bb
-    resources:
-      requests:
-        nvidia.com/gpu: 1
-      limits:
-        nvidia.com/gpu: 1
-        
-        
-apiVersion: scheduling.volcano.sh/v1beta1
-kind: Queue
-metadata:
-  creationTimestamp: "2024-09-27T08:59:12Z"
-  generation: 2
-  labels:
-    aiops.io/queue-name: q-1979180528893952
-    aiops.io/resource-poolID: CIDC-RP-25
-    aiops.io/specs-name: nvidia-v100-8
-    aiops.io/user-reserved: "true"
-  name: q-1979180528893952
-  resourceVersion: "25352346"
-  uid: 2326219c-7dc6-4361-81d8-99d7dde08b98
-spec:
-  capability:
-    cpu: "4"
-    ephemeral-storage: 10Gi
-    memory: 32Gi
-    nvidia.com/gpu: "4"
-  guarantee: {}
-  reclaimable: false
-  weight: 1
+``` python
+!nvidia-smi
 ```
+
+安装 vllm 和相关库
+
+``` python
+!pip install vllm kaleido python-multipart typing-extensions==4.5.0 torch==2.1.0
+# 可能有报错，先不管，除非下面执行出错
+```
+
+下载模型，通常会从 **Hugging Face 模型库**（Hugging Face Model Hub）下载，下载到colab 的地址为 `/root/.cache/huggingface/hub/`
+
+下载的模型出来模型文件，pytorch模型通常以 .bin 结尾格式。出来模型文件，还会有一些配置文件
+
+- **`vocab.json`**：定义模型的**词汇表（vocabulary）**，也就是标记器可以使用的所有词汇或子词单元。是一个字典结构，其中每个词汇项（token）都有一个唯一的编号（ID）。这个编号用于在文本处理时将单词或子词转化为数字 ID，方便模型输入。
+
+- **`merges.txt`**：定义词汇构建过程中的**合并规则**，通常用于 Byte-Pair Encoding (BPE) 等方法来分解或组合词汇。**`merges.txt` 规定了合并规则，而 `vocab.json` 是基于这些规则生成的最终词汇表**。
+- **`config.json`**：模型的各种超参数定义。
+
+- **`special_tokens_map.json`**：**定义模型的特殊标记**（token），例如开始（BOS）、结束（EOS）、未知（UNK）、填充（PAD）等特殊符号的配置信息。**详细列出每个特殊标记的具体内容**、是否可以作为单词使用、在处理时是否去除空格等属性。
+
+- **`tokenizer_config.json`** ：定义**标记器（tokenizer）**的配置，确保在加载模型时使用相同的标记化规则。包含特殊标记的定义（类似于 `special_tokens_map.json`），但也包括标记器的其他配置，如是否添加开头的 BOS 标记、处理错误的方式、是否添加前缀空格等。
+
+执行推理：
+
+``` python
+from vllm import LLM, SamplingParams
+
+llm = LLM(model="facebook/opt-125m")
+
+prompts = [
+    "汤姆的名字是",
+    "The president of the United States is",
+    "The capital of France is",
+    "The future of AI is",
+]
+sampling_params = SamplingParams(temperature=0.8, top_p=0.95)
+
+outputs = llm.generate(prompts, sampling_params)
+
+# Print the outputs.
+for output in outputs:
+    prompt = output.prompt
+    generated_text = output.outputs[0].text
+    print(f"Prompt: {prompt!r}, Generated text: {generated_text!r}")
+```
+
+vLLM可以**部署为实现OpenAI API协议的服务器**。这允许vLLM用作使用OpenAI API的应用程序的直接替代品。 默认情况下，它在http://localhost:8000启动服务器。您可以使用–host和–port参数指定地址。
+
+直接命令部署，启动服务器
+
+``` sh
+python -m vllm.entrypoints.openai.api_server --trust-remote-code --model Qwen/Qwen-7B
+```
+
+该服务器可以以与OpenAI API相同的格式查询。例如，列出模型：
+
+``` shell
+curl http://localhost:8000/v1/models
+```
+
+但是在colab中一次只能一个进程故没法测
+
+#### 在线服务调用
+
+- `/health` 路由通常用于检查服务的健康状态
+
+``` shell
+curl -X GET http://localhost:8080/health
+```
+
+- `/v1/models` 路由，会输出启动的模型列表
+
+``` shell
+curl -X GET http://localhost:8080/v1/models
+```
+
+- OpenAI Completions API。`/v1/completions` 路由用于生成文本完成
+
+``` shell
+curl http://localhost:8000/v1/completions \
+    -H "Content-Type: application/json" \
+    -d '{
+        "model": "facebook/opt-125m",
+        "prompt": "San Francisco is a",
+        "max_tokens": 7,
+        "temperature": 0
+    }'
+```
+
+- OpenAI Chat API。`/v1/chat/completions` 路由用于生成对话完成。
+
+``` shell
+curl http://localhost:8000/v1/chat/completions \
+    -H "Content-Type: application/json" \
+    -d '{
+        "model": "facebook/opt-125m",
+        "messages": [
+            {"role": "system", "content": "You are a helpful assistant."},
+            {"role": "user", "content": "Who won the world series in 2020?"}
+        ]
+    }'
+```
+
+- `/tokenize` 路由用于将文本转换为 token 序列。
+
+``` shell
+curl -X POST http://localhost:8080/tokenize \
+-H "Content-Type: application/json" \
+-d '{
+  "text": "Hello, world!"
+}'
+```
+
+# 华为910B 训练
+
+
 

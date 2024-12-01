@@ -6004,6 +6004,8 @@ func timestamp2Time() {
 
 	// 将秒级时间戳转为时间对象（第二个参数为不足1秒的纳秒数）
 	timeObj := time.Unix(sec, 22)
+    // 将纳秒级时间戳转为时间对象也是用这个函数
+    timeObj = time.Unix(0, 纳秒时间戳)
 	fmt.Println(timeObj)           // 2022-02-22 22:22:22.000000022 +0800 CST
 	timeObj = time.UnixMilli(msec) // 毫秒级时间戳转为时间对象
 	fmt.Println(timeObj)           // 2022-02-22 22:22:22 +0800 CST
@@ -8684,6 +8686,12 @@ main.go:4:2: no required module provides package github.com/gin-gonic/gin; to ad
 1. 删除 `go.mod` 文件中未使用的依赖项。
 2. 确保 `go.mod` 文件中列出的依赖项版本与您的代码中实际使用的依赖项版本一致。
 3. 检查并更新依赖项的版本，以保持它们与您的代码中使用的版本兼容
+
+### vendor
+
+有些项目会把第三方库安装到项目的vendor 目录下，以方便在其他地方拉取仓库后可以直接运行，确保项目在不同环境中的一致性和可重复构建。
+
+此时使用 `go get -u xxx` 安装第三方库后还需要使用`go mod vendor` 把库放在vendor 目录下。
 
 ## 28. go test
 

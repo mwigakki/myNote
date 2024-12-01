@@ -317,9 +317,9 @@ kubectl [command] [TYPE] [NAME] [flags]
 | 命令    | 说明                                                         |
 | ------- | ------------------------------------------------------------ |
 | apply   | 通过文件名或标准输入对资源应用配置（**创建或更新**）         |
-| patch   | 使用补丁修改、更新资源的字段                                 |
-| replace | 通过文件名或标准输入**替换**一个资源，运行此命令要求对象之前存在， |
-| convert | 不同的API版本之间转换配置文件                                |
+| patch   | 使用补丁修改、更新资源的字段。一般用来编写自动化的脚本来修改资源。`--type=merge` 适合简单的字段更新，比如修改标签、注解，或者更新某些嵌套层次较少的字段。 `--type=json` 适用于更复杂的结构修改，尤其是增删字段或列表项时。 |
+| replace | 通过文件名或标准输入**替换**一个资源，运行此命令要求对象之前存在，。 |
+|         |                                                              |
 
 `kubectl apply` 与 ` kubectl replace`的区别
 
@@ -427,11 +427,25 @@ spec:
     command: ["sleep", "120"]	# 给容器加一个任务，不然容器没有任务开启就立马关闭了 
     ports:
     - containerPort: 8080 # 应用监听的端口
+      name: http-port	# 使用此name可以传递给service的targetPort，将service与应用端口解耦
       protocol: TCP
     env: # 给容器添加环境变量
     - name: TZ
       value: Asia/Shanghai
 ```
+
+### pod 的启动命令
+
+在k8s中启动一个pod，pod 中的容器必须有执行的命令。该命令可以通过镜像dockerfile 中的 `CMD` 或 `ENTRYPONT` 来指定， 也可以通过pod 的yaml 定义中的 `command`和 `args` 来指定。它们的区别如下
+
+- `CMD` 提供默认的执行命令和参数，但这些命令和参数可以被运行时的参数覆盖。
+- `ENTRYPOINT` 定义了容器启动时要执行的命令，而 `CMD` 提供的参数会被附加到 `ENTRYPOINT` 定义的命令后面。
+- **`command` 覆盖 Dockerfile 中的 `ENTRYPOINT`。**
+- **`args` 覆盖 Dockerfile 中的 `CMD`。**
+
+可见pod yaml 定义中的  `command`和 `args` 的优先级很高，会直接覆盖掉docker 镜像原来的启动命令，如果没有 `command` 和 `args`，则使用 Dockerfile 中的 `ENTRYPOINT` 和 `CMD`。
+
+
 
 ### 使用kubectl create创建pod
 
@@ -441,8 +455,6 @@ pod/test-lt1 created
 ```
 
 创建之后发现有问题可以使用命令 `kubectl delete pod test-lt1` 删除
-
-
 
 ## 标签使用
 
@@ -559,6 +571,14 @@ metadata:
 
 ``` shell
 kubectl create -f 文件名.yaml -n test-0705
+```
+
+### 强删 ns
+
+``` shell
+kubectl get namespace [ns名]  -o json \
+| tr -d "\n" | sed "s/\"finalizers\": \[[^]]\+\]/\"finalizers\": []/" \
+| kubectl replace --raw /api/v1/namespaces/[ns名]/finalize -f -
 ```
 
 ## 在pod中执行
@@ -759,7 +779,7 @@ Taint（污点）和 Toleration（容忍）可以作用于node和 pod 上（**�
 
 它们的目的是优化pod在集群间的调度，这跟节点亲和性类似，只不过它们作用的方式相反，具有Taint的node和pod是互斥关系，而具有节点亲和性关系的node和pod是相吸的。
 
-## 污点 ( Taint ) 的组成
+### 污点 ( Taint ) 的组成
 
 > 使用kubectl taint命令可以给某个Node节点设置污点，Node被设置上污点之后就和Pod之间存在了一种相斥的关系，可以让Node拒绝Pod的调度执行，甚至将Node已经存在的Pod驱逐出去。
 
@@ -804,6 +824,26 @@ kubectl taint nodes k8s-node2 key:NoSchedule-
 
 设置了污点的Node将根据 taint 的effect：NoSchedule、PreferNoSchedule、NoExecute和Pod之间产生互斥的关系，Pod将在一定程度上不会被调度到Node上。
 
+加容忍的位置如下：
+
+``` yaml
+apiVersion: v1
+kind: Pod
+metadata:
+  name: nginx
+  labels:
+    env: test
+spec:
+  containers:
+  - name: nginx
+    image: nginx
+    imagePullPolicy: IfNotPresent
+  tolerations:
+  - key: "example-key"
+    operator: "Exists"
+    effect: "NoSchedule"
+```
+
 但我们可以在Pod上设置容忍（Tolerations），**意思是设置了容忍的Pod将可以容忍对应污点的存在，可以被调度到存在污点的Node上**。
 
 ``` yaml
@@ -832,16 +872,16 @@ tolerations:
 
 - 当不指定key值和effect值时，且operator为Exists，表示容忍所有的污点【能匹配污点所有的keys，values和effects】
 
-```
-1 tolerations:
-2 - operator: "Exists"
+```yaml
+tolerations:
+- operator: "Exists"
 ```
 
 - 当不指定effect值时
 
 当不指定effect值时，则能匹配污点key对应的所有effects情况
 
-```
+```yaml
 tolerations:
 - key: "key"
   operator: "Exists"
@@ -885,13 +925,87 @@ spec:
 
 当删除一个对象时，其对应的控制器并不会真正执行删除对象的操作，在 Kubernetes 中对象的回收操作是由 GarbageCollectorController （垃圾收集器）负责的，其作用就是当删除一个对象时，会根据指定的删除策略回收该对象及其依赖对象。删除的具体过程如下：
 
-- 发出删除命令后 Kubernetes 会将该对象标记为待删除，但不会真的删除对象，具体做法是将对象的 `metadata.deletionTimestamp` 字段设置为当前时间戳，这使得对象处于只读状态（除了修改 `finalizers` 字段）。
+- 发出删除命令后 Kubernetes 会将该对象**标记为待删除**，但不会真的删除对象，具体做法是将对象的 `metadata.deletionTimestamp` 字段设置为当前时间戳，这使得对象处于只读状态（除了修改 `finalizers` 字段）。
 - 当 `metadata.deletionTimestamp` 字段非空时，负责监视该对象的各个控制器会执行对应的 `Finalizer` 动作，每个 `Finalizer` 动作完成后，就会从 `Finalizers` 列表中删除对应的 `Finalizer`。
 - 一旦 `Finalizers` 列表为空时，就意味着所有 `Finalizer` 都被执行过了，垃圾收集器会最终删除该对象。
 
 # 5. 托管pod
 
 比较简单的pod保活机制是设置存活探针，对pod的状态以及pod内容器部署的应用定时进行状态检查。详情见 《kubernetes in action》中文版4.1节。该机制存在一定缺陷，存活探针的任务由承载pod节点的kubelet执行，如果该节点本身崩溃，该探针任务就会失效。因此，推荐使用**ReplicationController** 或类似的机制来管理pod。
+
+## pod 的健康检查 health check
+
+[k8s的Health Check（健康检查） - benjamin杨 - 博客园 (cnblogs.com)](https://www.cnblogs.com/benjamin77/p/9939050.html)
+
+### 默认的健康检查
+
+每个容器启动时都会执行一个进程，此进程由 Dockerfile 的 CMD 或 ENTRYPOINT 指定。**如果进程退出时返回码非零，则认为容器发生故障**，Kubernetes 就会根据 `restartPolicy` 重启容器。
+
+### Liveness探测
+
+Liveness 探测**让用户可以自定义判断容器是否健康的条件**。如果探测失败，Kubernetes 就会重启容器。
+
+如下是一个pod 的spec 模板
+
+``` yaml
+spec:
+  restartPolicy: OnFailure
+  containers:
+  - name: liveness
+    image: busybox
+    args:
+    - /bin/sh
+    - -c
+    - touch /tmp/healthy; sleep 30; rm -fr /tmp/healthy; sleep 600
+    livenessProbe:
+      exec: # 还有其他的探测方法如 httpGet
+        command:
+        - cat
+        - /tmp/healthy
+      initialDelaySeconds: 10
+      periodSeconds: 5
+```
+
+启动进程首先创建文件 `/tmp/healthy`，30 秒后删除，在我们的设定中，如果 `/tmp/healthy` 文件存在，则认为容器处于正常状态，反正则发生故障。
+
+`livenessProbe` 部分定义了如何执行 Liveness 探测：
+
+1. 探测的方法是：通过 `cat` 命令检查 `/tmp/healthy` 文件是否存在。如果命令执行成功，返回值为零，Kubernetes 则认为本次 Liveness 探测成功；如果命令返回值非零，本次 Liveness 探测失败。
+2. `initialDelaySeconds: 10` 指定容器启动 10 之后开始执行 Liveness 探测，我们一般会根据应用启动的准备时间来设置。比如某个应用正常启动要花 30 秒，那么 `initialDelaySeconds` 的值就应该大于 30。
+3. `periodSeconds: 5` 指定每 5 秒执行一次 Liveness 探测。Kubernetes 如果连续执行 3 次 Liveness 探测均失败，则会杀掉并重启容器。
+
+### Readiness探测
+
+除了 Liveness 探测，Kubernetes Health Check 机制还包括 Readiness 探测。
+
+用户通过 Liveness 探测可以告诉 Kubernetes 什么时候通过重启容器实现自愈；Readiness 探测则是告诉 Kubernetes 什么时候可以将容器加入到 Service 负载均衡池中，对外提供服务。
+
+Readiness 探测的配置语法与 Liveness 探测完全一样，下面是个例子：
+
+``` yaml
+spec:
+  restartPolicy: OnFailure
+  containers:
+  - name: readiness
+    image: busybox
+    args:
+    - /bin/sh
+    - -c
+    - touch /tmp/healthy; sleep 30; rm -rf /tmp/healthy
+    readinessProbe:
+      exec: # 还有其他的探测方法如 httpGet
+        command:
+        - cat
+        - /tmp/healthy
+      initialDelaySeconds: 10
+      periodSeconds: 5
+```
+
+下面对 Liveness 探测和 Readiness 探测做个比较：
+
+1. Liveness 探测和 Readiness 探测是两种 Health Check 机制，如果不特意配置，Kubernetes 将对两种探测采取相同的默认行为，即通过判断容器启动进程的返回值是否为零来判断探测是否成功。
+2. 两种探测的配置方法完全一样，支持的配置参数也一样。不同之处在于探测失败后的行为：**Liveness 探测是重启容器；Readiness 探测则是将容器设置为不可用(READY状态为0/1)，不接收 Service 转发的请求**。
+3. Liveness 探测和 Readiness 探测是独立执行的，二者之间没有依赖，所以可以单独使用，也可以同时使用。用 Liveness 探测判断容器是否需要重启以实现自愈；用 Readiness 探测判断容器是否已经准备好对外提供服务。
 
 ## ReplicationController
 
@@ -1152,7 +1266,7 @@ selector:
 由上图可以看出DaemonSet和ReplicaSet的区别：
 
 - ReplicaSet 确保集群中存在期望数量的pod副本，
-- DaemonSet 无需指定副本数，它确保一个pod匹配它的选择器并在每个节点上运行。
+- DaemonSet 无需指定副本数，它**确保一个pod匹配它的选择器并在每个节点上运行**。
 
 ### 在指定节点运行
 
@@ -1247,9 +1361,7 @@ kubectl delete ds ds-lt
 
 某些任务我们希望它只执行一次，**完成后**就终止，出错没完成就重启。Kubernetes通过Job资源提供了对此的支持。它允许你运行一种pod，该pod在**内部进程成功结束时，不重启容器。**一旦任务完成，pod就被认为处于完成状态。
 
-在发生节点故障时，该节点上由Job管理的pod将按照ReplicaSet的
-pod的方式，重新安排到其他节点。如果进程本身异常退出（进程返回
-错误退出代码时），可以将Job配置为重新启动容器。
+在发生节点故障时，该节点上由Job管理的pod将按照ReplicaSet的pod的方式，重新安排到其他节点。如果进程本身异常退出（进程返回错误退出代码时），可以将Job配置为重新启动容器。
 
 ### 创建Job
 
@@ -1463,7 +1575,7 @@ metadata:
 spec:
   ports:
   - port: 8080	 # 节点监听端口
-    targetPort: 80	# 容器端口
+    targetPort: 80	# 容器端口，也可以使用端口名称（如http-metrics 和 grpc）。端口名称在 pod.Spec.containers[*].ports[*] 中指定
   selector:
     test_app: test_nginx
 ```
@@ -1525,12 +1637,18 @@ $ kubectl exec rs-lt-8ch26 -- curl 10.233.55.242:8080
 .....................
 ```
 
+在集群内的pod中，不仅可以通过IP:port 来访问，**还可以通过全限定域名`serviceName.namespace.svc.cluster.local:port`来访问**。在master 主机上也可以使用这个域名访问。这是因为 K8s 为每个 Service 自动生成一个 DNS 名称。如果在同一个 namespace下的pod，可以直接使用 `serviceName.namespace:port`来访问
+
+全限定域名pod 也有，但不常用。
+
+全限定域名的解析是依靠 kube-system 命名空间下的 core-dns-xxx pod来实现的。
+
 > 每个调用接口都会被service随机调度到一个pod中，如果我们希望每个客户端每次请求的pod不变的话可以设置会话亲和度来实现。
 >
 > ``` yaml
 > spec:
->   sessionAffinity: ClientIP
->   ....
+> sessionAffinity: ClientIP
+> ....
 > ```
 >
 > 这种方式将会使服务代理将来自同一个client IP的所有请求转发至同一个pod上。
@@ -1603,7 +1721,7 @@ kubernetes   192.168.2.22:6443,192.168.2.25:6443,192.168.2.4:6443               
 svc1         172.19.133.224:443,172.19.133.225:443,172.19.5.230:443 + 3 more...   16h
 ```
 
-这些endpoint中的IP地址，其实就是满足服务配置的标签选择器的pod的IP地址。
+这些endpoint中的IP地址，其实就是满足服务配置的标签选择器的pod的IP地址。如果没有相应的 IP 地址显示，可能是 Service 的 `selector` 配置错误，无法匹配到目标 Pod。
 
 如果创建了不含有标签选择器的service，那么k8s便不会自动创建endpoint资源。（因为缺少选择器，k8s不知道服务包含哪些pod）。
 
@@ -1655,7 +1773,7 @@ $ curl 10.233.21.7:8080
 .........
 ```
 
-我们可以使用 **集群内任意节点IP:外部端口** 来在集群外部访问服务。例如，本master节点IP为 192.168.2.22
+我们可以使用 **集群内任意主节点IP:外部端口** 来在集群外部访问服务。例如，本master节点IP为 192.168.2.22
 
 ``` shell
 curl 192.168.2.22:31010
@@ -1712,9 +1830,36 @@ $ kubectl describe svc svc3
 
 ### headless 类型的服务
 
-有时，我们希望集群中的一个pod可以连接到服务的所有pod，或者客户连接到服务的每个pod。此时我们可以创建 **clusterIP=None** 的服务来实现，这类服务也叫 headless 的服务。这种类型通常用于直接访问Pod的IP地址而不经过Service ClusterIP。
+Headless Service（无头服务）是一种特殊类型的服务**，它不分配集群 IP 地址，而是直接将 DNS 记录指向后端的 Pod。每个 Pod 都会有自己的 DNS 域名，这些域名可以用于直接访问 Pod。**
 
-编写yaml
+headless service 同样使用全限定域名来访问，我们通过dns解析来看。
+
+``` shell
+$ nslookup loki-headless.loki.svc.cluster.local 10.233.0.10 #  10.233.0.10 是k8s集群 kube-system 命名空间中coredns的 CLUSTER-IP
+Server:         10.233.0.10
+Address:        10.233.0.10#53
+
+Name:   loki-headless.loki.svc.cluster.local
+Address: 172.19.35.248
+Name:   loki-headless.loki.svc.cluster.local
+Address: 172.19.66.88
+$  k -n loki get pod -owide
+NAME                            READY   STATUS    RESTARTS   AGE   IP              NODE                   NOMINATED NODE   READINESS GATES
+loki-0                          2/2     Running   0          12d   172.19.35.248   kcs-training-s-v5k57   <none>           <none>
+loki-gateway-5b6755f775-lfxmh   1/1     Running   0          12d   172.19.66.88    kcs-training-s-g97wk   <none>           <none>
+```
+
+loki-headless service 管理了这里两个pod，可以看到，域名`loki-headless.loki.svc.cluster.local` 被解析成了两个pod 的IP。（普通服务只能解析为服务的地址）
+
+headless service 通常配合 statefulset 使用。
+
+对于一个 Headless Service，每个 Pod 的 DNS 域名遵循以下格式：
+
+``` 
+<pod-name>.<service-name>.<namespace>.svc.cluster.local
+```
+
+下面进行验证，首先编写yaml
 
 ``` yaml
 apiVersion: v1
@@ -1750,11 +1895,189 @@ root@test-lt1:/# curl svc-headless.default.svc.cluster.local
 ............
 ```
 
-后端提供nginx 服务的pod 有三个，通过`kubectl logs` 查看日志发现，每次curl 会**轮询**地调度到一个pod上，保证每个pod 都会被调度到。
+后端提供nginx 服务的pod 有三个，通过`kubectl logs` 查看日志发现，每次curl 会**轮询**地调度到一个pod上，保证每个pod 都会被调度到。（但这仅仅是通过 DNS 循环机制实现的负载均衡）
 
-> headless服务看起来可能与常规服务不同，但在客户的视角上它们并无不同。即使使用headless服务，客户也可以通过连接到服务的DNS名称来连接到pod上，就像使用常规服务一样。但是对于headless服务，由于DNS返回了pod的IP，客户端直接连接到该pod，而不是通过服务代理，相当于绕过了负载均衡器。
+> headless服务看起来可能与常规服务不同，但在客户的视角上它们并无不同。即使使用headless服务，客户也可以通过连接到服务的DNS名称来连接到pod上，就像使用常规服务一样。但是对于headless服务，由于DNS返回了pod的IP，**客户端直接连接到该pod**，而不是通过服务代理，相当于绕过了负载均衡器。
 
+### gateway 服务
 
+在很多实际情况中，我们的应用（如 app1）通过service 暴露后，还会创建 gateway 服务（如 app1-gateway）。 app1-gateway 通常会关联 nginx 镜像启动的pod，nginx的启动配置使用 cm 挂载到pod 中，通过cm 的data 可以看到此nginx 的conf。
+
+使用 gateway 服务的目的是将来自客户端的请求均匀地分配给后端的app1实例。还可以通过nginx 实现 验证请求的有效性、检查权限等安全功能。
+
+下面展示了 Loki 的cm的 nginx.conf
+
+``` json
+worker_processes  5;  ## 默认值为1
+error_log  /dev/stderr;
+pid        /tmp/nginx.pid;
+worker_rlimit_nofile 8192;
+
+events {
+  worker_connections  4096;  ## 默认值为1024
+}
+
+http {
+  client_body_temp_path /tmp/client_temp;
+  proxy_temp_path       /tmp/proxy_temp_path;
+  fastcgi_temp_path     /tmp/fastcgi_temp;
+  uwsgi_temp_path       /tmp/uwsgi_temp;
+  scgi_temp_path        /tmp/scgi_temp;
+
+  client_max_body_size  4M;
+
+  proxy_read_timeout    600;  ## 10分钟
+  proxy_send_timeout    600;
+  proxy_connect_timeout 600;
+
+  proxy_http_version    1.1;
+
+  default_type application/octet-stream;
+
+  log_format   main '$remote_addr - $remote_user [$time_local]  $status '
+                    '"$request" $body_bytes_sent "$http_referer" '
+                    '"$http_user_agent" "$http_x_forwarded_for"';
+  access_log   /dev/stderr  main;
+
+  sendfile     on;
+  tcp_nopush   on;
+  resolver     kube-dns.kube-system.svc.cluster.local.;
+
+  server {
+    listen            8080;
+    listen             [::]:8080;
+    auth_basic           "Loki";
+    auth_basic_user_file /etc/nginx/secrets/.htpasswd;
+
+    location = / {
+      return 200 'OK';
+      auth_basic off;
+    }
+
+    ########################################################
+    # 配置后端目标
+    # Distributor
+    location = /api/prom/push {
+      proxy_pass       http://loki.aiops-logger.svc.cluster.local:3100$request_uri;
+    }
+    location = /loki/api/v1/push {
+      proxy_pass       http://loki.aiops-logger.svc.cluster.local:3100$request_uri;
+    }
+    location = /distributor/ring {
+      proxy_pass       http://loki.aiops-logger.svc.cluster.local:3100$request_uri;
+    }
+    location = /otlp/v1/logs {
+      proxy_pass       http://loki.aiops-logger.svc.cluster.local:3100$request_uri;
+    }
+
+    # Ingester
+    location = /flush {
+      proxy_pass       http://loki.aiops-logger.svc.cluster.local:3100$request_uri;
+    }
+    location ^~ /ingester/ {
+      proxy_pass       http://loki.aiops-logger.svc.cluster.local:3100$request_uri;
+    }
+    location = /ingester {
+      internal;        # 抑制301重定向
+    }
+
+    # Ring
+    location = /ring {
+      proxy_pass       http://loki.aiops-logger.svc.cluster.local:3100$request_uri;
+    }
+
+    # MemberListKV
+    location = /memberlist {
+      proxy_pass       http://loki.aiops-logger.svc.cluster.local:3100$request_uri;
+    }
+
+    # Ruler
+    location = /ruler/ring {
+      proxy_pass       http://loki.aiops-logger.svc.cluster.local:3100$request_uri;
+    }
+    location = /api/prom/rules {
+      proxy_pass       http://loki.aiops-logger.svc.cluster.local:3100$request_uri;
+    }
+    location ^~ /api/prom/rules/ {
+      proxy_pass       http://loki.aiops-logger.svc.cluster.local:3100$request_uri;
+    }
+    location = /loki/api/v1/rules {
+      proxy_pass       http://loki.aiops-logger.svc.cluster.local:3100$request_uri;
+    }
+    location ^~ /loki/api/v1/rules/ {
+      proxy_pass       http://loki.aiops-logger.svc.cluster.local:3100$request_uri;
+    }
+    location = /prometheus/api/v1/alerts {
+      proxy_pass       http://loki.aiops-logger.svc.cluster.local:3100$request_uri;
+    }
+    location = /prometheus/api/v1/rules {
+      proxy_pass       http://loki.aiops-logger.svc.cluster.local:3100$request_uri;
+    }
+
+    # Compactor
+    location = /compactor/ring {
+      proxy_pass       http://loki.aiops-logger.svc.cluster.local:3100$request_uri;
+    }
+    location = /loki/api/v1/delete {
+      proxy_pass       http://loki.aiops-logger.svc.cluster.local:3100$request_uri;
+    }
+    location = /loki/api/v1/cache/generation_numbers {
+      proxy_pass       http://loki.aiops-logger.svc.cluster.local:3100$request_uri;
+    }
+
+    # IndexGateway
+    location = /indexgateway/ring {
+      proxy_pass       http://loki.aiops-logger.svc.cluster.local:3100$request_uri;
+    }
+
+    # QueryScheduler
+    location = /scheduler/ring {
+      proxy_pass       http://loki.aiops-logger.svc.cluster.local:3100$request_uri;
+    }
+
+    # Config
+    location = /config {
+      proxy_pass       http://loki.aiops-logger.svc.cluster.local:3100$request_uri;
+    }
+
+    # QueryFrontend, Querier
+    location = /api/prom/tail {
+      proxy_pass       http://loki.aiops-logger.svc.cluster.local:3100$request_uri;
+      proxy_set_header Upgrade $http_upgrade;
+      proxy_set_header Connection "upgrade";
+    }
+    location = /loki/api/v1/tail {
+      proxy_pass       http://loki.aiops-logger.svc.cluster.local:3100$request_uri;
+      proxy_set_header Upgrade $http_upgrade;
+      proxy_set_header Connection "upgrade";
+    }
+    location ^~ /api/prom/ {
+      proxy_pass       http://loki.aiops-logger.svc.cluster.local:3100$request_uri;
+    }
+    location = /api/prom {
+      internal;        # 抑制301重定向
+    }
+    location ^~ /loki/api/v1/ {
+      proxy_pass       http://loki.aiops-logger.svc.cluster.local:3100$request_uri;
+    }
+    location = /loki/api/v1 {
+      internal;        # 抑制301重定向
+    }
+  }
+}
+```
+
+### 使用http 请求
+
+比如一个 ClusterIP 类型的服务，我们在集群内部可以通过 `ClusterIP:port/[path]` 的方式来获得服务，同时我们也可以使用 http 请求来获得服务。http请求url 规则：[Service | Kubernetes](https://kubernetes.io/docs/reference/kubernetes-api/service-resources/service-v1/#get-read-the-specified-service)
+
+如果在集群中想要通过http 请求与集群资源交互，最简单的方式是使用 `kubectl proxy` 来开启apiserver 的代码，然后通过`localhost:8001` 就能访问apiserver了。
+
+例如一个名为 loki 的service。通过`curl  localhost:8001/api/v1/namespaces/aiops-logger/services/loki` 可以获得该service 的声明
+
+如果我们想要通过http 请求直接该service 提供的服务，**那么我们需要加上端口，并加上 proxy 前缀**：` curl localhost:8001/api/v1/namespaces/aiops-logger/services/loki:3100/proxy/[path]`，此时，apiserver 就帮助我们将请求转发给对应的service了。
+
+我们使用 client-go 开发controller 时，也可以使用这种方式。client 会自己会apiserver 通信，并将我们的请求转发给对应的service。
 
 ## Ingress
 
@@ -1960,6 +2283,8 @@ spec:
     emptyDir: {}
 ```
 
+> 默认emtpyDir会在节点的`/var/lib/kubelet/pods/`路径下，但pod删除此emtpyDir 也会删除
+
 创建service 以访问web-server
 
 ``` yaml
@@ -2071,12 +2396,12 @@ $ curl 节点IP
 **结论：**
 
 - pod运行在node上，访问的内容为为挂载的文件系统/data下index.html内容，容器成功读取到挂载的节点文件系统里的内容。
-- 仅当需要在节点上读取或写入系统文件时才使用hostPath , 切勿使用它们来持久化跨pod的数据。
+- 仅当需要**在节点上读取或写入**系统文件时才使用hostPath , 切勿使用它们来持久化跨pod的数据。
 - hostPath可以实现持久存储，但是在node节点故障时，也会导致数据的丢失。
 
 ## nfs：共享存储
 
-emptyDir 可以提供不同容器间的文件共享，但不能存储；hostPath可以为不同容器提供文件的共享并可以存储，但受制于节点限制，不能跨节点共享；
+**emptyDir 可以提供不同容器间的文件共享，但不能存储；hostPath可以为不同容器提供文件的共享并可以存储，但受制于节点限制，不能跨节点共享**；
 
 NFS 是 **Network File System** 的缩写，即网络文件系统。Kubernetes中通过简单地配置就可以挂载NFS到Pod中，而NFS中的数据是可以永久保存的，同时NFS支持同时写操作。
 
@@ -2345,6 +2670,8 @@ hello v1
 ```
 
 验证成功
+
+PVC 绑定到 PV 后，PV的容量是多少，PVC的容量就是多少了。
 
 ### 回收持久卷
 
@@ -3110,7 +3437,7 @@ qwe="asd"
 
 ## 容器与Kubernetes API server交互
 
-通过Downward API的方式获取的元数据是相当有限的，如果需要获取更多的元数据，需要使用直接访问Kubernetes API服务器的方式。
+通过Downward API的方式获取的元数据是相当有限的，如果需要获取更多的元数据，需要使用**直接访问Kubernetes API服务器的方式**。
 
 通过这种方式我们可以**获得其他pod的信息**，甚至集群中**其他资源的信息**。
 
@@ -3127,7 +3454,9 @@ Kubernetes control plane is running at https://apiserver.cluster.local:6443
 
 发现这是一个https服务器，使用 `curl -k apiserver.cluster.local:6443` 登不上去（-k 跳过证书验证）
 
-不过可以通过代理的方式连接。首先在一个终端执行`kubectl proxy`。然后在另一个终端 `curl 127.0.0.1:8001` 能看到相应输出即表示可以连接到k8s servr 了。
+不过可以通过代理的方式连接。首先在一个终端执行`kubectl proxy`。然后在另一个终端 `curl 127.0.0.1:8001` 能看到相应输出即表示可以连接到k8s server 了。
+
+可以在[Kubernetes API | Kubernetes (K8s) 中文](https://kubernetes.ac.cn/docs/reference/kubernetes-api/) 查询各种资源 API 端点
 
 ``` shell
 $ curl 127.0.0.1:8001
@@ -3186,7 +3515,7 @@ $ curl 127.0.0.1:8001/apis/batch/v1/jobs
 ...
 ```
 
-返回了跨命名空间的所有Job的清单的详细信息。如果想要返回指定的一个Job，需要在URL中指定它的名称和所在的命名空间。 `curl 127.0.0.1:8001/apis/batch/v1/namespaces/default/jobs/job1`，该命令返回的结果与 ``kubectl -n default get job job1 -o json` 返回的是一样的。
+返回了跨命名空间的所有Job的清单的详细信息。如果想要返回指定的一个Job，需要在URL中指定它的名称和所在的命名空间。 `curl 127.0.0.1:8001/apis/batch/v1/namespaces/default/jobs/job1`，该命令返回的结果与 `kubectl -n default get job job1 -o json` 返回的是一样的。
 
 ### 从pod内部与API server交互
 
@@ -3431,8 +3760,8 @@ deployment 支持两种镜像更新策略
 
 RollingUpdate 支持两个属性
 
-- - maxUnavailable：用来指定在升级过程中不可用的pod 的最大数量，默认 25%。比如，期望副本数为4，此只为25%，那么整个滚动升级过程中最多有一个pod不可用，至少会有三个pod在提供服务。
-  - maxSurge：用来指定在升级过程中超过期望的pod 的最大数量，默认25 %。比如，期望副本数为4，此只为25%，那么整个滚动升级过程中最多可同时存在5个 pod。
+- - **maxUnavailable**：用来指定在升级过程中不可用的pod 的最大数量，默认 25%。比如，期望副本数为4，此只为25%，那么整个滚动升级过程中最多有一个pod不可用，至少会有三个pod在提供服务。
+  - **maxSurge**：用来指定在升级过程中超过期望的pod 的最大数量，默认25 %。比如，期望副本数为4，此只为25%，那么整个滚动升级过程中最多可同时存在5个 pod。
 
 滚动更新图示：
 
@@ -3708,7 +4037,7 @@ data-sts1-1   Bound    pvc-8c...   1Gi        RWO            standard       <uns
 
 pod 通过`/var/run/secrets/kubernetes.io/serviceaccount/token` 文件内容来进行身份认证，而该文件的内容是来自每个pod 都会挂载的一个 secret 的卷。
 
-每个 pod 都与一个 ServiceAccount 相关联（可通过`kubectl get pod pod名 -oyaml 查看`），**它代表了运行在pod中应用程序的身份证明。上述的token文件就是持有ServiceAccount的认证token**。应用程序使用这个token连接API服务器时，身份认证插件会对ServiceAccount进行身份认证，并将ServiceAccount的用户名传回API服务器内部。
+每个 pod 都与一个 ServiceAccount（默认使用 default） 相关联（可通过`kubectl get pod pod名 -oyaml 查看`），**它代表了运行在pod中应用程序的身份证明。上述的token文件就是持有ServiceAccount的认证token**。应用程序使用这个token连接API服务器时，身份认证插件会对ServiceAccount进行身份认证，并将ServiceAccount的用户名传回API服务器内部。
 
 ## ServiceAccount
 
@@ -4074,9 +4403,11 @@ spec:
 创建并查看
 
 ``` shell
+$ kubectl get crd mycrds.example.com -oyaml 
+# 要查看crd 具体manifest，需要些清楚 <名称的复数形式>.<组名>
 $ kubectl create -f crd-test1.yaml 
 mycrd.example.com/mycrd1 created
-$ kubectl get mycrd
+$ kubectl get mycrd 
 NAME     MYNAME
 mycrd1   test-demo1
 ```
@@ -4186,7 +4517,7 @@ client-go API 库文档 ：[clientgo package - k8s.io/client-go - Go Packages](h
 
 - **无组名资源组**的 REST 路径为`/api/v1`
 
-- **有组名资源组**的 REST 路径为`/apis/$GROUP_NAME/$VERSION`
+- **有组名资源组**的 REST 路径为`/apis/$GROUP_NAME/$VERSION`，自定义资源都是这个规则
 
 比如 pod 作为最核心的资源，其 url地址为 `/api/v1/pods`。
 
@@ -4575,6 +4906,10 @@ func main() {
 
 ## client-go 架构
 
+![img](img/client-go.png)
+
+
+
 ![client-go 架构](img/c64a8f7287efa86e8ccf11977464187f.png)
 
 上图是client-go 整体的运转流程。
@@ -4582,7 +4917,7 @@ func main() {
 ### 流程简介
 
 1. Reflector 会一直监听kubernetes中指定资源类型的API，当发现变动和更新时，就会创建一个发生变动的 **对象副本**，并将其添加到队列DeltaFIFO中。
-2. Informer监听DeltaFIFO队列，取出对象，将对象加入Indexer，Indexer 会将 **[对象key, 对象]** 存入一个线程安全的Cache中。同时根据对象的 资源类型和操作，找到对应 Controller 预先提供的 Resource Event Handler，调用Handler，将对象的Key加入该 Controller 的 Workqueue。
+2. Informer监听DeltaFIFO队列，取出对象，将对象加入Indexer，Indexer 会将 **[对象key, 对象]** 存入一个线程安全的Cache中。同时根据对象的 资源类型和操作，找到对应 Controller 预先提供的 Resource Event Handler，调用Handler，将对象的Key加入该 Controller 的 **Workqueue（由延时队列实现，一段时间内的同一资源的多个事件只处理最新的，目的是防止在短时间内频繁处理同一项工作）**。
 3. Controller 的循环函数 ProcessItem，监听到 Workqueue 有数据了，就会取出一个key，交给处理函数Worker，Worker 会根据 Key，使用 Indexer reference 从 Cache 中 获取 该key对应的 真实对象。然后就可以进行调谐了。
 
 **注意点**：
@@ -4834,7 +5169,7 @@ type controller struct {
 }
 
 func NewController(clientset *kubernetes.Clientset, podInformer informercorev1.PodInformer, serviceInformer informercorev1.ServiceInformer) *controller {
-	// 控制器中，包含一个clientset、service和ingress的缓存监听器、一个workqueue
+	// 控制器中，包含一个clientset、service和 pod 的缓存监听器、一个workqueue
 	c := &controller{
 		client:        clientset,
 		podLister:     podInformer.Lister(),
@@ -5240,6 +5575,11 @@ code-generator是使用**注释标记**工作的，不同的gen工具，有不�
 
 - **types.go**：编写crd的资源结构，code-generator 的注释 tag一般写在这边里面，这是我们主要要写的
 
+> crd 的设计中，内部变量使用值类型还是引用类型通常根据**字段是否总是有意义**来决定。
+>
+> * 如果字段总是有意义，即使字段为空（例如一个默认状态对象），应选择值类型。
+> * 如果字段的存在本身是可选的（如某些场景不需要它），选择引用类型。（与 `omitempty` 配合被自动省略）。
+
 ``` go
 package v1
 
@@ -5461,7 +5801,7 @@ kubernetes-sigs 是一个由 Kubernetes 社区维护的 GitHub 组织，其中�
 
 controller-tools源码的cmd目录下，可以看到包含三个工具：
 
-![image-20240807232155668](img/image-20240807232155668.png)
+![image-20240807232155668](img/image-20240807232155668.png) 
 
 - **controller-gen**：用于生成 `zz_xxx.deepcopy.go `文件以及 crd 文件（kubebuilder也是通过这个工具生成crd的相关框架的）
 - **type-scaffold**：用于生成所需的` types.go `文件
@@ -5631,7 +5971,7 @@ func init()  {
 - 中文版：https://cloudnative.to/kubebuilder/introduction.html、
 - 架构如下图：
 
-![image-20240812095601136](img/image-20240812095601136.png)
+![image-20240812095601136](img/image-20240812095601136.png) 
 
 **安装最新发行版本**
 
@@ -6257,9 +6597,9 @@ func (r *ApplicationReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewControllerManagedBy(mgr).
 		Named("applicationController").
 		For(&webappv1.Application{}). // 关注的主资源
-		Owns(&corev1.Pod{}).          // 添加要拥有的资源（添加主资源的OwnerReference）。若拥有OwnerReference的此资源发生变化，也会触发主资源的reconcile
+		Owns(&corev1.Pod{}).          // 添加要拥有的资源（添加主资源的OwnerReference）。若拥有OwnerReference的此资源发生变化，也会触发主资源的reconcile，且reconcile 的request参数也是主资源的namesapacedName而非该资源的namesapacedName
 		Owns(&corev1.Service{}).
-		// Watches(otherResouces, mapFunc). // 通过Watches 可以添加任意想要监听变化的资源（通常与主资源有业务逻辑），不过未来触发主资源的reconcile，需要使用mapFunc将otherResouces 的 namesapacedName 转变为主资源的namesapacedName
+		// Watches(otherResouces, mapFunc). // 通过Watches 可以添加任意想要监听变化的资源（通常与主资源有业务逻辑），不过为了触发主资源的reconcile，需要使用mapFunc将otherResouces 的 namesapacedName 转变为主资源的namesapacedName
 		Complete(r) // 用于完成控制器的设置，传递控制器对象以初始化控制器
 }
 ```
@@ -7058,7 +7398,251 @@ DRF 意为：“**谁要的资源少，谁的优先级高**”。因为这样可
 
 ![在这里插入图片描述](img/f6f1386864782f0c392581c7c5818963.png)
 
+# 18. helm
 
+[Helm入门（一篇就够了）-阿里云开发者社区](https://developer.aliyun.com/article/1207395)
+
+一言以蔽之，**Helm 是 Kubernetes 的软件包管理器**
+
+Kubernetes 中的应用开发比较复杂。无论对哪个应用，都可能需要安装、管理和更新成百上千种配置。Helm 可通过 **Helm Chart**这种打包格式来实现应用的自动分发，从而简化这一过程。
+
+## Helm 是如何工作的
+
+Helm 会在 **Helm Chart**来描述应用从定义到升级的方方面面，作用与模板类似。然后借助 Kubernetes API 将用图表资源传递给 Kubernetes 集群。 
+
+Helm 使用名为 `helm` 的命令行界面（CLI）工具来管理 Helm 图表，还有一些简单的命令可供您用于创建、管理和配置应用。 
+
+## Helm Chart
+
+Helm 图表是一个包含多个文件的集合，用于描述 Kubernetes 集群资源并将它们一起打包为一个应用。Helm 图表由三个基本组成部分构成：
+
+- **图表** - `Chart.yaml`，定义应用的元数据，如名称、版本和依赖项等。 
+- **值** - `values.yaml`，设置不同的值，也就是规定如何设定变量替换来重复利用您的图表。
+  - 您还可以通过值 JSON 模式来描述值文件的结构，这样做有助于创建动态表单以及对值参数进行验证。
+- **模板目录** - `templates/`，存放您的模板，并将它们**与 values.yaml 文件中所设的值相结合**来创建清单。
+- **图表目录** - `charts/`，存储您在 `Chart.yaml` 中定义的所有图表依赖项，并通过 `helm dependency build` 或 `helm dependency update` 进行重建。
+
+## helm 安装 
+
+[Helm | 安装Helm](https://helm.sh/zh/docs/intro/install/)
+
+## helm 使用
+
+**使用`helm create chart名`命令创建一个新的Chart**，helm会自动帮我们创建相应目录，Chart目录包含描述应用程序的文件和目录，包括Chart.yaml、values.yaml、templates目录等；
+
+``` shell
+$ helm create testhelm01
+Creating testhelm01
+$ tree
+.
+├── charts
+├── Chart.yaml
+├── templates
+│   ├── deployment.yaml
+│   ├── _helpers.tpl
+│   ├── hpa.yaml
+│   ├── ingress.yaml
+│   ├── NOTES.txt
+│   ├── serviceaccount.yaml
+│   ├── service.yaml
+│   └── tests
+│       └── test-connection.yaml
+└── values.yaml
+
+3 directories, 10 files
+```
+
+可以看到，helm帮我们创建了很多东西
+
+现在需要编辑**Chart.yaml和values.yaml，以及template**。
+
+- **Chart.yaml**的模板及注释如下：
+
+``` yaml
+apiVersion: chart API 版本 （必需）  #必须有
+name: chart名称 （必需）     # 必须有 
+version: 语义化2 版本（必需） # 必须有
+
+kubeVersion: 兼容Kubernetes版本的语义化版本（可选）
+description: 一句话对这个项目的描述（可选）
+type: chart类型 （可选）
+keywords:
+  - 关于项目的一组关键字（可选）
+home: 项目home页面的URL （可选）
+sources:
+  - 项目源码的URL列表（可选）
+dependencies: # chart 必要条件列表 （可选）
+  - name: chart名称 (nginx)
+    version: chart版本 ("1.2.3")
+    repository: （可选）仓库URL ("https://example.com/charts") 或别名 ("@repo-name")
+    condition: （可选） 解析为布尔值的yaml路径，用于启用/禁用chart (e.g. subchart1.enabled )
+    tags: # （可选）
+      - 用于一次启用/禁用 一组chart的tag
+    import-values: # （可选）
+      - ImportValue 保存源值到导入父键的映射。每项可以是字符串或者一对子/父列表项
+    alias: （可选） chart中使用的别名。当你要多次添加相同的chart时会很有用
+
+maintainers: # （可选） # 可能用到
+  - name: 维护者名字 （每个维护者都需要）
+    email: 维护者邮箱 （每个维护者可选）
+    url: 维护者URL （每个维护者可选）
+
+icon: 用做icon的SVG或PNG图片URL （可选）
+appVersion: 包含的应用版本（可选）。不需要是语义化，建议使用引号
+deprecated: 不被推荐的chart （可选，布尔值）
+annotations:
+  example: 按名称输入的批注列表 （可选）.
+```
+
+看着很多其实只有最上面三个是必须的。如：
+
+``` yaml
+name: nginx-helm
+apiVersion: v1
+version: 1.0.0
+```
+
+- `values.yaml`包含**应用程序的默认配置值**，举例：
+
+``` yaml
+image:
+  repository: nginx
+  tag: '1.14.211'
+```
+
+- 在`templates`目录下的**资源文件中引入 values.yaml里的配置**，在模板文件中可以通过 .VAlues对象访问到，例如下面这样的pod 模板
+
+``` yaml
+apiVersion: v1
+kind: Pod
+metadata:
+  name: pod1
+spec:
+  schedulerName: volcano
+  terminationGracePeriodSeconds: 0
+  containers:
+  - command:
+    - sleep
+    - 10m
+    image: {{.Values.image.repository}}:{{ .Values.image.tag }}
+    name: nginx
+    resources:
+      requests:
+        nvidia.com/gpu: 1
+        cpu: 1
+        memory: 10Mi
+      limits:
+        nvidia.com/gpu: 1
+        cpu: 1
+        memory: 20Mi
+```
+
+接着 cd 到该chart 目录的外层，使用 `helm install name1  此chart名` 创建出此chart。然后可以在 k8s 集群中检查是否创建出pod。
+
+使用命令检查所有 chart 
+
+``` shell
+$ helm ls
+NAME    NAMESPACE       REVISION        UPDATED                                 STATUS          CHART                   APP VERSION
+name1   default         1               2024-11-05 20:30:38.04318753 +0800 CST  deployed        nginx-helm-1.0.0 
+```
+
+可以看到此 chart 的状态
+
+之后可以使用 `helm uninstall name1` 删除此chart 。
+
+## 管理Release
+
+使用**helm ls**命令查看当前运行的Release列表，例如：
+
+```shell
+helm upgrade mywordpress myrepo/wordpress --set image.tag=5.7.3-php8.0-fpm-alpine
+```
+
+这将升级 `mywordpress` 的`WordPress`应用程序镜像版本为`5.7.3-php8.0-fpm-alpine`。
+
+------
+
+可以使用`helm rollback`命令回滚到先前版本，例如：
+
+```shell
+helm rollback mywordpress 1
+```
+
+这将回滚`mywordpress`的版本到1。
+
+更多操作：[Helm入门（一篇就够了）-阿里云开发者社区](https://developer.aliyun.com/article/1207395)
+
+# 19. clusterpedia
+
+clusterpedia 是对多集群的的聚合。通过聚合收集多集群资源，在兼容 Kubernetes OpenAPI 的基础上额外提供更加强大的检索功能，让用户**更方便快捷地在多集群中获取想要的任何资源**。
+
+## 集群接入
+
+[集群接入 | Clusterpedia.io](https://clusterpedia.io/zh-cn/docs/usage/import-clusters/)
+
+Clusterpedia 使用自定义资源 `PediaCluster` 资源来代表接入的集群
+
+``` yaml
+apiVersion: cluster.clusterpedia.io/v1alpha2
+kind: PediaCluster
+metadata:
+  name: cluster-example
+spec:
+  apiserver: "https://10.30.43.43:6443"
+  kubeconfig:
+  caData:
+  tokenData:
+  certData:
+  keyData:
+  syncResources: []
+```
+
+有两种方式来配置接入的集群:
+
+1. **直接配置 base64 编码的 kube config 到 `kubeconfig` 字段用于集群连接和验证**
+2. 分别配置接入集群的地址，以及验证信息
+
+第一种方式更加简单，只需要填入 kubeconfig 就行。
+
+## 同步集群资源
+
+Clusterpedia 的**主要功能，便是提供对多集群内的资源进行复杂检索**。
+
+通过 `PediaCluster` 中的 `spec.syncResources` 来指定该集群中哪些资源需要支持复杂检索，Clusterpedia 会将这些资源实时的通过`存储层`同步到`存储组件`中。
+
+``` yaml
+# example
+apiVersion: cluster.clusterpedia.io/v1alpha2
+kind: PediaCluster
+metadata:
+  name: cluster-example
+spec:
+  apiserver: "https://x.x.x.x:6443"
+  syncResources:
+  - group: apps
+    versions: 
+     - v1
+    resources:
+     - deployments
+  - group: ""
+    resources:
+     - pods
+     - configmaps
+  - group: cert-manager.io
+    versions:
+      - v1
+    resources:
+      - "*" # 通配符，收集该group/version 下的所有资源
+```
+
+> 其中 version 可以不填，因为Clusterpedia 会根据**该集群内所支持的资源版本**自动选择合适的版本来收集， 并且用户无需担心版本转换的问题， Clusterpedia 会开放出该内置资源的所有版本接口。
+
+## 联合查询
+
+在安装有 pediacluster 的集群中，复制本集群的 kubeconfig，修改其中的apiserver为 pediacluster  的service 的地址，如：https://clusterpedia-apiserver.<命名空间>/apis/clusterpedia.io/v1beta1/resources
+
+之后  --kubeconfig 指定此 config 就可以查看此pediacluster 管理的所有集群的资源了。
 
 # # YAML介绍
 
@@ -7175,21 +7759,39 @@ heima: {age: 15,address: Beijing}
 # 数组
 # 形式一(推荐):
 address:
-  - 顺义
+  - 顺义: 5
   - 昌平
+address2:
+  顺义: 1
+  昌平: 2
 school:
   - thu
     pku
+school2:
+  - thu: 1
+    pku: 2
 # 每个 - 就是一个数组元素，而一个 - 后接的内容属于同一个数组元素
 # 对应的json 格式如下
 {
-  "address": [
-    "顺义",
-    "昌平"
-  ],
-  "school": [
-    "thu pku"
-  ]
+    "address": [
+        {
+            "顺义": 5
+        },
+        "昌平"
+    ],
+    "address2": {
+        "顺义": 1,
+        "昌平": 2
+    },
+    "school": [
+        "thu\npku"
+    ],
+    "school2": [
+        {
+            "thu": 1,
+            "pku": 2
+        }
+    ]
 }
 
 # 形式二(了解):
@@ -7255,12 +7857,7 @@ containers:
 }
 ```
 
+# # 常见问题
 
+`exec format error` 错误表明镜像中的可执行文件与当前运行环境的硬件架构不匹配。
 
-
-
-排错：
-
-配置问题： cm，secret
-
-权限问题：clusterrole，serviceaccount
