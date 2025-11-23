@@ -2450,7 +2450,7 @@ r.GET("/zjj", func(ctx *gin.Context) {
 */
 ```
 
-由上例可以看出，`c.Next()`会直接去执行下一个中间件，而且如果有多个`c.Next()`，会使用类似于栈的方式进行返回。使用`c.Next()`可以轻易地计算出中间件的和路由处理函数的执行时间。
+由上例可以看出，`c.Next()`会直接去执行下一个中间件，**一直到所有处理函数处理完才会继续运行之后的内容**，而且如果有多个`c.Next()`，会使用类似于栈的方式进行返回。使用`c.Next()`可以轻易地计算出中间件的和路由处理函数的执行时间。
 
 ### 终止调用
 
@@ -2469,7 +2469,9 @@ Abort 之后
 */
 ```
 
-由示例看出，Abort 可以终止调用剩余的其他中间件和处理函数，而不会终止自己函数的调用。
+由示例看出，Abort 可以**终止调用剩余的其他中间件和处理函数，而不会终止自己函数的调用**。但是前置中间件 使用 **`c.Next()`** 之后的逻辑仍然会被调用。
+
+使用 return 可以结束当前中间件的调用，而不影响任何其他中间件。
 
 ### 全局中间件
 
@@ -5543,6 +5545,13 @@ import "github.com/spf13/cobra"
 
 ### 入门
 
+一个命令行的命令格式一般是`command [subCommand] <flags> [<args>]`。
+
+- Command 一般指这个命令行工具
+- subCommand 一般指该工具下完成某一项功能的子命令
+- flags 一般指执行子命令时的不同设置
+- args 一般指该子命令操作的具体目标或对象
+
 通常基于Cobra的应用程序将遵循以下组织结构：
 
 ```go
@@ -5593,7 +5602,7 @@ import (
 )
 
 var rootCmd = &cobra.Command{
-  Use:   "hugo",
+  Use:   "hugo", // 展示的该命令的用法，可以写的清楚一点
   Short: "Hugo is a very fast static site generator",
   Long: `A Fast and Flexible Static Site Generator built with
                 love by spf13 and friends in Go.
@@ -5626,6 +5635,56 @@ func Execute() {
 `Run` 属性是一个函数，当执行命令时会调用此函数。
 
 `rootCmd.Execute()` 是命令的执行入口，其内部会解析 `os.Args[1:]` 参数列表（默认情况下是这样，也可以通过 `Command.SetArgs` 方法设置参数），然后遍历命令树，为命令找到合适的匹配项和对应的标志。
+
+`Use`的解释如下：
+
+``` go
+	// Use is the one-line usage message.
+	// Recommended syntax is as follows:
+	//   [ ] identifies an optional argument. Arguments that are not enclosed in brackets are required.
+	//   ... indicates that you can specify multiple values for the previous argument.
+	//   |   indicates mutually exclusive information. You can use the argument to the left of the separator or the
+	//       argument to the right of the separator. You cannot use both arguments in a single use of the command.
+	//   { } delimits a set of mutually exclusive arguments when one of the arguments is required. If the arguments are
+	//       optional, they are enclosed in brackets ([ ]).
+	// Example: add [-F file | -D dir]... [-f format] profile
+	Use string
+
+/*
+在 Cobra 的代码中，Use 字段通常是一个简洁的命令格式说明，其中包含了以下几种元素，它们的含义按照注释中的说明如下：
+1. [ ] 表示可选参数
+在命令的用法中，方括号 [] 用来包裹可选的参数或选项。如果命令的某个参数是可选的，那么这个参数就会被放在方括号内。
+
+例如：
+add [file]
+这表示 file 参数是可选的。
+
+2. ... 表示可以指定多个值
+当命令参数后面有 ...，这意味着可以为该参数指定多个值。这常用于需要重复多个值的情形。
+
+例如：
+add [file]...
+表示 file 可以传递一个或多个文件。
+
+3. | 表示互斥的参数
+竖线 | 表示两个参数之间是互斥的，用户只能选择其中之一，而不能同时使用这两个参数。它帮助区分两种不同的命令选项。
+
+例如：
+add [-F file | -D dir]
+这里表示，你可以选择 -F file 或者 -D dir，但不能同时使用两个。
+
+4. { } 表示一组互斥参数，其中至少一个是必需的
+大括号 { } 用来表示一组互斥的参数，当命令需要这组参数中的一个时，使用大括号括起来的选项表示你必须至少传递其中的一个参数。如果这组参数是可选的，那么它们会被放在 [ ] 中。
+
+例如：
+add {-F file | -D dir}
+这表示 -F file 或者 -D dir 中至少有一个必须指定。
+
+如果它们是可选的，语法会是：
+add [-F file | -D dir]...
+这表示可以选择 -F file 或 -D dir 中的任意一个，甚至可以多个组合，但都不强制要求。
+*/
+```
 
 ### 创建 `main.go`
 
@@ -5723,12 +5782,16 @@ Cobra 完美适配 [pflag](https://link.zhihu.com/?target=https%3A//github.com/s
 
 如果一个标志是`持久的`，则意味着该标志将可用于它所分配的命令**以及该命令下的所有子命令**。
 
+- Flags 只给当前命令添加标志
+- PersistentFlags 给所有命令添加，所有命令都可以带上该标志了 
+
 对于全局标志，可以定义在根命令 `rootCmd` 上。 将如下代码加入到 root.go的Execute函数中，且必须放在这个函数`rootCmd.Execute()`之前。
 
 ```go
 var Verbose bool
+// 这里只是注册了如何解析 flags ，实际上不在这里解析，而是在RootCmd.Execute() 中解析
 rootCmd.PersistentFlags().BoolVarP(&Verbose, "verbose", "v", false, "verbose output")
-rootCmd.MarkFlagRequired("verbose") // flag默认都是可选的，这条命令的作用是将verbose标记为必选项，自己根据实际情况判断哪些标志需要是必选的
+err := rootCmd.MarkFlagRequired("verbose") // flag默认都是可选的，这条命令的作用是将verbose标记为必选项，自己根据实际情况判断哪些标志需要是必选的 
 ```
 
 #### 本地标志
@@ -5738,6 +5801,7 @@ rootCmd.MarkFlagRequired("verbose") // flag默认都是可选的，这条命令�
 ```go
 var Source string
 rootCmd.Flags().StringVarP(&Source, "source", "s", "", "Source directory to read from")
+cmd.Flags().Changed("source") // 返回该 flag 是否传递
 ```
 
 ### 参数验证
@@ -5761,7 +5825,7 @@ Cobra 内置了以下验证函数：
 
 在执行 `Run` 函数前后，我么可以执行一些钩子函数，其作用和执行顺序如下：
 
-1. `PersistentPreRun`：在 `PreRun` 函数执行之前执行，对此命令的子命令同样生效。
+1. `PersistentPreRun`：在 `PreRun` 函数执行之前执行，对此命令的子命令同样生效。即**全局所有命令的钩子函数**，一般在此函数进行一些全局的配置如日志级别、必传flag的判断等。
 2. `PreRun`：在 `Run` 函数执行之前执行。
 3. `Run`：执行命令时调用的函数，用来编写命令的业务逻辑。
 4. `PostRun`：在 `Run` 函数执行之后执行。

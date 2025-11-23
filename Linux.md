@@ -1096,6 +1096,8 @@ nvme1n1         259:1    0   3.5T  0 disk
 - `yy`：**复制光标所在整行**
 - `p`：**粘贴**
 - `dG`：删除全文
+- `0`：跳到行首
+- `$`：跳到行尾
 
 **插入模式**：命令模式下输入 i/a/o 进入插入模式，然后使用 ESC 进入命令模式
 
@@ -1112,7 +1114,9 @@ vim 具有程序编辑的能力，可以主动的以字体颜色辨别语法的�
 
 详见：[Linux vi/vim | 菜鸟教程 (runoob.com)](https://www.runoob.com/linux/linux-vim.html)
 
-# 8. Linux apt 命令
+# 8. Linux 包管理工具
+
+## ubuntu apt 
 
 apt（Advanced Packaging Tool）是一个在 Debian 和 Ubuntu 中的 Shell 前端软件包管理器。
 
@@ -1120,7 +1124,7 @@ apt 命令提供了查找、安装、升级、删除某一个、一组甚至全�
 
 apt 命令执行需要超级管理员权限(root)。
 
-## apt 语法
+### apt 语法
 
 ```bash
   apt [options] [command] [package ...]
@@ -1130,7 +1134,7 @@ apt 命令执行需要超级管理员权限(root)。
 - **command：**要进行的操作。
 - **package**：安装的包名。
 
-## apt 常用命令
+### apt 常用命令
 
 对于**`apt`**和**`apt-get`**的区别，**`apt`** 是**`apt-get`**等一系列相关命令的集合，所以一般来说都优先使用 **`apt`**
 
@@ -1175,6 +1179,60 @@ sudo apt install <package_name>=<version_number>
 ```bash
 sudo apt remove mplayer
 ```
+
+## alpine apk 
+
+Alpine以它的小巧和实用深受总多开发者的喜爱，而提到Alpine的Linux，其包管理工具apk则是在Alpine中使用广泛的一个工具。
+
+确认 alpine 版本：`cat /etc/alpine-release`
+
+### 常用命令
+
+- 更新
+
+``` sh
+apk update              # 根据远程镜像源更新本地仓库中的所有软件包索引（通常在更新/安装软件包前先更新索引）
+apk upgrade             # 从仓库中安装所有可用的软件包升级（升级本地已安装的软件包及其依赖项）
+
+apk upgrade <package>   # 更新指定的软件包
+```
+
+- 安装
+
+``` sh
+apk add <package>               # 安装软件包（并自动安装依赖项）
+apk add <package>=<version>     # 安装指定版本软件包
+
+apk --no-cache add <package>    # 安装软件包, 不使用缓存
+
+apk fix <package>               # 在不修改 WORLD 的情况下修复, 重新安装或升级软件包
+```
+
+- 卸载
+
+``` sh
+apk del <package>       # 删除软件包, 如果其依赖项不再本需要, 则将其一起卸载
+
+# 删除软件包时默认会执行类似 apt autoremove 的清理操作
+```
+
+- 查询/搜索/缓存 软件包
+
+``` sh
+apk list [<OPTIONS>...] PATTERN...  # 列出给定模式的软件包
+
+apk info <package>          # 列出给定软件包或仓库的详细信息
+
+apk search <string>         # 搜索软件包
+
+apk cache clean         # 删除旧的软件包
+apk cache download      # 下载缺少的软件包
+apk cache sync          # 删除旧软件包并下载缺少的程序包（上面两个步骤合并为一个）
+```
+
+
+
+
 
 # 9. Shell
 
@@ -1292,7 +1350,8 @@ stdin、stdout、stderr 默认都是打开的，在重定向的过程中，0、1
     - `command 2>file` : 以覆盖的方式，把 command 的错误信息输出到 file 文件中。
     - `command 2>>file` : 以追加的方式，把 command 的错误信息输出到 file 文件中。
 - 正确输出和错误信息同时保存:
-    - `command >file 2>&1` : 以覆盖的方式，把正确输出和错误信息同时保存到同一个文件（file）中。
+    - **`command >file 2>&1` : 以覆盖的方式，把正确输出和错误信息同时保存到同一个文件**（file）中。
+    - - **常用 `nohup [command] > [file] 2>&1 &` 不占用终端运行**
     - `command >>file 2>&1` : 以追加的方式，把正确输出和错误信息同时保存到同一个文件（file）中。
     - `command >file1 2>file2` :  以覆盖的方式，把正确的输出结果输出到 file1 文件中，把错误信息输出到 file2 文件中。
     - `command >>file1 2>>file2` :  以追加的方式，把正确的输出结果输出到 file1 文件中，把错误信息输出到 file2 文件中。
@@ -1373,19 +1432,20 @@ rm -f /etc/localtime \
 
 **shell中特殊符号:**
 
-| 符号 | 作用                                                         |
-| ---- | ------------------------------------------------------------ |
-| ’ ’  | 单引号。在单引号中所有的特殊符号，如“$”和”(反引号)都没有特殊含义。单引号括起来的都是普通字符，会原样输出 |
-| " "  | 双引号。在双引号中特殊符号都没有特殊含义，但是“$”，“`”（esc键下面）和“\”是例外，拥有“调用变量的值”、“引用命令”和“转义符”的特殊含义。 |
-| $    | **用于调用变量的值**，如需要调用变量name的值时，需要用$name的方式得到变量的值。 |
-| ${}  | **用于调用变量的值**，比$更灵活，当拼接字符串或者需要使用更复杂的表达式时，就需要使用 `${}` 语法来明确地引用变量。 |
-| $()  | **用来执行系统命令**，                                       |
-| ``   | 反引号。同上 ，但不推荐使用。                                |
-| ()   | 用于一串命令执行时，()中的命令会在子Shell中运行              |
-| {}   | 用于一串命令执行时，{ }中的命令会在当前Shell中执行。也可以用于变量变形与替换。 |
-| [ ]  | 用于变量的测试。                                             |
-| #    | 在Shell脚本中，#开头的行代表注释。                           |
-| \    | 转义符，跟在\之后的特殊符号将失去特殊含义，变为普通字符。如$将输出“$”符号，而不当做是变量引用。 |
+| 符号          | 作用                                                         |
+| ------------- | ------------------------------------------------------------ |
+| ’ ’           | 单引号。在单引号中所有的特殊符号，如“$”和”(反引号)都没有特殊含义。**单引号括起来的都是普通字符**，会原样输出 |
+| " "           | 双引号。双引号中的内容允许对某些特殊字符（如 `$`、```、`\`）进行解析，拥有“调用变量的值”、“引用命令”和“转义符”的特殊含义。 |
+| $             | **用于调用变量的值**，如需要调用变量name的值时，需要用$name的方式得到变量的值。 |
+| ${}           | **用于调用变量的值**，比$更灵活，当拼接字符串或者需要使用更复杂的表达式时，就需要使用 `${}` 语法来明确地引用变量。 |
+| $()           | **用来执行系统命令**，                                       |
+| $(( )) 或(()) | 进行算术运算                                                 |
+| ``            | 反引号。同上 ，但不推荐使用。                                |
+| ()            | 用于一串命令执行时，**()中的命令会在子Shell中运行**          |
+| {}            | 用于一串命令执行时，{ }中的命令会在当前Shell中执行。也可以用于变量变形与替换。 |
+| [ ]           | 用于变量的测试。                                             |
+| #             | 在Shell脚本中，#开头的行代表注释。                           |
+| \             | 转义符，跟在\之后的特殊符号将失去特殊含义，变为普通字符。如$将输出“$”符号，而不当做是变量引用。 |
 
 使用案例
 
@@ -1481,7 +1541,7 @@ echo "$2"           # 输出 "bar"
 echo "$3"           # 输出 "baz"
 ```
 
-## shell数组
+## shell 数组
 
 数组中可以存放多个值。Bash Shell 只支持一维数组（不支持多维数组），初始化时不需要定义数组大小。与大部分编程语言类似，数组元素的**下标由 0 开始**。数组的值也可以写入变量。
 
@@ -1540,25 +1600,74 @@ my_array+=("cherry")
 my_array+=("date")
 
 # 打印数组中的所有元素
-echo "${my_array[@]}"
+echo "${my_array[*]}"
 ```
 
-可以**使用 `IFS`（Internal Field Separator）来分割字符串并将其存储到数组中**。
+可以**使用 `IFS`（Internal Field Separator）来分割字符串并将其存储到数组中**。(通常用于非空格切分的情况)
 
 ``` shell
 #!/bin/bash
 
 # 定义一个字符串
 fruits="apple banana cherry date"
+animal="cat dog tiger lion"
 
-# 设置 IFS 为空格
-IFS=' ' read -r -a my_array <<< "$fruits"
+# 将以空格分割的字符串转换为数组
+my_array1=($fruits)
+my_array2=($animal)
+
+# 获取列表长度
+length=${#my_array1[*]}
+
+for (( i=0; i<$length; i++ ));do
+	echo ${my_array2[$i]} eat ${my_array1[$i]}
+done
+
 
 # 打印数组中的所有元素
-echo "${my_array[@]}"
+echo "${my_array1[@]}"
 ```
 
+定义二维数组保存信息的例子
+
+``` shell
+#!/bin/bash
+
+# 声明 pool_config 为关联数组
+declare -A config
+
+# 初始化关联数组
+config=(
+    ["China"]="cf1 cf2 cf3"
+    ["USA"]="af1 af2 af3"
+    ["Japan"]="jf1 jf2 jf3" 
+)
+
+countries=('China' 'USA')
+
+# 遍历列表
+for country in "${countries[@]}"; do 
+    echo "$country"
+    IFS=' ' read -r countryinfo <<< "${config[$country]}"
+    echo "${countryinfo}"
+done
+
+```
+
+输出如下：
+
+``` shell
+China
+cf1 cf2 cf3
+USA
+af1 af2 af3
+```
+
+
+
 ## shell 运算符
+
+使用 $(( )) 或 (( )) 进行算术运算
 
 [Shell 基本运算符 | 菜鸟教程 (runoob.com)](https://www.runoob.com/linux/linux-shell-basic-operators.html)
 
@@ -1769,13 +1878,16 @@ grep 命令的基本格式如下：
 
 - | 选项   | 含义                                                     |
   | ------ | -------------------------------------------------------- |
+  | -A  n  | after, 匹配行之后的n行                                   |
+  | -B  n  | before, 匹配行之前的n行                                  |
+  | -C n   | 匹配行上下各n行                                          |
   | **-c** | **仅列出文件中包含模式的行数。**                         |
   | **-i** | **忽略模式中的字母大小写。**                             |
   | **-l** | **列出带有匹配行的文件名。**                             |
   | **-n** | **在每一行的最前面列出行号。**                           |
   | **-v** | **只列出没有匹配模式的行。（反向查找）**                 |
   | **-w** | 把表达式当做一个完整的单字符来搜寻，忽略那些部分匹配的行 |
-  | **-E** | 多关键字匹配，如 `grep -E "word1|word2|word3 file`       |
+  | **-E** | 多关键字匹配，如 `grep -E "word1\|word2\|word3" file`       |
   
 - 注意，如果是搜索多个文件，grep 命令的搜索结果只显示文件中发现匹配模式的文件名；而如果搜索单个文件，grep 命令的结果将显示每一个包含匹配模式的行。
 
@@ -1790,9 +1902,9 @@ awk options 'pattern {action}' file
 ```
 
 - `options`：是一些选项，用于控制 `awk` 的行为。
-  - `-F <分隔符>` ： 指定**输入字段**的分隔符，默认是空格。
+  - `-F <分隔符>` ： 指定**输入字段**的分隔符，默认是空格: `echo xx-yy | awk -F '-' '{print $1,$2}'`。
   - `-v OFS=':'`：修改输出时的分隔符为 `:`
-- `pattern`：是用于匹配输入数据的模式。如果省略，则 `awk` 将对所有行进行操作。
+- `pattern`：是用于匹配输入数据的模式。如果省略，则 `awk` 将对所有行进行操作。例如我们只希望对第三行为ok 的行进行操作，那么：`awk '$3="ok" {print $0}'`
 - `{action}`：是在匹配到模式的行上执行的动作。如果省略，则默认动作是打印整行。
 
 下面是常用的awk 命令，
@@ -1812,7 +1924,7 @@ abb
 $ awk '{print $1, $2}' test # 打印第一二列，默认空格分割
 1 2
 a bb
-=
+= 
 
 $ awk '{print NR, $0, $1}' test # NR 表示行号，$0表示文件全部内容
 1 1 2 3 1
@@ -1827,6 +1939,8 @@ $ awk 'END {print NR}' test # 查找文件的行数，等于 wc -l test
 
 ``` shell
 docker images | awk -v OFS=':' 'NR>1 { print $1,$2}'
+# 确认后将这些镜像删除
+docker images | awk -v OFS=':' 'NR>1 { print $1,$2}' | xargs -I {} docker rmi {}
 ```
 
 ### `xargs`
@@ -1945,7 +2059,7 @@ $ cat test | xargs -n2 | xargs -I {} echo "print {}"
     - **解压文件示例**：(解压到当前目录，并且会覆盖掉同名文件，需注意)
 
     - ``` shell
-        ubuntu@VM-8-17-ubuntu:~/test$ tar -zxvf a.tar.gz
+        ubuntu@VM-8-17-ubuntu:~/test$ tar -zxvf a.tar.gz [-C /path/to/destination]
             qwer/
             qwer/tt.py
             qwer/readme.md
@@ -2356,6 +2470,24 @@ Swap:            0B          0B          0B
 
 swap space 是磁盘上的一块区域，可以是一个分区，也可以是一个文件。当系统物理内存吃紧时，Linux 会将内存中不常访问的数据保存到 swap 上，这样系统就有更多的物理内存为各个进程服务。
 
+### `journal`
+
+Linux提供了一个强大的日志系统，它可以跟踪和记录系统的各种活动。在这个系统中，`journalctl`是一个非常重要的工具，用于**查询和操作由systemd进程管理的日志**。
+
+默认情况下，`journalctl` 会使用一个分页器（通常是 `less`），允许你上下滚动查看内容。
+
+`journalctl -k` 查看内核日志
+
+`journalctl -n 15` : 查看最后15条日志
+
+`journalctl -f `: 实时滚动显示最新日志
+
+`journalctl --no-pager`: **日志默认分页输出，--no-pager 改为正常的标准输出**
+
+`journalctl -u kubelet` : 查看 kubelet 服务日志
+
+`journalctl --since="2021-07-01" --until="2021-07-31 03:00"` ：查看指定时间内的日志
+
 ## 终端命令 screen
 
 **screen的功能**：
@@ -2493,6 +2625,133 @@ screen -S screen_name -X stuff "^C" # 用来给screen中传入 ctrl+c 来结束�
 查询自己的公网地址：`curl ifconfig.me`，Linux和windows下都可以用。
 
 重启机器的网络：`sudo service network-manager restart`
+
+### 数据包的产生
+当我们执行 curl www.baidu.com 后，
+1. curl 进程查询 DNS → 得到百度的 IP（如 180.101.49.xx）。
+2. curl 调用系统接口（socket → connect）发送数据
+3. 操作系统内核构造 TCP 包，然后要决定“这个包往哪里发”。此时内核会执行 `ip route get 180.101.49.xx` 。得到下一跳 IP、**出口网卡**、源 IP（SNAT 前可能变化）
+4. 
+
+### ip
+
+Ip 基本整合了 ifconfig 与 route 这两个命令。它属于`iproute2` 软件包
+
+语法结构
+
+```bash
+ip [ OPTIONS ] OBJECT [ COMMAND [ ARGUMENTS ]]
+```
+
+OPTIONS选项:
+
+``` txt
+-V：显示指令版本信息；
+-s：-stats, -statistics输出更详细的信息；可以使用多个-s来显示更多的信息
+-f：-family {inet, inet6, link} 强制使用指定的协议族；
+-4：-family inet的简写，指定使用的网络层协议是IPv4协议；
+-6：-family inet6的简写，指定使用的网络层协议是IPv6协议；
+-0：shortcut for -family link.
+-o：-oneline，输出信息每条记录输出一行，即使内容较多也不换行显示；
+-r：-resolve，显示主机时，不使用IP地址，而使用主机的域名。
+```
+
+**OBJECT 对象：**
+
+``` txt
+link ：查看和配置网卡的属性和状态
+address/addr：查看和配置 IP地址信息
+neighbour：查看和管理ARP 表，记录了本地网络中其他设备的 IP 地址和 MAC 地址之间的映射关系。
+route：路由表
+rule：IP策略, 查看和配置路由策略数据库, 允许基于特定条件选择不同的路由表。ip route 看到的名为 main 的路由表。
+
+maddress：多播地址
+mourte：组播路由缓存条目
+tunnel：IP隧道
+```
+
+COMMAND命令
+
+add, delete, and show 之类的操作指令
+
+ARGUMENTS
+
+ARGUMENTS是命令的一些参数，它们倚赖于对象和命令。
+
+**常用命令**
+
+``` bash
+ip link show 										 # 显示网络接口信息
+ip link set eth0 up              # 开启网卡
+ip link set eth0 down            # 关闭网卡
+ip link set eth0 promisc on      # 开启网卡的混合模式
+ip link set eth0 promisc offi    # 关闭网卡的混个模式
+ip link set eth0 txqueuelen 1200 # 设置网卡队列长度
+ip link set eth0 mtu 1400        # 设置网卡最大传输单元
+
+ip addr show     # 显示网卡IP信息
+ip addr add 192.168.0.1/24 dev eth0 # 设置eth0网卡IP地址192.168.0.1
+ip addr del 192.168.0.1/24 dev eth0 # 删除eth0网卡IP地址
+
+ip route show # 显示系统路由
+ip route add default via 192.168.1.254   # 设置系统默认路由
+ip route add 1.2.3.0/24 via 10.0.0.1 dev eth1 # 设置去往1.2.3.0/24 网关是 10.0.0.1，数据经过 eth1 端口
+ip route delete 1.2.3.0/24 dev eth0 # 删除路由
+```
+
+### iptables
+
+**iptables** 是 Linux系统中用于管理网络包过滤的工具。它可以用来设置规则，以控制网络数据包的流动。iptables可以用于防火墙、网络地址转换（NAT）和网络包过滤等多种用途。
+
+工作原理是基于内核中的netfilter模块，可以通过在不同的链中添加规则来过滤、修改或重定向网络数据包。iptables 常常用作防火墙，网络地址转换（DNAT和SNAT）。限制带宽,端口转发,流量控制，日志记录，
+
+机器的网卡收到包，会把包拆封到链路层，mac 地址检查是自己后会直接交给内核处理这个包。内核会决定接下来这个包会去哪里，主要通过iptables 和 ip route 决定的。
+
+- iptables 决定“做什么”（What to do?），它在路由决策确定的前后（PREROUTING, FORWARD, POSTROUTING 等阶段）对数据包进行过滤、修改等操作。
+- ip route决定“去哪里”（Which way?），它决定了数据包是发给本机、还是转发到另一个接口、或是直接丢弃。
+
+下面是一个数据包在内核中的旅程：
+
+``` text
+    数据包到达网卡
+        |
+        v
++------------------------+
+| iptables PREROUTING 链 | <--- 首先在这里处理
+| -t mangle, -t nat      |     可以在这里做DNAT、修改包等
++------------------------+
+        |
+        v
++-------------------+
+|   路由决策          | <--- 然后才查路由表 (ip route)
+| (判断本地/转发/丢弃) |      决定包是发给本机还是转发
++-------------------+
+        |
+        +----------------------+----------------------+
+        |                      |                      |
+        v                      v                      v
+    目标是本机                需要转发               没有路由，丢弃
+        |                      |
+        v                      v
++-------------------+   +-------------------+
+| iptables INPUT 链 |   | iptables FORWARD 链|
++-------------------+   +-------------------+
+        |                      |
+        v                      v
+   本机进程处理           +-----------------------+
+        |               | iptables POSTROUTING链|  <- 在这里做SNAT（vpn的原理）
+        v               +-----------------------+
++-------------------+           |
+| iptables OUTPUT链 |           |
++-------------------+           |
+        |                       |
+        +-----------+-----------+
+                    |
+                    v
+             +------------------+
+             |   发送到网络接口   |
+             +------------------+
+```
 
 ### ifconfig
 
@@ -3301,6 +3560,77 @@ tcpdump udp port 123
 tcpdump -i [抓包的端口] -w [保存文件的位置]   # 其他条件自己写
 ```
 
+## VPN
+VPN（Virtual Private Network）本质上是：
+在两个网络节点之间建立一条加密的虚拟隧道，让数据在不可信的公网中可以安全、私密地传输。
+
+VPN 的基本原理：
+1. 隧道（Tunnel）：隧道技术就是把真实数据包“包起来”，再通过另一个协议发送。
+2. 加密（Encryption）：VPN 必须保证：公网监听者无法读取内容，中间节点无法篡改，通信双方可以验证对方身份
+3. 虚拟网卡（TUN/TAP）VPN Client 与 Server 都会创建一个虚拟网卡，需要注意，不同于物理网卡是广播网卡，TUN 是点对点的虚拟网卡，内核收到发往TUN网卡的包时直接由创建该网卡的程序来接收并处理。
+4. 路由（Routing）：当 VPN 连接建立后，系统会修改路由表，例如：
+目标地址	走向
+0.0.0.0/0	走 VPN → 全局模式
+某些网段	走虚拟网卡 → 分流模式
+本地资源	走真实网卡
+
+
+vpn 程序行为概述：
+
+1. 客户端执行 curl www.baidu.com，这会创建一个 真实 TCP 包，发往 baidu 的 IP。
+2. 全局路由让该 TCP 包进入 client 的 tun0
+3. client 程序 从 tun0 读到 TCP/IP 包 → 使用 AES 加密 → 封装成 UDP
+4. client 发送 UDP 加密包到 server 公网
+5. server程序 收到 UDP → 解密 → 得到原始 TCP/IP packet → 写入 server 端 tun0
+6. server 做 SNAT/MASQUERADE，使包的源地址变成 server 的公网 IP
+7. baidu 返回 TCP 回包给 server，
+8. 内核查看 NAT 表，由于MASQUERADE 有 连接跟踪，因此可以恢复原始客户端 IP（10.8.0.2）
+9. 路由判断 10.8.0.2 → 属于 VPN 子网 → 送给 tun0
+10. Server程序 用 tun.Read() 读到这个回包，加密封装UDP 回发 client
+11. client.go 解密 → 写入 tun0 → macOS 内核恢复 TCP 流
+12. tun0 收到回包：内核查 TCP 连接表-》找到发起 curl 的 socket-》将数据交给 curl 进程
+
+vpn server上设置路由与系统命令：
+``` bash
+# 假设 server tun IP = 10.8.0.1/24
+# 为 tun0（你的 TUN 设备）设置 IP 地址。
+sudo ip addr add 10.8.0.1/24 dev tun0 
+# 启用 tun0，使接口从 DOWN 变成 UP。
+sudo ip link set dev tun0 up
+
+# 允许内核转发（临时）
+sudo sysctl -w net.ipv4.ip_forward=1
+
+# NAT 使得从 VPN 来的流量可以出去到公网（若需要访问互联网），让从 TUN（10.8.0.x）来的包伪装成 server 真实公网 IP，再发往外网。
+sudo iptables -t nat -A POSTROUTING -s 10.8.0.0/24 -o eth0 -j MASQUERADE
+```
+
+
+vpn client上设置路由与系统命令：
+``` bash
+# ip命令在mac 上不可用
+# 假设 client tun IP = 10.8.0.2/24
+sudo ip addr add 10.8.0.2/24 dev tun0
+sudo ip link set dev tun0 up
+# 添加到 server 的路由（通常不必须）
+sudo ip route add 10.8.0.1/32 dev tun0
+# 若想让你本地的默认流量走 VPN（危险：会把所有流量走隧道），可以：
+# sudo ip route add default via 10.8.0.1 dev tun0
+# 更推荐只路由特定 IP 段。
+
+# tun0 自己的 IP：10.8.0.2，点对点对端 IP：10.8.0.1（server tun IP）。系统会自动在路由表中添加一条路由：10.8.0.1 -> tun0
+# 相当于设置虚拟局域网内的内网ip
+sudo ifconfig tun0 10.8.0.2 10.8.0.1 up
+# 添加全局默认路由（所有流量进 TUN）
+sudo route add default 10.8.0.1
+# 由于tun是特殊的虚拟网卡，因此需要上两条命令才可以把默认路由关联到tun0网卡上.
+
+# 使得发往vpn 服务器的 UDP 外层包走真实网卡 en0。
+# client 路由表一定需要保留一条到vpn server 的公网路由，不然程序就死循环了
+sudo route add -host <server_public_ip> 192.168.1.1
+```
+
+> route add default 10.8.0.1 本身只是指明“下一跳地址”。内核会结合已有接口配置（比如 tun0 的 peer）或 neighbor/ARP 信息来解析出具体的输出接口（dev）。对于 TUN，ifconfig tun0 10.8.0.2 10.8.0.1 up 把 next-hop（10.8.0.1）明确为该接口的对端，因而内核把 default 关联到 tun0（等同于 dev tun0）。
 
 
 

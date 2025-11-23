@@ -77,6 +77,14 @@ DELETE FROM customers WHERE customer_id IN ( SELECT customer_id FROM orders WHER
 - 显示数据表的详细索引信息，包括 PRIMARY KEY（主键）: `SHOW INDEX FROM 数据表:`
 
 - 查询数据：`select * from 表名 [where 条件 order by 字段1 asc, 字段2 desc]` ： 表示按照条件和字段1升序排序，如果字段1相同，就按字段2降序排列。
+- 按照查询字段给出的顺序展示数据：SELECT *
+FROM cluster
+WHERE id IN (
+     '1','3','2',
+)
+ORDER BY FIELD(id,
+    '1','3','2',
+);
 
 - 统计总共数据量：`select count(列序号，一般写1就行) from 表名;`
 - 限制查询数量，常用于分页：`select * from 表名 limit n1,n2;` n1表示跳过前n1条（可省略）；n2表示一共查n2条数据。

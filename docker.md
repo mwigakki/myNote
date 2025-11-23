@@ -326,8 +326,6 @@ sudo systemctl restart docker.service
 docker pull dockerhub.icu/library/alpine:3.15
 ```
 
-
-
 ### 删除镜像
 
 当读者不再需要某个镜像的时候，可以通过命令从 Docker 主机删除该镜像。
@@ -339,10 +337,24 @@ docker image rm <镜像ID>或<repository>:<tag>
 **清理未使用的镜像**：
 
 ```
-bash复制docker image prune
+docker image prune
 ```
 
 这会删除系统中所有未使用的镜像。
+
+### 打包与加载镜像
+
+使用 save 命令将镜像打包成文件，方便本地传输
+
+```shell
+docker save -o [文件名] [image:tag]
+```
+
+使用 load 命令从文件中加载镜像
+
+``` shell
+docker load -i [文件名]
+```
 
 ### 推送镜像
 
@@ -552,7 +564,11 @@ default         docker
   default       default                     running 20.10.24 linux/amd64, linux/386
 ```
 
+构建镜像：
 
+```shell
+docker buildx build --platform linux/amd64,linux/arm64 -t myusername/myimage:latest .
+```
 
 
 
@@ -584,8 +600,10 @@ docker push myimage:v1_amd64
 #### 创建 `manifest` 列表
 
 ``` shell
+# 首先需要将 myimage:v1_amd64 和 myimage:v1_arm64 推到仓库
 docker manifest create myimage:v1 myimage:v1_amd64 myimage:v1_arm64
 ```
+如果之前有，需要 docker manifest rm xx 先删除
 
 当要修改一个 `manifest` 列表时，可以加入 `-a` 或 `--amend` 参数。
 
@@ -617,6 +635,10 @@ docker manifest push myimage:v1
 
 
 ### 其他
+
+#### 存放
+
+docker 镜像的存放位置查看：`docker info | grep "Docker Root Dir"`，一般就是使用的 根目录所在的 磁盘。
 
 #### 分层存储
 
@@ -716,6 +738,9 @@ $ docker image rm $(docker image ls -q -f before=mongo:3.2)
 
 前面讲过镜像使用的是分层存储，容器也是如此。每一个容器运行时，是以镜像为基础层（该镜像层是只读的），**在其上创建一个当前容器的存储层**，我们可以称这个为容器运行时读写而准备的存储层为 **容器存储层**（可读写）。
 
+当在容器中删除文件时，文件实际上只是从可写层中被标记为删除，但底层镜像中的文件仍然存在。这是因为 Docker 镜像的每一层是独立的，删除操作不会真正移除底层镜像中的数据。
+
+
 容器存储层的生存周期和容器一样，容器消亡时，容器存储层也随之消亡。因此，任何保存于容器存储层的信息都会随容器删除而丢失。
 
 按照 Docker 最佳实践的要求，**容器不应该向其存储层内写入任何数据，容器存储层要保持无状态化**。所有的文件写入操作，都应该使用 [数据卷（Volume）](https://vuepress.mirror.docker-practice.com/data_management/volume.html)、或者 [绑定宿主目录](https://vuepress.mirror.docker-practice.com/data_management/bind-mounts.html)，在这些位置的读写会跳过容器存储层，直接对宿主（或网络存储）发生读写，其性能和稳定性更高。
@@ -745,6 +770,7 @@ OPTIONS说明：(常用)
 ``` shell
 -e username="ritchie": 设置环境变量；
 --env-file=[]: 从指定文件读入环境变量；
+--entrypoint="cmd": 以cmd命令覆盖镜像中的entrypoiny启动
 -i: 以交互模式运行容器，通常与` -t `同时使用；
 --net="bridge": 指定容器的网络连接类型，支持 bridge/host/none/container: 四种类型；
 -t: 为容器重新分配一个伪输入终端，通常与` -i`同时使用；
@@ -835,6 +861,12 @@ docker container run -it ubuntu /bin/bash
 
 ``` bash
 docker inspect <容器ID>
+```
+
+覆盖镜像的entrypoint启动容器
+
+``` bash
+docker run -it --entrypoint /bin/bash <容器ID> 
 ```
 
 **进入容器伪终端命令：**
@@ -1232,10 +1264,17 @@ CMD ["World"]
 
 定义匿名数据卷。在启动容器时忘记挂载数据卷，会自动挂载到匿名卷。
 
+当你在Dockerfile中指定`VOLUME`时，你实际上是在告诉Docker引擎，在基于该镜像创建容器时，应该将这些路径作为卷来处理。
+
 作用：
 
 - 避免重要的数据，因容器重启而丢失，这是非常致命的。
 - 避免容器不断变大。
+
+简单来说，如果使用了 `VOLUMN` 来定义了卷目录，那么启动容器后，对该目录里的操作将对持久化，关闭容器再次启动后，该目录下的内容还在。
+
+- 如果**只是简单地启动容器而不额外指定挂载选项**，Docker会为每个`VOLUME`指令中列出的路径创建一个新的匿名卷。这些卷的数据将被存储在宿主机上的某个位置，通常是`/var/lib/docker/volumes/`目录下的一个子目录中，但具体的路径对用户来说是不透明的。这些卷可以持久化数据，并且在容器停止或删除后仍然存在。
+- **可以选择将容器内的这些卷绑定到宿主机上的特定目录**（`docker run -v xx:yy`）：容器中的目录将直接映射到宿主机上的对应目录。任何对这些目录的读写操作都会直接影响宿主机上的文件系统。
 
 格式：
 

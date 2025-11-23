@@ -932,7 +932,7 @@ print('code out of the main2')
 - 包是一个本层次的目录结构，它将一组功能相近的模块组织再一个目录下，
 - 作用：代码规范，避免名称冲突
 - ***包 package 和 目录 directory 的区别***
-	- 包含 \__init\__.py文件的是包,  \__inti__文件就写了此包可以完成的功能等等
+	- 包含 \__init\__.py文件的是包,  \__inti__文件就写了此包可以完成的功能等等。当第一次导入包时，`__init__.py` 文件中的代码会自动执行。这可以用来设置包级别的变量、配置、导入其他模块等。例如，你可以在这里设置默认值、定义全局变量、注册插件或者进行其他初始化操作。
 	- 没有的就是目录， 普通的资源目录
 - 包的导入：
 	- import 包名 . 模块名  [as 别名]
@@ -1228,6 +1228,152 @@ print(random.randint(0,9))
 [python正则]([Python 正则表达式 | 菜鸟教程 (runoob.com)](https://www.runoob.com/python/python-reg-expressions.html))
 
 [正则语法]([正则表达式 – 语法 | 菜鸟教程 (runoob.com)](https://www.runoob.com/regexp/regexp-syntax.html))
+
+## 31. 自动化测试
+
+这里介绍 selenium 和 playwright
+
+### Selenium
+
+Selenium是广泛使用的模拟浏览器运行的库，它是一个用于Web应用程序测试的工具。
+
+**安装 Selenium**
+在终端运行以下命令安装 Selenium：
+
+```bash
+pip install selenium
+```
+
+**下载 Microsoft Edge WebDriver**
+
+- 前往 [Microsoft Edge WebDriver](https://developer.microsoft.com/en-us/microsoft-edge/tools/webdriver/) 页面。
+- 下载与您 Edge 浏览器版本匹配的 WebDriver。
+- 将下载的 WebDriver 解压后移动到系统路径（如 `/usr/local/bin`）或者您选择的自定义路径。
+
+**确认 Edge 浏览器和 WebDriver 的版本匹配**
+确保 Edge 浏览器和 WebDriver 的主版本号一致。例如：
+
+- Edge 浏览器版本：`117.x.x`
+- WebDriver 版本：`117.x.x`
+
+以下是一个简单的入门例程：
+
+```python
+from selenium import webdriver
+from selenium.webdriver.common.by import By
+from selenium.webdriver.common.keys import Keys
+import time
+
+# 设置 Edge 浏览器的选项
+edge_options = webdriver.EdgeOptions()
+edge_options.add_argument("--start-maximized")  # 启动时最大化窗口
+
+# 初始化 WebDriver
+driver = webdriver.Edge(options=edge_options)  # 不需要 executable_path 参数
+
+try:
+    # 打开一个网站
+    driver.get("https://www.google.com")
+
+    # 等待页面加载
+    time.sleep(2)
+
+    # 找到搜索框，输入关键字并搜索
+    search_box = driver.find_element(By.NAME, "q")
+    search_box.send_keys("Selenium Python")
+    search_box.send_keys(Keys.RETURN)
+
+    # 等待搜索结果页面加载
+    time.sleep(3)
+
+    # 获取搜索结果标题
+    titles = driver.find_elements(By.XPATH, "//h3")
+    for index, title in enumerate(titles[:5]):  # 仅打印前 5 个结果
+        print(f"{index + 1}. {title.text}")
+
+finally:
+    # 关闭浏览器
+    driver.quit()
+```
+
+将脚本保存为 `test_edge.py`，在终端运行：
+
+```bash
+python test_edge.py
+```
+
+### playwright
+
+Playwright 是微软开发的 Web应用 的 自动化测试框架 。selenium相对于Playwright慢很多，因为**Playwright是异步实现的**，但是selenium是同步的，就是后一个操作必须等待前一个操作。
+
+selenium是由相应的厂商提供相应的驱动，python+驱动执行相当自动化操作，缺点是如果你得浏览器驱动和你得浏览器版本不对应，你得selenium就会报错，而且你需要时刻关注版本得问题。
+
+Playwright 是基于 Node.js 语言开发的，而且不需要再重新下载一个浏览器驱动，相当于已经写好了，仅仅需要安装这个库即可。
+
+**步骤 1：安装 Playwright**
+
+1. 在终端安装 Playwright：
+
+   ```bash
+   pip install playwright
+   ```
+
+2. 安装 Playwright 的浏览器依赖：
+
+   ```bash
+   playwright install chromium # edge 也是chromium内核的
+   ```
+
+**步骤 2：编写入门例程**
+
+以下是一个 Playwright 脚本的简单示例：
+
+```python
+from playwright.sync_api import sync_playwright
+
+def main():
+    with sync_playwright() as p:
+        # 启动 Microsoft Edge 浏览器（Chromium 内核）
+        browser = p.chromium.launch(headless=False)  # 设置为 False 打开有头模式
+        context = browser.new_context()
+
+        # 打开一个新页面
+        page = context.new_page()
+
+        # 访问 Google 网站
+        page.goto("https://www.baidu.com")
+
+        # 等待页面加载
+        page.fill("input[name='wd']", "Playwright Python")  # 填写搜索框
+        page.keyboard.press("Enter")  # 模拟按下回车键
+
+        # 等待搜索结果加载
+        page.wait_for_selector("h3")
+
+        # 获取搜索结果标题并打印
+        titles = page.query_selector_all("h3")
+        for index, title in enumerate(titles[:5]):  # 打印前 5 个结果
+            print(f"{index + 1}. {title.inner_text()}")
+
+        # 截图保存
+        page.screenshot(path="screenshot.png")
+
+        # 关闭浏览器
+        browser.close()
+
+if __name__ == "__main__":
+    main()
+```
+
+**步骤 3：运行脚本**
+
+1. 将代码保存为 `test_playwright.py`。
+
+2. 在终端运行：
+
+   ```bash
+   python test_playwright.py
+   ```
 
 ## 其他
 

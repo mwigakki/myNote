@@ -1,7 +1,7 @@
 package main
 
 import (
-	"./cmd"
+	"mdHelper/cmd"
 )
 
 func main() {
