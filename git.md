@@ -839,6 +839,8 @@ Automatic merge failed; fix conflicts and then commit the result.
 
 切换当前分支对应的远端分支：`git branch --set-upstream-to=origin/remote-branch local-branch`
 
+切换当前仓库指向的远程仓库地址：`git remote set-url origin xxx`
+
 **拉取**远端分支最新代码到本地（所有分支信息）（不合并）：`git fetch origin `
 
 **拉取**远程分支并**合并到本地当前分支**：`git pull origin <remote-branch>`
@@ -848,6 +850,8 @@ Automatic merge failed; fix conflicts and then commit the result.
 - 创建一个本地分支，该分支跟踪远程分支 `origin/feature-branch`：`git branch feature-branch origin/feature-branch`  
 - 检出刚刚创建的本地分支：`git checkout feature-branch`
 - 或者，可以一次性创建并检出远程分支的本地副本：`git checkout -b feature-branch origin/feature-branch`
+
+**复制**其他分支的一次提交到当前分支，`git cherry-pick [commit ID]`
 
 ### rebase
 

@@ -5,7 +5,8 @@ package cmd
 主要完成功能
 1、在一个充满md文件的目录下，遍历每个md文件和img文件夹，找到img中没有被任何一个md文件引用的图片，然后删除之。
 	注意，默认只遍历当前目录，不遍历子目录。加参数才遍历子目录。
-2、针对md文件中引用的网络图像，下载成本地文件引用，并修改md文件。
+2、针对md文件中引用的网络图像，下载成本地文件引用，并修改md文件。(未完成)
+3、移动md文件时，自动将其img 文件夹移动到目的地。（未完成）
 */
 import (
 	"bufio"
@@ -156,8 +157,9 @@ func isImg(path string) bool {
 
 }
 
-//  Execute()是命令的执行入口，其内部会解析 os.Args[1:] 参数列表
-//（默认情况下是这样，也可以通过 Command.SetArgs 方法设置参数），然后遍历命令树，为命令找到合适的匹配项和对应的标志。
+//	Execute()是命令的执行入口，其内部会解析 os.Args[1:] 参数列表
+//
+// （默认情况下是这样，也可以通过 Command.SetArgs 方法设置参数），然后遍历命令树，为命令找到合适的匹配项和对应的标志。
 func Execute() {
 	rootCmd.PersistentFlags().BoolVarP(&Verbose, "verbose", "v", false, "verbose output")
 	rootCmd.Flags().StringVarP(&Source, "source", "s", "", "Source directory to read from")

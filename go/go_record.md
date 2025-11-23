@@ -11,7 +11,7 @@ GO笔记
 import "fmf"
 
 func main(){
-    fmf.Println("人生苦短，Let's Go!")
+    fmt.Println("人生苦短，Let's Go!")
 }
 ```
 
@@ -3278,6 +3278,8 @@ a
 c
 ```
 
+这里如果把recover 放在main()，也可以起到作用，因为一旦panic，程序立即停止运行，并**开始回溯调用栈，寻找最近的 recover() 语句**
+
 总结一下
 
 - `panic`会使程序退出，而在`panic`之后可以使用`recover`来尝试修复，使程序重新正常执行。
@@ -4950,6 +4952,60 @@ func main() {
 	fmt.Println(getAnimal().Speak())  // Output: Woof!
 	fmt.Println(getAnimal2().Speak()) // Output: Woof!
 	fmt.Println(getAnimal3().Speak()) // Output: MIMI!
+}
+```
+
+### 接口作为结构体成员变量
+
+接口作为结构体成员变量时，我们可以实现该结构的函数，已完成调用：
+
+``` go
+package main
+
+import "fmt"
+
+type speaker interface {
+	speak() string
+}
+
+type dog struct {
+	speaker
+}
+
+func (d *dog) speak() string {
+	return "dog speak"
+}
+func main() {
+	d := dog{}
+	fmt.Println(d.speak())
+  // 这里调用的是自己实现的speak
+}
+```
+
+也可以不自己实现，使用该成员变量的实现：
+
+``` go
+package main
+
+import "fmt"
+
+type speaker interface {
+	speak() string
+}
+type speaker1 struct{}
+
+func (s *speaker1) speak() string {
+	return "nothing"
+}
+
+type dog struct {
+	speaker
+}
+
+func main() {
+	d := dog{speaker: &speaker1{}}
+	fmt.Println(d.speak())
+  // 这里使用的就是speaker1 的实现
 }
 ```
 
@@ -7711,7 +7767,7 @@ ch5 = ch4          // 变量赋值时将ch4转为单向通道
 
 ![image-20220505223158853](img\image-20220505223158853.png)
 
-**注意：**对已经关闭的通道再执行 close 也会引发 panic。不能发送只能接收
+**注意：**对已经关闭的通道再执行 close 也会引发 panic。不能发送只能接收。
 
 ### worker pool(goroutine池)
 
@@ -7810,7 +7866,7 @@ func main() {
 
 在某些场景下我们可能需要**同时从多个通道接收数据**。通道在接收数据时，如果没有数据可以被接收那么当前 goroutine 将会发生阻塞。Go 语言内置了`select`关键字，使用它可以同时响应多个通道的操作。
 
-Select 的使用方式类似于之前学到的 switch 语句，它也有一系列 case 分支和一个默认的分支。每个 case 分支会对应一个通道的通信（接收或发送）过程。select **会一直等待**，直到其中的某个 case 的通信操作完成时，就会执行该 case 分支对应的语句。具体格式如下：
+Select 的使用方式类似于之前学到的 switch 语句，它也有一系列 case 分支和一个默认的分支。每个 case 分支会对应一个通道的通信（接收或发送）过程。select **会一直等待**，直到其中的某个 case 的**通信操作**完成时，就会执行该 case 分支对应的语句。具体格式如下：
 
 ```go
 select {
@@ -7828,7 +7884,7 @@ default:
 Select 语句具有以下特点。
 
 - 可处理一个或多个 channel 的发送/接收操作。
-- 如果多个 case 同时满足，select 会**随机**选择一个执行。哪个能成走哪个。
+- 如果多个 case 同时满足，select 会**随机**选择一个执行。
 - 对于没有 case 的 select 会一直阻塞，可用于阻塞 main 函数，防止退出，用法就是 `select {}`。
 
 如果没有default 就会阻塞，如果希望能够阻塞，但有想要设置最长阻塞时间，可以给default设置一下，如下：
@@ -8253,11 +8309,77 @@ func main() {
 }
 ```
 
+### sync.Cond
+
+`sync`包中的`Cond`（条件变量）结构体提供了一种机制，用于在多个goroutine之间进行复杂的同步操作。它结合了互斥锁（Mutex）和条件等待的能力，使得一个或多个goroutine可以等待某个特定条件成立，而另一个goroutine则负责通知这些等待的goroutine条件已经满足。
+
+`Cond`的主要作用包括：
+
+1. **等待**：goroutine可以调用`Wait`方法来等待某个条件的发生。当`Wait`被调用时，当前的goroutine会释放与`Cond`关联的互斥锁，并进入休眠状态，直到被其他goroutine唤醒。
+2. **通知**：当某个条件发生变化时，goroutine可以使用`Broadcast`或`Signal`方法来通知正在等待该条件的其他goroutine。`Broadcast`会唤醒所有等待的goroutine，而`Signal`只会唤醒其中一个。
+3. **检查条件**：通常，在调用`Wait`之前，goroutine会先检查条件是否已经满足，以避免不必要的等待。这种模式称为“检查-等待循环”。
+
+`sync.Cond`结构体提供了几个关键的方法，用于在goroutine之间实现条件变量的同步。以下是这些方法的详细介绍：
+
+- `NewCond(L Locker) *Cond`：这是创建一个条件变量的构造函数。它接受一个实现了`sync.Locker`接口的对象作为参数，这个对象通常是一个互斥锁（`*sync.Mutex`），也可以是读写锁（`*sync.RWMutex`）。条件变量需要与一个锁关联，以确保对共享资源的访问是线程安全的。
+- `Wait()`：会**释放与条件变量关联的锁，并使当前goroutine进入等待状态**，直到其他goroutine调用了`Signal`或`Broadcast`来唤醒它。被唤醒后，`Wait`会重新获取锁并继续执行。因此，`Wait`应该总是在持有锁的情况下被调用，并且通常在一个循环中使用，以检查唤醒是否是因为条件真正满足了。
+
+``` go
+cond.L.Lock()
+for !condition {
+    cond.Wait()
+}
+// condition is met, proceed
+cond.L.Unlock()
+```
+
+- `Signal`方法会唤醒一个因调用`Wait`而处于等待状态的goroutine。如果有多个goroutine在等待，则任意选择一个进行唤醒。如果没有任何goroutine在等待，`Signal`不会做任何事情。
+- `Broadcast`方法会唤醒所有因调用`Wait`而处于等待状态的goroutine。所有的等待goroutine都会被唤醒，并尝试重新获取锁以继续执行。
+
+下面是一个简单的例子，展示了如何使用`Cond`来进行goroutine之间的同步：
+
+``` go
+package main
+
+import (
+	"fmt"
+	"sync"
+	"time"
+)
+
+func main() {
+	var mu sync.Mutex
+	cond := sync.NewCond(&mu)
+	count := 0
+
+	// 启动一个goroutine增加计数器
+	go func() {
+		for i := 0; i < 5; i++ {
+			mu.Lock()
+			count++
+			cond.Broadcast() // 告诉所有等待的goroutine条件可能已经改变
+			mu.Unlock()
+			time.Sleep(1 * time.Second) // 模拟工作
+		}
+	}()
+
+	// 等待计数器达到特定值
+	mu.Lock()
+	for count < 5 {
+		cond.Wait() // 等待条件满足
+		fmt.Printf("Count is now %d\n", count)
+	}
+	mu.Unlock()
+
+	fmt.Println("Done")
+}
+```
+
 ### 原子操作
 
 针对整数数据类型（int32、uint32、int64、uint64）我们还可以使用原子操作来保证并发安全，通常直接使用原子操作比使用锁操作效率更高。Go语言中原子操作由内置的标准库`sync/atomic`提供
 
-### atomic包
+#### atomic包
 
 |                             方法                             |      解释      |
 | :----------------------------------------------------------: | :------------: |
@@ -8918,7 +9040,293 @@ type BenchmarkResult struct {
 
 使用 `RunParallel` 测试并发性能
 
+### Mock 测试 
 
+Mock 测试就是在测试过程中，对于某些不容易构造（如 HttpServletRequest 必须在servlet容器中才能构造出来）或者不容易获取的比较复杂的对象（如 JDBC 中的ResultSet 对象），用一个虚拟的对象（Mock 对象）来创建以便测试的测试方法。
+
+Mock是为了解决不同的单元之间由于耦合而难于开发、测试的问题。所以，Mock既能出现在单元测试中，也会出现在集成测试、系统测试过程中。Mock 最大的功能是帮你把单元测试的耦合分解开，如果你的代码对另一个类或者接口有依赖，它能够帮你模拟这些依赖，并帮你验证所调用的依赖的行为。
+
+https://geektutu.com/post/quick-gomock.html
+
+## 29. golang 泛型
+
+泛型（Generics）是一种编程思想，它允许**在编写代码时使用未知的类型**。泛型可以增加代码的灵活性和可复用性，同时还能提高代码的安全性和可读性。泛型在 C++, Java 和 Python 等语言中已经被广泛应用，Go 1.18 版本终于加入了泛型特性。
+
+Go 泛型的特点包括：
+
+- 基于类型约束的泛型：Go 泛型通过类型约束来实现泛型，这意味着泛型函数或类型可以接受特定的类型。
+- 编译时类型安全：Go 泛型**通过编译时类型检查来保证类型安全**，这有助于避免运行时错误。
+- 支持多种类型：Go 泛型支持多种类型，包括基本类型和自定义类型。
+
+### 语法
+
+#### 泛型函数
+
+在 Go 中，泛型函数的语法如下：
+
+```go
+func FuncName[T Type](params) returnType {
+     // Function body
+ }
+```
+
+其中，T 表示泛型类型参数，Type 表示具体的类型，params 表示函数的参数，returnType 表示函数的返回值类型。
+
+如下例：
+
+``` go
+func main() {
+	a := toSlice(1, 2, 3)
+	fmt.Printf("type: %T, value: %v \n", a, a)
+	b := toSlice("a", "b", "c")
+	fmt.Printf("type: %T, value: %v \n", b, b)
+
+	c := toSliceAny(1, 2, 3)
+	fmt.Printf("type: %T, value: %v \n", c, c)
+}
+
+func toSlice[T any](args ...T) []T {
+	return args
+}
+
+func toSliceAny(args ...any) []any {
+	return args
+}
+
+/**
+type: []int, value: [1 2 3] 
+type: []string, value: [a b c] 
+type: []interface {}, value: [1 2 3] 
+*/
+```
+
+由此可见泛型函数的特点以及与使用 any 的区别。在泛型函数调用时泛型就别解释为了具体的类型，而any 一直是any 类型。
+
+#### 泛型类型
+
+泛型类型的语法如下：
+
+```go
+type TypeName[T Type] struct {
+     // Fields
+ }
+```
+
+其中，TypeName 表示泛型类型名称，T 表示泛型类型参数，Type 表示具体的类型。
+
+见下例：
+
+``` go
+ type Stack[T any] struct {
+     data []T
+ }
+ 
+ func (s *Stack[T]) Push(x T) {
+     s.data = append(s.data, x)
+ }
+ 
+ func (s *Stack[T]) Pop() T {
+     n := len(s.data)
+     x := s.data[n-1]
+     s.data = s.data[:n-1]
+     return x
+ }
+
+// 使用时
+s := Stack[int]{}
+s.Push(1)
+s.Push(2)
+x := s.Pop()  // 返回 2
+```
+
+同样的，在实例化泛型函数时就明确了具体的类型。
+
+#### 泛型约束
+
+在使用泛型时，有时需要对泛型类型进行一定的约束。例如，我们希望某个泛型函数或类型只能接受特定类型的参数，或者特定类型的参数必须实现某个接口。在 Go 中，可以使用泛型约束来实现这些需求。
+
+``` go
+ func Print[T fmt.Stringer](x T) {
+     fmt.Println(x.String())
+ }
+```
+
+除了使用 interface{} 类型进行类型约束之外，**Go 还支持使用接口来约束泛型类型**。例如，下面是一个泛型类型，它要求其泛型类型参数实现了 fmt.Stringer 接口：
+
+``` go
+ type MyType[T fmt.Stringer] struct {
+     data T
+ }
+ 
+ func (m *MyType[T]) String() string {
+     return m.data.String()
+ }
+```
+
+#### 泛型接口
+
+泛型接口约束用于限制实现泛型接口的类型的范围，确保泛型代码只能用于满足特定条件的类型。在 Golang 中，泛型接口约束使用接口来定义。
+
+``` go
+ type Stringer interface {
+     String() string
+ }
+ 
+ type Container[T Stringer] interface {
+     Len() int
+     Add(T)
+     Remove() T
+ }
+```
+
+## #标准库之context
+
+Go语言中的 `context` 包提供了一种在goroutine之间传递请求范围的值、取消信号和截止时间的方式。**context的出现主要两个作用，控制 goroutine，goroutine之间传值。**
+
+`context`可以用来在`goroutine`之间传递上下文信息，相同的`context`可以传递给运行在不同`goroutine`中的函数，上下文对于多个`goroutine`同时使用是安全的，`context`包定义了上下文类型，可以使用`background`、`TODO`创建一个上下文，在函数调用链之间传播`context`，也可以使用`WithDeadline`、`WithTimeout`、`WithCancel` 或 `WithValue` **创建的修改副本**替换它。
+
+Context 接口定义了以下4个方法，这些方法用于**获取**与上下文相关的截止时间、取消信号、错误信息以及键值对形式的元数据。
+
+``` go
+// A Context carries a deadline, a cancellation signal, and other values across
+// API boundaries.
+//
+// Context's methods may be called by multiple goroutines simultaneously.
+type Context interface {
+	Deadline() (deadline time.Time, ok bool)
+	Done() <-chan struct{}
+  Err() error
+	Value(key any) any
+}
+// 查看该接口的实现结构体，发现每个结构体都会再次维护一个该接口作为属性，这是因为context 常常调用WithXXX()方法来创建子context，父context被包含在子context 之中。
+```
+
+### `context`的使用
+
+**每一个 `Context` 都会从最顶层的 Goroutine 一层一层传递到最下层**，这也是 Golang 中上下文最常见的使用方式，如果没有 `Context`，当上层执行的操作出现错误时，下层其实不会收到错误而是会继续执行下去。
+
+#### 创建`context`
+
+context初始化的方法有五个:
+
+``` go
+func main() {
+	// 初始化context，使用 context.Background() 或 context.TODO()
+  // 这两个函数其实只是互为别名，没有差别，官方给的定义是：
+  // context.Background 是上下文的默认值，所有其他的上下文都应该从它衍生（Derived）出来。
+  // context.TODO 应该只在不确定应该使用哪种上下文时使用；
+	ctx1 := context.Background() // = context.TODO()
+	// 传值使用
+	ctx2 := context.WithValue(ctx1, "main", "main-value")
+	// 取消使用函数
+	ctx3, cancel := context.WithCancel(ctx2)
+	// 超过时间点 + 取消使用
+	ctx4, cancel := context.WithDeadline(ctx3, time.Now().Add(3*time.Second))
+	// 超时时间段 + 取消使用
+	ctx5, cancel := context.WithTimeout(ctx4, time.Hour)
+	/**
+	调用其他协程
+	*/
+	cancel()  // 取消使用
+	fmt.Println(ctx5)
+}
+```
+
+调用 `cancel()` 函数后，相关的 `context.Context` 实例会被标记为“已取消”，并且不能再用于新的操作。具体来说：
+
+- **`Done()` 通道关闭**：一旦调用了 `cancel()`，`context.Done()` 通道会被关闭。任何阻塞在 `<-ctx.Done()` 上的goroutine都会收到这个关闭信号，并可以相应地处理取消逻辑。
+- **`Err()` 返回取消错误**：调用 `ctx.Err()` 将返回一个非空的错误，通常是 `context.Canceled` 或 `context.DeadlineExceeded`，这取决于上下文被取消的原因。
+- **`WithValue` 的键值对仍然可访问**：虽然上下文被取消了，但通过 `WithValue` 添加到上下文中的键值对仍然是可访问的。不过，通常不应该再使用这些值来启动新的操作，因为它们可能依赖于已经被取消的上下文。
+- **不能再次取消或复用**：一个上下文一旦被取消，它就无法被恢复或重新使用。你不能再次调用 `cancel()` 来改变它的状态，也不能将它传递给其他函数以期望它能继续正常工作。
+
+#### context 树
+
+在多数程序中，根函数会调用各层的函数，每层的函数会创建自己的 routine，构成了一个 routine 树， 如果由 Context 来控制上下文，context 也应该反映并实现成一棵树。
+
+![img](img/v2-a6c67ed8385813b9714214d58aec1bd1_1440w.jpg)
+
+每个函数中根据实际需要创建context 传递给子函数。例如有的函数需要我们把一些k/v对传递给之后的函数调用，有的则需要对之后的函数调用设置超时时间。
+
+实例：
+
+``` go
+func main() {
+	// 初始化context
+	ctx := context.Background() // = context.TODO()
+
+	go f1(ctx)
+	<-ctx.Done()
+	fmt.Println("main exit")
+	fmt.Println(ctx.Deadline())
+}
+
+func f1(ctx context.Context) {
+	time.Sleep(time.Second)
+	c1, cancel := context.WithCancel(ctx)
+	f2(c1)
+	cancel()
+	fmt.Println("f1 exit")
+	//ctx.Done()
+}
+
+func f2(ctx context.Context) {
+	c2, cancel := context.WithTimeout(ctx, 1*time.Second)
+	go f3(c2)
+	time.Sleep(4*time.Second)
+	fmt.Println("f2 exit")
+	cancel()
+}
+
+func f3(ctx context.Context) {
+	<-ctx.Done()
+	fmt.Println("f3 exit")
+}
+
+/**
+f3 exit
+f2 exit
+f1 exit
+程序会阻塞在main函数的 <-ctx.Done() 处
+*/
+```
+
+实例：
+
+``` go
+
+func main() {
+  // 创建一个超时时间的ctx
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel() // 确保即使超时也能释放资源
+	timeout := 2
+	// timeout 传5以下，f1中调用cancel() 时ctx 退出
+	// timeout 传5以上，ctx 超时退出
+	go f1(ctx, cancel, timeout)
+	//等待耗时的函数 f1 完成，当然，我们通过ctx设置了超时时间
+	<-ctx.Done() // 在此阻塞
+	fmt.Println("main exit")
+}
+
+func f1(ctx context.Context, cancel context.CancelFunc, timeout int) {
+	// 模拟耗时操作
+	time.Sleep(time.Duration(timeout) * time.Second)
+	fmt.Println("f1 exit")
+	cancel()
+}
+```
+
+### Context使用原则
+
+- context.Background 只应用在最高等级，作为所有派生 context 的根。
+- context 取消是建议性的，这些函数可能需要一些时间来清理和退出。
+- 不要把`Context`放在结构体中，要以参数的方式传递。
+- 以`Context`作为参数的函数方法，应该把`Context`作为第一个参数，放在第一位。
+- 给一个函数方法传递Context的时候，不要传递nil，如果不知道传递什么，就使用context.TODO
+- Context的Value相关方法应该传递必须的数据，不要什么数据都使用这个传递。context.Value 应该很少使用，它不应该被用来传递可选参数。这使得 API 隐式的并且可以引起错误。取而代之的是，这些值应该作为参数传递。
+- Context是线程安全的，可以放心的在多个goroutine中传递。同一个Context可以传给使用其的多个goroutine，且Context可被多个goroutine同时安全访问。
+- Context 结构没有取消方法，因为只有派生 context 的函数才应该取消 context。
+
+Go 语言中的 [`context.Context`](https://github.com/golang/go/blob/71bbffbc48d03b447c73da1f54ac57350fc9b36a/src/context/context.go#L62-L154) 的主要作用还是在多个 Goroutine 组成的树中同步取消信号以减少对资源的消耗和占用，虽然它也有传值的功能，但是这个功能我们还是很少用到。在真正使用传值的功能时我们也应该非常谨慎，使用 [`context.Context`](https://github.com/golang/go/blob/71bbffbc48d03b447c73da1f54ac57350fc9b36a/src/context/context.go#L62-L154) 进行传递参数请求的所有参数一种非常差的设计，比较常见的使用场景是传递请求对应用户的认证令牌以及用于进行分布式追踪的请求 ID。
 
 ## #标准库之math
 
