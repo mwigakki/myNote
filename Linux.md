@@ -2699,6 +2699,31 @@ ip route add 1.2.3.0/24 via 10.0.0.1 dev eth1 # 设置去往1.2.3.0/24 网关是
 ip route delete 1.2.3.0/24 dev eth0 # 删除路由
 ```
 
+### nc
+
+nc（全称 netcat）是 Linux 系统中一个非常强大且灵活的网络工具。
+
+基本语法为： `nc [选项] 主机地址 端口号`
+
+**常用功能与示例**：
+
+``` sh
+# 作为客户端连接远程主机端口
+nc 192.168.1.1 80 
+
+# 作为简易服务器监听本地端口
+nc -l -p 123
+
+选项	说明
+-l	监听模式（作为服务器）
+-p	指定本地端口
+-z	扫描模式（不发送数据）
+-v	显示详细信息
+-u	使用 UDP 协议
+-n	不进行 DNS 解析（加快速度
+```
+
+
 ### iptables
 
 **iptables** 是 Linux系统中用于管理网络包过滤的工具。它可以用来设置规则，以控制网络数据包的流动。iptables可以用于防火墙、网络地址转换（NAT）和网络包过滤等多种用途。
@@ -2738,7 +2763,7 @@ ip route delete 1.2.3.0/24 dev eth0 # 删除路由
 +-------------------+   +-------------------+
         |                      |
         v                      v
-   本机进程处理           +-----------------------+
+   本机进程处理          +-----------------------+
         |               | iptables POSTROUTING链|  <- 在这里做SNAT（vpn的原理）
         v               +-----------------------+
 +-------------------+           |
@@ -3577,20 +3602,27 @@ VPN 的基本原理：
 
 vpn 程序行为概述：
 
-1. 客户端执行 curl www.baidu.com，这会创建一个 真实 TCP 包，发往 baidu 的 IP。
+1. 客户端执行 curl www.baidu.com，这会创建一个 真实 TCP 包，发往 baidu 的 IP。（ curl 调用 connect()→ 内核创建 socket → 内核找路由表 → 产生 TCP SYN 包 → 准备发出去 ）
 2. 全局路由让该 TCP 包进入 client 的 tun0
 3. client 程序 从 tun0 读到 TCP/IP 包 → 使用 AES 加密 → 封装成 UDP
 4. client 发送 UDP 加密包到 server 公网
-5. server程序 收到 UDP → 解密 → 得到原始 TCP/IP packet → 写入 server 端 tun0
-6. server 做 SNAT/MASQUERADE，使包的源地址变成 server 的公网 IP
-7. baidu 返回 TCP 回包给 server，
-8. 内核查看 NAT 表，由于MASQUERADE 有 连接跟踪，因此可以恢复原始客户端 IP（10.8.0.2）
-9. 路由判断 10.8.0.2 → 属于 VPN 子网 → 送给 tun0
-10. Server程序 用 tun.Read() 读到这个回包，加密封装UDP 回发 client
-11. client.go 解密 → 写入 tun0 → macOS 内核恢复 TCP 流
-12. tun0 收到回包：内核查 TCP 连接表-》找到发起 curl 的 socket-》将数据交给 curl 进程
+5. server 机器收到该包，查路由表发现目的地址就是本机，进入INPUT链，检查到有用户态进程监听了该端口，就把包交给程序。
+6. server程序 收到 UDP → 解密 → 得到原始 TCP/IP packet → 写入 server 端 tun0（这里还有点不理解，server主机收到udp 包之后，怎样的检查逻辑使得包发给server程序的）
+7. server 做 SNAT/MASQUERADE，使包的源地址变成 server 的公网 IP，并从物理网卡发出去
+8. baidu 返回 TCP 回包给 server，
+9. 内核查看 NAT 表，由于MASQUERADE 有 连接跟踪，因此可以恢复原始客户端 IP（10.8.0.2）
+10. 路由判断 10.8.0.2 → 属于 VPN 子网 → 送给 tun0
+11. Server程序 用 tun.Read() 读到这个回包，加密封装UDP 回发 client
+12. client机器收到包后把包发出client程序处理，此处流程同第5点server机器收到包的流程
+13. client.go 解密 → 写入 tun0 →  内核恢复 TCP 流
+14. tun0 收到回包：内核查 TCP 连接表-》找到发起 curl 的 socket-》将数据交给 curl 进程
 
 vpn server上设置路由与系统命令：
+> 建设网络配置如下
+> server tun0 = 10.8.0.1
+> client tun0 = 10.8.0.2
+> mask = 255.255.255.0
+
 ``` bash
 # 假设 server tun IP = 10.8.0.1/24
 # 为 tun0（你的 TUN 设备）设置 IP 地址。
@@ -3603,10 +3635,13 @@ sudo sysctl -w net.ipv4.ip_forward=1
 
 # NAT 使得从 VPN 来的流量可以出去到公网（若需要访问互联网），让从 TUN（10.8.0.x）来的包伪装成 server 真实公网 IP，再发往外网。
 sudo iptables -t nat -A POSTROUTING -s 10.8.0.0/24 -o eth0 -j MASQUERADE
+# 但是很多云厂商的Linux 服务器缺少 FORWARD 链 放通，所以此时还需要 允许 TUN 流量进入转发链
+sudo iptables -A FORWARD -i tun0 -o eth0 -j ACCEPT
+sudo iptables -A FORWARD -i eth0 -o tun0 -m state --state ESTABLISHED,RELATED -j ACCEPT
+# 使用sudo iptables -L FORWARD -n -v 检查
 ```
 
-
-vpn client上设置路由与系统命令：
+vpn client（linux版）上设置路由与系统命令：
 ``` bash
 # ip命令在mac 上不可用
 # 假设 client tun IP = 10.8.0.2/24
@@ -3630,7 +3665,40 @@ sudo route add default 10.8.0.1
 sudo route add -host <server_public_ip> 192.168.1.1
 ```
 
+vpn client（windows版）上设置路由与系统命令：
+``` powershell
+# 1.给 TUN 网卡配置 IP，网卡名称 WaterIface 在执行client程序会得到，地址必须和 server 在同一网段（10.8.0.x）。
+netsh interface ip set address name="WaterIface" static 10.8.0.2 255.255.255.0
+## 删除命令如下：netsh interface ip delete address name="WaterIface" addr=10.8.0.2
+# 2.告诉系统“VPN 服务器的虚拟 IP 走 TUN 网卡”，（这条命令执行可能会提示对象已存在，是因为执行上面的命令会自动添加直连路由（在链路上））
+route add 10.8.0.1 mask 255.255.255.255 10.8.0.2 if  <WaterIface_Idx>
+# 其中 WaterIface_Idx 用下面命令查看：route print 或 netsh interface ipv4 show interfaces
+## 删除该路由的命令：route delete 10.8.0.1
+# 3. 选择性地添加路由
+# 3.1 只把 server 推送的网段走 VPN（推荐）
+route add 10.8.0.0 mask 255.255.255.0 10.8.0.1
+## 删除该路由的命令：route delete 10.8.0.0
+# 3.2 全局代理（所有流量走 VPN）
+## 首先增加
+route add 0.0.0.0 mask 0.0.0.0 10.8.0.1 if <WaterIface_Idx>  
+route add 47.x.x.x mask 255.255.255.255 <真实网卡的网关> if <你的真实网卡 ifIndex>
+#route add 0.0.0.0 mask 0.0.0.0 10.8.0.1 if 41 
+#route add 47.108.170.3 mask 255.255.255.255 192.168.31.1 if 15
+
+### 恢复默认路由的命令（最后的网关地址自己查route print修改）
+route delete 0.0.0.0 mask 0.0.0.0 10.8.0.1
+route add 0.0.0.0 mask 0.0.0.0 192.168.31.1
+# 一般来说，结束程序后，tun 网卡相关的所有路由都会删除
+```
+
 > route add default 10.8.0.1 本身只是指明“下一跳地址”。内核会结合已有接口配置（比如 tun0 的 peer）或 neighbor/ARP 信息来解析出具体的输出接口（dev）。对于 TUN，ifconfig tun0 10.8.0.2 10.8.0.1 up 把 next-hop（10.8.0.1）明确为该接口的对端，因而内核把 default 关联到 tun0（等同于 dev tun0）。
+
+vpn-test 练习程序（client：windows，server： ubuntu）
+1. 启动 server.go ，注意放开云主机 udp 流量
+2. 然后执行上面的 “vpn server上设置路由与系统命令”，此时查看ifconfig就能看到该虚拟端口了。
+3. 客户端执行 `go build -o client.exe` 生产可执行文件，并设置 client.exe 的属性-兼容性-以管理员身份运行
+4. 确保 [wintun.dll](https://www.wintun.net/) 文件和 client.exe 在相同目录。它是windows的虚拟网卡接口驱动
+5. `client.exe -config config.client.json` 运行程序，在网络连接的控制面板里也看见生成了一个新的网络设备名叫WaterIface。执行上面的"vpn client（windows版）上设置路由与系统命令"
 
 
 

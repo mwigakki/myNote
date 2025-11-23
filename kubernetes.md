@@ -171,25 +171,250 @@ kubeadm 是官方社区推出的一个用于快速部署kubernetes 集群的工�
 - 创建一个Master 节点`kubeadm init`
 - 将Node 节点加入到当前集群中`$ kubeadm join <Master 节点的IP 和端口>`
 
-## 2.3 安装要求
+### 2.2.1 安装要求
 
 在开始之前，部署Kubernetes 集群机器需要满足以下几个条件：
 
-- 一台或多台机器，操作系统ubuntu
+- 多台机器 
 - 硬件配置：2GB 或更多RAM，2 个CPU 或更多CPU，硬盘30GB 或更多
 - 集群中所有机器之间网络互通
 - 可以访问外网，需要拉取镜像
 - 禁止swap 分区
 
-## 2.4 最终目标
+### 2.2.2 最终目标
 
-- 在所有节点上安装Docker 和kubeadm
+- 在所有节点上安装Docker（或containerd） 和kubeadm
 - 部署Kubernetes Master
 - 部署容器网络插件
 - 部署Kubernetes Node，将节点加入Kubernetes 集群中
-- 部署Dashboard Web 页面，可视化查看Kubernetes 资源
 
-## 2.5 minikube
+> 下面是使用 kubeadm 部署k8s的详细流程，以阿里云上的一台ecs云主机和一台轻量化应用服务器为例，两个机器的操作系统都是 Ubuntu22.04
+
+### 2.2.3 主机规划
+
+| 主机角色 |规格|数量|内网IP示例|主机名|
+|----------|---|---|---|---|
+|Master|2C4G|1|172.18.29.143|master-node|
+|worker|2C2G|1|172.19.55.242|worker-node|
+
+> 两个机器的位于同一vpc 下，路由网段是 172.16.0.0/12
+
+### 2.2.4 安全组与防火墙
+
+**安全组规则**：放行以下端口
+
+Master: 6443(TCP), 2379-2380(TCP), 10250-10255(TCP)
+
+Worker: 10250(TCP), 30000-32767(TCP) (NodePort范围)
+
+**关闭云主机防火墙**：
+
+``` bash
+systemctl stop firewalld && systemctl disable firewalld
+```
+
+### 2.2.5 所有节点初始化
+``` bash
+# 1.1 关闭Swap
+sudo swapoff -a
+sudo sed -i '/ swap / s/^\(.*\)$/#\1/g' /etc/fstab
+
+# 1.2 设置主机名 (分别在两台机器执行)
+# Master执行:
+sudo hostnamectl set-hostname master-node
+# Worker执行:
+sudo hostnamectl set-hostname worker-node
+
+# 1.3 所有节点添加hosts解析
+cat <<EOF | sudo tee -a /etc/hosts
+172.19.55.242 worker-node
+172.18.29.143 master-node
+EOF
+
+# 1.4 加载内核模块
+sudo tee /etc/modules-load.d/k8s.conf <<EOF
+overlay
+br_netfilter
+EOF
+sudo modprobe overlay
+sudo modprobe br_netfilter
+
+# 1.5 设置内核参数
+sudo tee /etc/sysctl.d/k8s.conf <<EOF
+net.bridge.bridge-nf-call-iptables  = 1
+net.ipv4.ip_forward                 = 1
+net.bridge.bridge-nf-call-ip6tables = 1
+EOF
+sudo sysctl --system
+
+```
+
+### 2.2.6 安装 containerd
+
+``` bash
+# 2.1 安装依赖
+sudo apt update
+sudo apt install -y curl gnupg2 software-properties-common
+
+# 2.2 添加Docker仓库
+# 添加阿里云的 Docker GPG 密钥
+curl -fsSL https://mirrors.aliyun.com/docker-ce/linux/ubuntu/gpg | sudo gpg --dearmor -o /etc/apt/keyrings/docker.gpg
+
+echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.gpg] https://mirrors.aliyun.com/docker-ce/linux/ubuntu $(lsb_release -cs) stable" | sudo tee /etc/apt/sources.list.d/docker.list > /dev/null
+
+# 2.3 安装containerd
+sudo apt update
+sudo apt install -y containerd.io
+
+# 2.4 配置containerd
+sudo mkdir -p /etc/containerd
+containerd config default | sudo tee /etc/containerd/config.toml
+
+# 启用systemd cgroup驱动
+sudo sed -i 's/SystemdCgroup = false/SystemdCgroup = true/g' /etc/containerd/config.toml
+
+# 2.5 重启服务
+sudo systemctl restart containerd
+sudo systemctl enable containerd
+```
+
+### 2.2.7 安装 kubeadm/kubelet/kubectl
+
+``` bash
+# 3.1 添加Kubernetes仓库
+sudo apt install -y apt-transport-https ca-certificates
+curl -fsSL https://pkgs.k8s.io/core:/stable:/v1.28/deb/Release.key | sudo gpg --dearmor -o /etc/apt/keyrings/kubernetes-apt-keyring.gpg
+echo 'deb [signed-by=/etc/apt/keyrings/kubernetes-apt-keyring.gpg] https://pkgs.k8s.io/core:/stable:/v1.28/deb/ /' | sudo tee /etc/apt/sources.list.d/kubernetes.list
+
+# 3.2 安装指定版本
+sudo apt update
+sudo apt install -y kubelet=1.28.4-1.1 kubeadm=1.28.4-1.1 kubectl=1.28.4-1.1
+sudo apt-mark hold kubelet kubeadm kubectl
+
+# 3.3 启动kubelet
+sudo systemctl enable kubelet
+``` 
+
+### 2.2.8 Master节点初始化
+
+``` bash
+
+# 创建 containerd 正确的运行时配置，比较重要的是 mirrors 下面指定镜像源。endpoint: 列出了镜像仓库的实际地址或镜像加速地址。
+sudo tee /etc/containerd/config.toml <<EOF
+version = 2
+[plugins]
+  [plugins."io.containerd.grpc.v1.cri"]
+    sandbox_image = "registry.aliyuncs.com/google_containers/pause:3.8"
+    [plugins."io.containerd.grpc.v1.cri".containerd]
+      default_runtime_name = "runc"
+      [plugins."io.containerd.grpc.v1.cri".containerd.runtimes]
+        [plugins."io.containerd.grpc.v1.cri".containerd.runtimes.runc]
+          runtime_type = "io.containerd.runc.v2"
+          [plugins."io.containerd.grpc.v1.cri".containerd.runtimes.runc.options]
+            SystemdCgroup = true
+    [plugins."io.containerd.grpc.v1.cri".registry]
+      [plugins."io.containerd.grpc.v1.cri".registry.mirrors]
+        [plugins."io.containerd.grpc.v1.cri".registry.mirrors."docker.io"]
+          endpoint = ["https://registry.aliyuncs.com"]
+        [plugins."io.containerd.grpc.v1.cri".registry.mirrors."registry.k8s.io"]
+          endpoint = ["https://registry.aliyuncs.com/google_containers"]
+EOF
+
+# 重启 containerd
+sudo systemctl restart containerd
+
+# 完全重置环境，适合后面执行报错后，需要重置环境。当然新环境也可以执行
+sudo kubeadm reset -f
+sudo rm -rf /etc/kubernetes/ /var/lib/kubelet/ /var/lib/etcd/ $HOME/.kube
+sudo rm -rf /etc/cni/net.d
+
+# 清理 containerd 状态
+sudo systemctl stop containerd
+sudo rm -rf /var/lib/containerd/*
+sudo systemctl start containerd
+
+# 拉取核心镜像包括：kube-apiserver，kube-controller-manager，kube-scheduler，kube-proxy，etcd，CoreDNS，pause 镜像
+sudo kubeadm config images pull \
+  --image-repository registry.aliyuncs.com/google_containers \
+  --kubernetes-version v1.28.4 \
+  --cri-socket unix:///var/run/containerd/containerd.sock
+
+# 验证镜像, 应有若干镜像
+sudo crictl images
+
+# 创建 kubeadm 配置文件
+cat <<EOF > kubeadm-config.yaml
+apiVersion: kubeadm.k8s.io/v1beta3
+kind: InitConfiguration
+localAPIEndpoint:
+  advertiseAddress: 172.18.29.143
+nodeRegistration:
+  criSocket: unix:///var/run/containerd/containerd.sock
+  kubeletExtraArgs:
+    cgroup-driver: "systemd"
+    fail-swap-on: "false"
+---
+apiVersion: kubeadm.k8s.io/v1beta3
+kind: ClusterConfiguration
+imageRepository: registry.aliyuncs.com/google_containers
+networking:
+  podSubnet: "192.168.0.0/16"
+controllerManager:
+  extraArgs:
+    node-monitor-grace-period: "20s"
+    bind-address: "0.0.0.0"
+scheduler:
+  extraArgs:
+    bind-address: "0.0.0.0"
+apiServer:
+  extraArgs:
+    bind-address: "0.0.0.0"
+EOF
+
+# 使用配置文件初始化
+sudo kubeadm init --config kubeadm-config.yaml --ignore-preflight-errors=Swap --v=5
+
+#   配置kubectl
+mkdir -p $HOME/.kube
+sudo cp -i /etc/kubernetes/admin.conf $HOME/.kube/config
+sudo chown $(id -u):$(id -g) $HOME/.kube/config
+
+# 安装Calico网络
+kubectl apply -f https://raw.githubusercontent.com/projectcalico/calico/v3.26.1/manifests/calico.yaml
+```
+
+### 2.2.9 Worker节点加入集群
+
+``` bash
+# 可以直接使用 kubeadm init 结果最后打印的  kubeadm join 那一串命令。也可以按下面步骤执行
+
+# 在Master节点获取加入命令
+kubeadm token create --print-join-command
+
+# 在Worker节点执行输出的命令 (添加--cri-socket参数)
+sudo kubeadm join 172.18.29.143:6443 --token <token> \
+  --discovery-token-ca-cert-hash <hash> \
+  --cri-socket=unix:///var/run/containerd/containerd.sock
+
+# 最后在Master节点执行，验证集群
+kubectl get nodes -o wide
+```
+
+### 2.2.10 calico 无法拉镜像问题
+``` bash
+# 如果此时 使用kubectl get node 查看发现两个node 都是 notReady，多半是calico 的镜像无法拉取的问题
+# 下载 calico.yaml
+curl -O https://raw.githubusercontent.com/projectcalico/calico/v3.26.1/manifests/calico.yaml
+
+# 替换镜像源
+sed -i 's|docker.io/calico/|swr.cn-north-4.myhuaweicloud.com/ddn-k8s/docker.io/calico/|g' calico.yaml
+
+# 应用配置
+kubectl apply -f calico.yaml
+
+```
+
+## 2.3 minikube
 
 为方便学习，我们使用minikube进行单机ubuntu 部署k8s。
 
@@ -205,7 +430,7 @@ https://vitalflux.com/install-kubernetes-ubuntu-vm
 
 想要使用minikube里面的东西比如其中的docker，需要先登录进入 minikube 虚拟机，使用`minikube ssh`登录。
 
-## 2.6 k8s集群配置信息
+## 2.4 k8s集群配置信息
 
 `~/.kube/config` 是 Kubernetes 集群的配置文件，用于存储与集群连接相关的信息，包括集群的地址、认证信息、上下文等。
 
